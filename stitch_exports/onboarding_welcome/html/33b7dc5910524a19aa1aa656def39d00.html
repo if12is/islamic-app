@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+
+<html class="dark" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed": "#fde68a", // Gold/Sand
+                        "surface-tint": "#10b981", // Emerald
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#b45309",
+                        "surface-dim": "#0f172a",
+                        "inverse-primary": "#10b981",
+                        "surface": "#111827", // Deep Onyx/Navy
+                        "primary": "#059669", // Emerald Green
+                        "surface-bright": "#1f2937",
+                        "on-error": "#ffffff",
+                        "primary-fixed": "#064e3b",
+                        "error-container": "#991b1b",
+                        "on-tertiary-fixed": "#451a03",
+                        "error": "#ef4444",
+                        "surface-container": "#1f2937",
+                        "on-tertiary-container": "#fef3c7",
+                        "on-primary": "#ffffff",
+                        "background": "#111827",
+                        "primary-fixed-dim": "#065f46",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-highest": "#374151",
+                        "on-secondary-fixed-variant": "#d1d5db",
+                        "outline": "#4b5563",
+                        "on-primary-container": "#d1fae5",
+                        "on-tertiary-fixed-variant": "#d97706",
+                        "on-error-container": "#fee2e2",
+                        "surface-container-high": "#1f2937",
+                        "secondary-container": "#064e3b",
+                        "on-background": "#f3f4f6",
+                        "primary-container": "#064e3b",
+                        "surface-container-lowest": "#030712",
+                        "inverse-on-surface": "#111827",
+                        "secondary-fixed": "#065f46",
+                        "secondary-fixed-dim": "#047857",
+                        "on-secondary-fixed": "#ecfdf5",
+                        "on-primary-fixed-variant": "#34d399",
+                        "on-primary-fixed": "#ecfdf5",
+                        "tertiary-fixed-dim": "#fbbf24",
+                        "outline-variant": "#374151",
+                        "on-surface-variant": "#9ca3af",
+                        "on-secondary-container": "#d1fae5",
+                        "on-surface": "#f3f4f6",
+                        "tertiary": "#f59e0b",
+                        "inverse-surface": "#f3f4f6",
+                        "secondary": "#10b981",
+                        "surface-variant": "#1f2937",
+                        "surface-container-low": "#111827"
+                    },
+                    fontFamily: {
+                        "cairo": ["Cairo", "sans-serif"],
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Cairo', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-card {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .glow-effect {
+            box-shadow: 0 0 40px rgba(245, 158, 11, 0.15);
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col items-center justify-center overflow-hidden">
+<!-- Splash Screen Layer -->
+<div class="fixed inset-0 z-[100] bg-surface-container-lowest flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-700">
+<div class="relative">
+<div class="absolute inset-0 bg-primary opacity-20 blur-3xl rounded-full scale-150"></div>
+<div class="relative text-primary text-6xl font-black tracking-tighter glow-effect">الفجر</div>
+</div>
+</div>
+<!-- Onboarding Container -->
+<main class="relative w-full max-w-md h-screen flex flex-col px-8 py-12">
+<!-- Top Logo & Skip -->
+<div class="flex justify-between items-center mb-12">
+<div class="text-primary font-black text-2xl tracking-tighter">الفجر</div>
+<button class="text-tertiary font-bold text-sm hover:opacity-70 transition-opacity px-4 py-1">تخطي</button>
+</div>
+<!-- Onboarding Cards -->
+<div class="flex-1 flex flex-col justify-center relative">
+<!-- Slide 1: Welcome -->
+<div class="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+<div class="relative aspect-[4/5] rounded-3xl overflow-hidden bg-surface-container-high group">
+<img alt="Islamic architecture" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" data-alt="Minimalist architectural shot of a modern mosque dome against a clear blue sky with soft evening lighting and deep green shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAi92t41gPkt2dVZXfJhQV84YJhUEOsNXvb0mCaMF3HkkeBjIjlKMP2OBrrU2a62cDkPaD6KnQRwB5ioakyabKPEpaF4luVp6lNeg1w4nyLvzt4OLRl97B7YbLmDJyRZR6C1xGflmN7CFwiRr3iQuQWLCUEL5lrCpLR31XQlWDdlLMi7PQRFve9vnULbZ9h3ojFzoEZxh0HMlJbemqC4loXqXGgyIxHcCrAWdL1DqEy8M6yNVjf7t3rgjCPauGrFpuwx1mzI9wsTMo"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface/90 via-surface/40 to-transparent"></div>
+<div class="absolute bottom-6 right-6 left-6">
+<span class="inline-block px-3 py-1 bg-tertiary-fixed/20 backdrop-blur-md text-tertiary-fixed rounded-full text-[10px] font-bold mb-3">مرحباً بك</span>
+<h1 class="text-white text-3xl font-bold leading-tight">مساحتك الروحية الخاصة، بهدوء تام</h1>
+</div>
+</div>
+<div class="space-y-4">
+<p class="text-on-surface-variant text-lg leading-relaxed">
+                        استمتع بتجربة إيمانية متكاملة مصممة بعناية لترافقك في يومك، بعيداً عن ضجيج العالم وتشتته.
+                    </p>
+</div>
+</div>
+<!-- Background elements -->
+<div class="absolute -z-10 top-1/4 -right-12 w-64 h-64 bg-primary/10 blur-3xl rounded-full opacity-40"></div>
+<div class="absolute -z-10 bottom-1/4 -left-12 w-48 h-48 bg-tertiary/10 blur-3xl rounded-full opacity-30"></div>
+</div>
+<!-- Controls Area -->
+<div class="mt-auto pt-8 flex flex-col gap-6">
+<!-- Indicators -->
+<div class="flex gap-2 justify-center">
+<div class="h-1.5 w-8 rounded-full bg-primary transition-all duration-300"></div>
+<div class="h-1.5 w-2 rounded-full bg-outline/30"></div>
+<div class="h-1.5 w-2 rounded-full bg-outline/30"></div>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-primary text-white py-5 rounded-3xl font-bold text-lg shadow-[0_8px_32px_rgba(5,150,105,0.2)] active:scale-95 transition-all flex items-center justify-center gap-3">
+<span>ابدأ الآن</span>
+<span class="material-symbols-outlined text-xl rotate-180">arrow_forward</span>
+</button>
+</div>
+</main>
+<!-- Sub-page sections (Hidden) -->
+<div class="hidden">
+<div class="bg-surface-container-high p-8 rounded-3xl border border-outline/15 text-center">
+<div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-primary text-4xl" data-weight="fill">location_on</span>
+</div>
+<h2 class="text-2xl font-bold text-on-surface mb-4">دقة مواقيت الصلاة</h2>
+<p class="text-on-surface-variant leading-relaxed">نحتاج لتحديد موقعك لنوفر لك مواقيت صلاة دقيقة واتجاه القبلة أينما كنت.</p>
+</div>
+<div class="bg-surface-container-high p-8 rounded-3xl border border-outline/15 text-center">
+<div class="w-20 h-20 bg-tertiary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-tertiary text-4xl" data-weight="fill">notifications_active</span>
+</div>
+<h2 class="text-2xl font-bold text-on-surface mb-4">لا تفوت أي طاعة</h2>
+<p class="text-on-surface-variant leading-relaxed">فعل التنبيهات لتلقي أذان الصلوات وأذكار الصباح والمساء في وقتها المخصص.</p>
+</div>
+</div>
+</body></html>

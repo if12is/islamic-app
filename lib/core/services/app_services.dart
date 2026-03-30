@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'notification_service.dart';
 
 /// Service for initializing and managing application services.
 ///
@@ -15,8 +16,12 @@ class AppServices {
   static Future<void> initialize() async {
     // Initialize Hive for local storage
     await Hive.initFlutter();
+
+    // Initialize local notifications framework
+    await NotificationService.initialize();
     
     print('✅ Hive initialized');
+    print('✅ Notifications initialized');
     print('✅ App services initialized');
   }
 
@@ -28,8 +33,6 @@ class AppServices {
       BaseOptions(
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
-        contentType: 'application/json',
         responseType: ResponseType.json,
       ),
     );

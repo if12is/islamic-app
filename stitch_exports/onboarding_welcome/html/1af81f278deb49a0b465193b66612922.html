@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html class="dark" dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>الفجر - الأذكار والمسبحة الذكية</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-fixed": "#E9C349", // Gold/Sand
+              "surface-tint": "#10B981", // Emerald accent
+              "on-secondary": "#ffffff",
+              "tertiary-container": "#cca72f",
+              "surface-dim": "#111827",
+              "inverse-primary": "#95d3ba",
+              "surface": "#111827", // Deep Navy/Onyx
+              "primary": "#10B981", // Emerald Green
+              "surface-bright": "#1F2937",
+              "on-error": "#ffffff",
+              "primary-fixed": "#D1FAE5",
+              "error-container": "#ffdad6",
+              "on-tertiary-fixed": "#241a00",
+              "error": "#ef4444",
+              "surface-container": "#1F2937",
+              "on-tertiary-container": "#4e3d00",
+              "on-primary": "#ffffff",
+              "background": "#111827",
+              "primary-fixed-dim": "#95d3ba",
+              "on-tertiary": "#ffffff",
+              "surface-container-highest": "#374151",
+              "on-secondary-fixed-variant": "#354b42",
+              "outline": "#4B5563",
+              "on-primary-container": "#D1FAE5",
+              "on-tertiary-fixed-variant": "#574500",
+              "on-error-container": "#93000a",
+              "surface-container-high": "#2D3748",
+              "secondary-container": "#064E3B", // Dark Emerald
+              "on-background": "#F9FAFB",
+              "primary-container": "#064E3B",
+              "surface-container-lowest": "#0F172A",
+              "inverse-on-surface": "#f0f1f1",
+              "secondary-fixed": "#cfe8dc",
+              "secondary-fixed-dim": "#b3ccc0",
+              "on-secondary-fixed": "#091f18",
+              "on-primary-fixed-variant": "#0b513d",
+              "on-primary-fixed": "#002117",
+              "tertiary-fixed-dim": "#e9c349",
+              "outline-variant": "#374151",
+              "on-surface-variant": "#9CA3AF",
+              "on-secondary-container": "#D1FAE5",
+              "on-surface": "#F9FAFB",
+              "tertiary": "#E9C349",
+              "inverse-surface": "#f9f9f9",
+              "secondary": "#10B981",
+              "surface-variant": "#1F2937",
+              "surface-container-low": "#111827"
+            },
+            fontFamily: {
+              "cairo": ["Cairo", "sans-serif"],
+              "headline": ["Cairo", "sans-serif"],
+              "body": ["Cairo", "sans-serif"],
+              "label": ["Cairo", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      body { font-family: 'Cairo', sans-serif; }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-effect {
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- Top App Bar -->
+<header class="bg-surface/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline/10">
+<div class="flex justify-between items-center px-6 py-4 w-full">
+<button class="hover:bg-primary/10 transition-colors p-2 rounded-full active:opacity-80 active:scale-95">
+<span class="material-symbols-outlined text-on-surface" data-icon="menu">menu</span>
+</button>
+<h1 class="font-['Cairo'] font-black text-primary text-2xl tracking-tight">الفجر</h1>
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="Modern minimalist portrait of a man in professional attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFbFat-Jh60srWGr1Uf8fEOl_zSpm4fqHp5NQibg9XQ_pjj0eCIjdCcvs9_KTduVQJtHHxy_qx35QvflOtugSySMKy29R0vuPJ9lv4jrSDZIbg-6Q1Zti4_t_Hyi61TzMhfuhSb_Dv2iNS_X1UXqgGL72ZYUKUF7l2nvnNzjD56jwq8KJbHgGkVEBM9tgUBNxT5GNlG-zxQ1yyQ9mj6CEPP2vGycinySIrKftsaZLjmgSRp80y2_vAo2OJcwXYmnwq1FAmif8v19g"/>
+</div>
+</div>
+</header>
+<main class="px-6 pt-8 space-y-12">
+<!-- Hero Section: Tasbeeh Counter -->
+<section class="relative">
+<div class="bg-primary-container rounded-3xl p-8 overflow-hidden relative shadow-2xl shadow-black/20 border border-primary/10">
+<!-- Background texture -->
+<div class="absolute inset-0 opacity-5 pointer-events-none" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCLxLVNyx5aWgRYKzhvqD9bSIWF5efIWtrbwTX8T3r5F6MvNeeqVJdA4vNJDXXfzeG7F9XweXQUqrfQQ_pNDfhfEUvGfAxnVe8KVw9bSY8shsWqFH-2W8txWU3KjgeYnJnAb7fCzx-bOBkim3yAKm0eU9Lz3TrZBMWruyFHdPlcNtsSfoPpcbtp4zBM2Ad0sVvSVDh6cF6G8EsaJo6175FeZcOenarkGdHdKzKKL2hMtpG3SKdORZk1dW3_17K0UtJoQNKsCeU1t_Y');"></div>
+<div class="relative z-10 flex flex-col items-center text-center space-y-6">
+<span class="text-tertiary-fixed font-medium text-sm tracking-widest uppercase">المسبحة الذكية</span>
+<!-- Dhikr Counter Widget -->
+<div class="relative group">
+<!-- Progress Ring -->
+<div class="w-64 h-64 rounded-full border-[12px] border-white/5 flex items-center justify-center transition-transform active:scale-95 cursor-pointer">
+<div class="absolute inset-0 rounded-full border-[12px] border-tertiary-fixed" style="clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 30% 0%);"></div>
+<div class="flex flex-col items-center">
+<span class="text-white text-7xl font-bold tracking-tighter">٢٤</span>
+<span class="text-white/60 text-lg font-medium">/ ٣٣</span>
+</div>
+</div>
+<!-- Reset & Haptic Controls -->
+<div class="absolute -bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4">
+<button class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90">
+<span class="material-symbols-outlined" data-icon="refresh">refresh</span>
+</button>
+<button class="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center text-primary-container hover:bg-tertiary-fixed/90 transition-all active:scale-90 shadow-lg shadow-black/20">
+<span class="material-symbols-outlined" data-icon="vibration">vibration</span>
+</button>
+</div>
+</div>
+<p class="text-white/90 font-medium text-xl pt-4">سبحان الله وبحمده</p>
+</div>
+</div>
+</section>
+<!-- Bento Grid: Categorized Azkar -->
+<section class="space-y-6">
+<div class="flex justify-between items-center">
+<h2 class="text-2xl font-bold text-on-surface">أذكار المسلم</h2>
+<button class="text-tertiary font-bold text-sm">عرض الكل</button>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Morning Azkar -->
+<div class="col-span-2 md:col-span-1 bg-surface-container p-6 rounded-3xl border border-outline/10 flex flex-col justify-between h-48 hover:bg-surface-container-high transition-colors">
+<div class="flex justify-between items-start">
+<div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="light_mode">light_mode</span>
+</div>
+<span class="text-xs font-bold text-on-surface-variant">٧٤ ذكراً</span>
+</div>
+<div>
+<h3 class="text-xl font-extrabold text-on-surface">أذكار الصباح</h3>
+<p class="text-sm text-on-surface-variant">تبدأ من طلوع الفجر</p>
+</div>
+</div>
+<!-- Evening Azkar -->
+<div class="col-span-1 bg-secondary-container p-6 rounded-3xl flex flex-col justify-between h-48 hover:opacity-90 transition-opacity">
+<div class="flex justify-between items-start">
+<div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="dark_mode">dark_mode</span>
+</div>
+</div>
+<div>
+<h3 class="text-lg font-bold text-on-primary">أذكار المساء</h3>
+<p class="text-xs text-on-primary/70">بعد صلاة العصر</p>
+</div>
+</div>
+<!-- After Prayer -->
+<div class="col-span-1 bg-surface-container p-6 rounded-3xl flex flex-col justify-between h-48 hover:bg-surface-container-high transition-colors">
+<div class="flex justify-between items-start">
+<div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="mosque">mosque</span>
+</div>
+</div>
+<div>
+<h3 class="text-lg font-bold text-on-surface">بعد الصلاة</h3>
+<p class="text-xs text-on-surface-variant">دبر كل صلاة</p>
+</div>
+</div>
+<!-- Sleeping Azkar -->
+<div class="col-span-2 bg-surface-container-highest p-6 rounded-3xl flex items-center justify-between hover:bg-opacity-80 transition-opacity">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-tertiary" data-icon="bedtime">bedtime</span>
+</div>
+<div>
+<h3 class="text-lg font-bold text-on-surface">أذكار النوم</h3>
+<p class="text-sm text-on-surface-variant">قبل الخلود للنوم</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_left">chevron_left</span>
+</div>
+</div>
+</section>
+<!-- Daily Inspiration Card -->
+<section>
+<div class="relative rounded-3xl overflow-hidden aspect-[16/9] flex items-end p-8 border border-outline/10">
+<img alt="Spiritual Insight" class="absolute inset-0 w-full h-full object-cover" data-alt="Peaceful interior of a mosque with dramatic shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkz00vLdZD9LvqgDunWWgDB1q1EdrQJntw4bZy-eVuc5Mgw7hAoWS7xO-2TbP8xIOi-6deEqNoESxP5CKNBxVrhpkpuM96PU5ecee7q8RdIe1NNlQNl3PhcC4-RHky9IUEom3DtENxbSeMF_9GV1DMKhmRemmyJWMKjz6oC-H5t2ReAOCh3ekmrm4bBQLNZfKwpL6MqY5mDW3gjucx5WmejFm8Xj4yvH4coWDO9QA1wCK0O8mFoiKf1YAjutmMMxAJHPQng7v7jXU"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent"></div>
+<div class="relative z-10 text-on-surface space-y-2">
+<p class="text-tertiary font-bold text-sm">آية اليوم</p>
+<p class="text-2xl font-medium font-cairo leading-relaxed">"أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ"</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-surface/90 backdrop-blur-xl border-t border-outline/10 shadow-[0_-8px_32px_rgba(0,0,0,0.3)]">
+<a class="flex flex-col items-center justify-center text-on-surface/50 px-5 py-2 hover:text-primary transition-colors active:scale-90 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-['Cairo'] font-medium text-[10px]">الرئيسية</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface/50 px-5 py-2 hover:text-primary transition-colors active:scale-90 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-['Cairo'] font-medium text-[10px]">القرآن</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-white rounded-xl px-5 py-2 shadow-lg shadow-primary/20 active:scale-90 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-['Cairo'] font-medium text-[10px]">الأذكار</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface/50 px-5 py-2 hover:text-primary transition-colors active:scale-90 duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Cairo'] font-medium text-[10px]">الإعدادات</span>
+</a>
+</nav>
+</body></html>

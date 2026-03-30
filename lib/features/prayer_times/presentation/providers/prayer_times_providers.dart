@@ -4,6 +4,7 @@ import '../../../../core/services/app_services.dart';
 import '../../data/datasources/prayer_times_local_datasource.dart';
 import '../../data/datasources/prayer_times_remote_datasource.dart';
 import '../../data/repositories/prayer_times_repository_impl.dart';
+import '../../domain/entities/prayer_times_entity.dart';
 import '../../domain/repositories/prayer_times_repository.dart';
 import '../../domain/usecases/get_prayer_times_usecase.dart';
 
@@ -87,6 +88,25 @@ class PrayerTimesParams {
     this.method = 3,
     this.date,
   });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+  
+    return other is PrayerTimesParams &&
+      other.latitude == latitude &&
+      other.longitude == longitude &&
+      other.method == method &&
+      other.date == date;
+  }
+
+  @override
+  int get hashCode {
+    return latitude.hashCode ^
+      longitude.hashCode ^
+      method.hashCode ^
+      date.hashCode;
+  }
 }
 
 /// Fetch prayer times with async state management.
@@ -100,7 +120,7 @@ class PrayerTimesParams {
 /// );
 /// ```
 final prayerTimesProvider =
-    FutureProvider.family<dynamic, PrayerTimesParams>((ref, params) async {
+  FutureProvider.family<PrayerTimesEntity, PrayerTimesParams>((ref, params) async {
   final useCase = ref.watch(getPrayerTimesUseCaseProvider);
 
   final result = await useCase(
@@ -120,7 +140,7 @@ final prayerTimesProvider =
 ///
 /// Returns cached prayer times without making an API call.
 final cachedPrayerTimesProvider =
-    FutureProvider<dynamic>((ref) async {
+    FutureProvider<PrayerTimesEntity?>((ref) async {
   final useCase = ref.watch(getCachedPrayerTimesUseCaseProvider);
   return await useCase();
 });

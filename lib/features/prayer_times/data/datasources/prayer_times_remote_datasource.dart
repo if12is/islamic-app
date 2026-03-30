@@ -40,6 +40,10 @@ class PrayerTimesRemoteDataSource {
                 responseType: ResponseType.json,
               ),
             ) {
+    // Ensure a base URL exists even when a preconfigured Dio instance is injected.
+    if (_dio.options.baseUrl.isEmpty) {
+      _dio.options.baseUrl = AppConstants.aladhanApiBaseUrl;
+    }
     _setupInterceptors();
   }
 
@@ -88,6 +92,8 @@ class PrayerTimesRemoteDataSource {
     String? date,
   }) async {
     try {
+      final dateKey = _resolveDatePath(date);
+
       // Build query parameters
       final Map<String, dynamic> queryParams = {
         'latitude': latitude,
@@ -95,14 +101,9 @@ class PrayerTimesRemoteDataSource {
         'method': method,
       };
 
-      // Add date if provided, otherwise API uses today
-      if (date != null && date.isNotEmpty) {
-        queryParams['date'] = date;
-      }
-
       // Make API request
       final response = await _dio.get(
-        '/timings',
+        '/timings/$dateKey',
         queryParameters: queryParams,
       );
 
@@ -190,29 +191,23 @@ class PrayerTimesRemoteDataSource {
       );
     }
   }
-}
 
-    final uri = 'http://api.aladhan.com/v1/timings';
-
-    try {
-      final response = await dio.get(
-        uri,
-        queryParameters: {
-          'latitude': latitude,
-          'longitude': longitude,
-          'method': method,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return PrayerTimesModel.fromJson(response.data);
-      } else {
-        throw Exception('Failed to load prayer times: \${response.statusCode}');
+  String _resolveDatePath(String? date) {
+    if (date != null && date.isNotEmpty) {
+      final parsed = DateTime.tryParse(date);
+      if (parsed != null) {
+        return _formatAsApiDate(parsed);
       }
-    } on DioException catch (e) {
-      throw Exception('Network error: \${e.message}');
-    } catch (e) {
-      throw Exception('Unexpected error: \$e');
+      return date;
     }
+
+    return _formatAsApiDate(DateTime.now());
+  }
+
+  String _formatAsApiDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return '$day-$month-$year';
   }
 }

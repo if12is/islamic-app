@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/localization/app_localizations.dart';
 import 'core/services/app_services.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/presentation/pages/home_page.dart';
+import 'features/onboarding/presentation/pages/onboarding_page.dart';
+import 'features/onboarding/presentation/pages/splash_screen.dart';
 import 'shared/providers/app_providers.dart';
 
 void main() async {
@@ -15,6 +21,9 @@ void main() async {
   
   // Initialize SharedPreferences and theme provider
   await initializeThemeProvider();
+
+  // Warm offline-first caches in the background.
+  unawaited(runStartupSync());
 
   // Run the app
   runApp(const ProviderScope(child: IslamicApp()));
@@ -35,10 +44,12 @@ class IslamicApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch the theme mode - will rebuild when theme changes
     final themeMode = ref.watch(themeModeProvider);
+    final locale = ref.watch(localeProvider);
+    final isFirstLaunch = ref.watch(firstLaunchProvider);
 
     return MaterialApp(
       // App metadata
-      title: 'Islamic App',
+      onGenerateTitle: (context) => context.tr('app_title'),
       debugShowCheckedModeBanner: false,
 
       // ========================
@@ -71,21 +82,18 @@ class IslamicApp extends ConsumerWidget {
         Locale('en', ''),
       ],
 
-      /// Use Arabic as the default locale (first in list = default)
-      locale: const Locale('ar', ''),
+      /// Locale is user-selectable and persisted via Riverpod/SharedPreferences.
+      locale: locale,
 
       // ========================
       // Home Screen
       // ========================
-      home: const HomePage(),
+      home: const SplashScreen(),
 
       // ========================
       // Global Settings
       // ========================
       
-      /// Use Material 3 design
-      useMaterial3: true,
-
       /// Enable scrollbar visibilty by default
       scrollBehavior: const ScrollBehavior(),
     );

@@ -15,38 +15,38 @@ class AppTheme {
   // Light Mode Colors
   // ========================
   
-  static const Color primaryLight = Color(0xFF1DB854);
-  static const Color primaryDarkLight = Color(0xFF0D8C3D);
+  static const Color primaryLight = Color(0xFF003527);
+  static const Color primaryDarkLight = Color(0xFF064E3B);
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   
-  static const Color secondaryLight = Color(0xFFD4AF37);
-  static const Color onSecondaryLight = Color(0xFF1B1B1B);
+  static const Color secondaryLight = Color(0xFF735C00);
+  static const Color onSecondaryLight = Color(0xFFFFFFFF);
   
-  static const Color backgroundLight = Color(0xFFFAFAFA);
+  static const Color backgroundLight = Color(0xFFF9F9F9);
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color onSurfaceLight = Color(0xFF1B1B1B);
-  static const Color onSurfaceVariantLight = Color(0xFF757575);
+  static const Color onSurfaceLight = Color(0xFF1A1C1C);
+  static const Color onSurfaceVariantLight = Color(0xFF404944);
   
-  static const Color errorLight = Color(0xFFB3261E);
+  static const Color errorLight = Color(0xFFBA1A1A);
   static const Color onErrorLight = Color(0xFFFFFFFF);
   
   // ========================
   // Dark Mode Colors
   // ========================
   
-  static const Color primaryDark = Color(0xFF1DB854);
-  static const Color primaryDarkDark = Color(0xFF0D8C3D);
-  static const Color onPrimaryDark = Color(0xFFFFFFFF);
+  static const Color primaryDark = Color(0xFF95D3BA);
+  static const Color primaryDarkDark = Color(0xFF80BEA6);
+  static const Color onPrimaryDark = Color(0xFF002117);
   
-  static const Color secondaryDark = Color(0xFFD4AF37);
-  static const Color onSecondaryDark = Color(0xFF1B1B1B);
+  static const Color secondaryDark = Color(0xFFE9C349);
+  static const Color onSecondaryDark = Color(0xFF241A00);
   
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color surfaceDark = Color(0xFF1E1E1E);
-  static const Color onSurfaceDark = Color(0xFFFFFFFF);
-  static const Color onSurfaceVariantDark = Color(0xFFBDBDBD);
+  static const Color backgroundDark = Color(0xFF111715);
+  static const Color surfaceDark = Color(0xFF1A1F1D);
+  static const Color onSurfaceDark = Color(0xFFE2E8E4);
+  static const Color onSurfaceVariantDark = Color(0xFFBFC9C3);
   
-  static const Color errorDark = Color(0xFFB3261E);
+  static const Color errorDark = Color(0xFFBA1A1A);
   static const Color onErrorDark = Color(0xFFFFFFFF);
 
   // ========================
@@ -55,7 +55,7 @@ class AppTheme {
   
   static const String fontFamily = 'Cairo';
   static const String altFontFamily = 'Tajawal';
-  static const double borderRadius = 12;
+  static const double borderRadius = 8;
 
   // ========================
   // Light Theme Data
@@ -142,7 +142,7 @@ class AppTheme {
         ),
       ),
       
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: surfaceLight,
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -237,7 +237,7 @@ class AppTheme {
         ),
       ),
       
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: surfaceDark,
         elevation: 2,
         shape: RoundedRectangleBorder(

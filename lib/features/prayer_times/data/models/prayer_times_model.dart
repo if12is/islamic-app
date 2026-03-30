@@ -51,9 +51,9 @@ class PrayerTimesModel extends PrayerTimesEntity {
       // Parse Hijri date
       final hijriMonthData = hijri['month'] as Map<String, dynamic>? ?? {};
       final hijriDateEntity = HijriDateEntity(
-        day: hijri['date'] as int? ?? 1,
-        month: hijri['month']['number'] as int? ?? 1,
-        year: hijri['year'] as int? ?? 1,
+        day: int.tryParse(hijri['day']?.toString() ?? '') ?? 1,
+        month: hijriMonthData['number'] as int? ?? 1,
+        year: int.tryParse(hijri['year']?.toString() ?? '') ?? 1,
         monthName: hijriMonthData['en'] as String? ?? '',
         monthArabic: hijriMonthData['ar'] as String? ?? '',
       );
@@ -109,7 +109,7 @@ class PrayerTimesModel extends PrayerTimesEntity {
   };
 
   /// Create instance from cached JSON.
-  factory PrayerTimesModel.fromJson(Map<String, dynamic> json) {
+  factory PrayerTimesModel.fromJson(Map json) {
     return PrayerTimesModel(
       prayers: (json['prayers'] as List?)
               ?.map((p) => PrayerEntity(
@@ -129,7 +129,7 @@ class PrayerTimesModel extends PrayerTimesEntity {
 
   /// Helper to parse Hijri date from JSON.
   static HijriDateEntity _parseHijriDate(dynamic hijriJson) {
-    if (hijriJson is! Map<String, dynamic>) {
+    if (hijriJson is! Map) {
       return const HijriDateEntity(
         day: 1,
         month: 1,
@@ -138,12 +138,14 @@ class PrayerTimesModel extends PrayerTimesEntity {
         monthArabic: '',
       );
     }
+    
+    final map = Map<String, dynamic>.from(hijriJson);
     return HijriDateEntity(
-      day: hijriJson['day'] as int? ?? 1,
-      month: hijriJson['month'] as int? ?? 1,
-      year: hijriJson['year'] as int? ?? 1,
-      monthName: hijriJson['monthName'] as String? ?? '',
-      monthArabic: hijriJson['monthArabic'] as String? ?? '',
+      day: map['day'] as int? ?? 1,
+      month: map['month'] as int? ?? 1,
+      year: map['year'] as int? ?? 1,
+      monthName: map['monthName'] as String? ?? '',
+      monthArabic: map['monthArabic'] as String? ?? '',
     );
   }
 }

@@ -34,6 +34,7 @@ dependencies:
   
   # Location Services
   geolocator: ^13.0.2
+  geocoding: ^3.0.0
   
   # Compass
   flutter_compass: ^0.8.0
@@ -76,21 +77,15 @@ flutter:
     - assets/data/
     - assets/images/
     - assets/icons/
-  
-  # Fonts (Cairo for RTL Arabic support)
+
   fonts:
     - family: Cairo
       fonts:
-        - asset: assets/fonts/Cairo-Regular.ttf
-        - asset: assets/fonts/Cairo-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Cairo-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Cairo-Light.ttf
+        - asset: assets/fonts/Cairo-Variable.ttf
           weight: 300
-    
-    - family: Tajawal
-      fonts:
-        - asset: assets/fonts/Tajawal-Regular.ttf
-        - asset: assets/fonts/Tajawal-Bold.ttf
+        - asset: assets/fonts/Cairo-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Cairo-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/Cairo-Variable.ttf
           weight: 700

@@ -16,6 +16,10 @@ class AppConstants {
   /// Base URL for the Quran.com API
   static const String quranApiBaseUrl = 'https://api.quran.com/api/v4';
 
+  /// Free public Azkar JSON source (open GitHub dataset)
+  static const String azkarJsonUrl =
+      'https://raw.githubusercontent.com/rn0x/Adhkar-json/main/adhkar.json';
+
   // ========================
   // Cache Configuration
   // ========================
@@ -84,6 +88,9 @@ class AppConstants {
   
   /// Key for storing notifications enabled status
   static const String notificationsEnabledKey = 'notifications_enabled';
+
+  /// Key for storing selected app language (ar/en)
+  static const String localeKey = 'app_locale';
 
   // ========================
   // Qibla Configuration

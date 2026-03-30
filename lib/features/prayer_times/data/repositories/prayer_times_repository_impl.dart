@@ -53,7 +53,13 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
 
       // Cache the fresh data
       try {
-        await localDataSource.cachePrayerTimes(remoteModel);
+        await localDataSource.cachePrayerTimes(
+          prayerTimes: remoteModel,
+          latitude: latitude,
+          longitude: longitude,
+          method: method,
+          date: date,
+        );
       } catch (e) {
         // Log cache error but don't fail the operation
         print('Warning: Failed to cache prayer times: $e');
@@ -65,7 +71,12 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
       print('API call failed: ${e.message}, attempting to use cache...');
       
       try {
-        final cachedData = await localDataSource.getCachedPrayerTimes();
+        final cachedData = await localDataSource.getCachedPrayerTimes(
+          latitude: latitude,
+          longitude: longitude,
+          method: method,
+          date: date,
+        );
         
         if (cachedData != null) {
           print('Using cached prayer times');
@@ -92,7 +103,7 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
   @override
   Future<PrayerTimesEntity?> getCachedPrayerTimes() async {
     try {
-      return await localDataSource.getCachedPrayerTimes();
+      return await localDataSource.getLatestCachedPrayerTimes();
     } catch (e) {
       print('Error retrieving cached prayer times: $e');
       return null;
@@ -145,19 +156,5 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
   /// For now, it returns a formatted coordinate string.
   String _getLocationName(double latitude, double longitude) {
     return 'Location ($latitude, $longitude)';
-  }
-}
-        timings: model.timings,
-        dateReadable: model.dateReadable,
-        hijriDate: model.hijriDate,
-      );
-    } catch (e) {
-      // If remote fails, fallback to Cache
-      // final cachedModel = await localDataSource.getCachedPrayerTimes();
-      // if (cachedModel != null) return cachedModel.toEntity();
-
-      // If all fails, throw exception to be handled by Presentation layer
-      rethrow;
-    }
   }
 }

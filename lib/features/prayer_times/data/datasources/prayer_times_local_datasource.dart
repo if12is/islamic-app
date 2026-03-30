@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../models/prayer_times_model.dart';
 
 /// Local data source for Prayer Times caching.
@@ -8,9 +9,9 @@ import '../models/prayer_times_model.dart';
 class PrayerTimesLocalDataSource {
   /// Hive box name for caching prayer times
   static const String _boxName = 'prayer_times_cache';
-  
-  /// Key for storing cached prayer times
-  static const String _cacheKey = 'cached_prayer_times';
+
+  /// Key prefix for storing cached prayer times by region/date/method
+  static const String _cacheKeyPrefix = 'cached_prayer_times';
 
   /// Get the Hive box instance for prayer times.
   /// 
@@ -31,13 +32,27 @@ class PrayerTimesLocalDataSource {
   /// - [prayerTimes]: The prayer times model to cache
   /// 
   /// Throws: Exception if caching fails
-  Future<void> cachePrayerTimes(PrayerTimesModel prayerTimes) async {
+  Future<void> cachePrayerTimes({
+    required PrayerTimesModel prayerTimes,
+    required double latitude,
+    required double longitude,
+    required int method,
+    String? date,
+  }) async {
     try {
       final box = await _getBox();
       final jsonData = prayerTimes.toJson();
+      final cacheKey = _buildCacheKey(
+        latitude: latitude,
+        longitude: longitude,
+        method: method,
+        date: date,
+      );
       
-      // Convert to Map<String, dynamic> for Hive storage
-      await box.put(_cacheKey, jsonData);
+      await box.put(cacheKey, {
+        'cachedAt': DateTime.now().toIso8601String(),
+        'payload': jsonData,
+      });
       
       print('✅ Prayer times cached successfully');
     } catch (e) {
@@ -52,25 +67,92 @@ class PrayerTimesLocalDataSource {
   /// Returns null if no cache exists or if the cache is invalid.
   ///
   /// Returns: [PrayerTimesModel] or null if no cache exists
-  Future<PrayerTimesModel?> getCachedPrayerTimes() async {
+  Future<PrayerTimesModel?> getCachedPrayerTimes({
+    required double latitude,
+    required double longitude,
+    required int method,
+    String? date,
+  }) async {
     try {
       final box = await _getBox();
+      final cacheKey = _buildCacheKey(
+        latitude: latitude,
+        longitude: longitude,
+        method: method,
+        date: date,
+      );
       
-      // Get cached data from Hive
-      final cachedData = box.get(_cacheKey) as Map?;
+      final cachedData = box.get(cacheKey) as Map?;
       if (cachedData == null) {
         return null;
       }
 
-      // Convert Map to Map<String, dynamic> for parsing
-      final jsonData = Map<String, dynamic>.from(cachedData);
+      final wrapper = Map<String, dynamic>.from(cachedData);
+      final payload = wrapper['payload'];
+      if (payload is! Map) {
+        return null;
+      }
+
+      final cachedAtRaw = wrapper['cachedAt'] as String?;
+      final cachedAt = cachedAtRaw == null ? null : DateTime.tryParse(cachedAtRaw);
+      if (cachedAt != null &&
+          DateTime.now().difference(cachedAt) >
+              AppConstants.prayerTimesCacheDuration) {
+        return null;
+      }
+
+      final jsonData = Map<String, dynamic>.from(payload);
       
       // Convert back to model
       final prayerTimes = PrayerTimesModel.fromJson(jsonData);
+
       print('✅ Prayer times retrieved from cache');
       return prayerTimes;
     } catch (e) {
       print('❌ Error retrieving cached prayer times: $e');
+      return null;
+    }
+  }
+
+  /// Retrieve the most recently cached prayer times, regardless of location.
+  Future<PrayerTimesModel?> getLatestCachedPrayerTimes() async {
+    try {
+      final box = await _getBox();
+      DateTime? latest;
+      Map<String, dynamic>? latestPayload;
+
+      for (final key in box.keys) {
+        if (key is! String || !key.startsWith(_cacheKeyPrefix)) {
+          continue;
+        }
+
+        final raw = box.get(key);
+        if (raw is! Map) {
+          continue;
+        }
+
+        final wrapper = Map<String, dynamic>.from(raw);
+        final payload = wrapper['payload'];
+        final cachedAtRaw = wrapper['cachedAt'] as String?;
+        final cachedAt = cachedAtRaw == null ? null : DateTime.tryParse(cachedAtRaw);
+
+        if (payload is! Map || cachedAt == null) {
+          continue;
+        }
+
+        if (latest == null || cachedAt.isAfter(latest)) {
+          latest = cachedAt;
+          latestPayload = Map<String, dynamic>.from(payload);
+        }
+      }
+
+      if (latestPayload == null) {
+        return null;
+      }
+
+      return PrayerTimesModel.fromJson(latestPayload);
+    } catch (e) {
+      print('❌ Error retrieving latest cached prayer times: $e');
       return null;
     }
   }
@@ -84,7 +166,12 @@ class PrayerTimesLocalDataSource {
   Future<void> clearCache() async {
     try {
       final box = await _getBox();
-      await box.delete(_cacheKey);
+      final keysToDelete = box.keys
+          .whereType<String>()
+          .where((key) => key.startsWith(_cacheKeyPrefix))
+          .toList();
+
+      await box.deleteAll(keysToDelete);
       print('✅ Prayer times cache cleared');
     } catch (e) {
       print('❌ Error clearing cache: $e');
@@ -98,7 +185,7 @@ class PrayerTimesLocalDataSource {
   /// This helps determine if we should use cache or fetch fresh data.
   Future<bool> isCacheValid() async {
     try {
-      final cached = await getCachedPrayerTimes();
+      final cached = await getLatestCachedPrayerTimes();
       if (cached == null) {
         return false;
       }
@@ -109,6 +196,18 @@ class PrayerTimesLocalDataSource {
     } catch (_) {
       return false;
     }
+  }
+
+  String _buildCacheKey({
+    required double latitude,
+    required double longitude,
+    required int method,
+    String? date,
+  }) {
+    final dateKey = date ?? DateTime.now().toIso8601String().split('T').first;
+    final lat = latitude.toStringAsFixed(3);
+    final lon = longitude.toStringAsFixed(3);
+    return '$_cacheKeyPrefix-$dateKey-m$method-$lat-$lon';
   }
 
   /// Close the Hive box.

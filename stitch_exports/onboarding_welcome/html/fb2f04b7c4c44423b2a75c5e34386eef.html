@@ -1,0 +1,92 @@
+# Interactive Prototype Map & User Flow Document
+
+**App Name:** Al-Fajr (Islamic Companion)
+**Target Framework:** Flutter (Material 3)
+**Primary Layout:** RTL (Right-to-Left)
+**Font:** Cairo (Global)
+
+---
+
+## 1. Global Navigation & Routing Logic
+
+### Bottom Navigation Bar (BNB)
+*   **Persistent Screens:** Home Dashboard, Quran Index, Azkar Index, Settings.
+*   **Hidden On:** 
+    *   Onboarding / Splash Screens.
+    *   Quran Reading View (to maximize focus).
+    *   Specific sub-flow modals (e.g., full-screen Qibla if triggered from outside the grid).
+*   **Behavior:** Uses a "Soft Fade" cross-dissolve when switching between main tabs to maintain a spiritual, calm aesthetic.
+
+### Global Back Action (RTL Context)
+*   **Gesture:** Swipe from the **right edge** of the screen to the left.
+*   **Transition:** `Slide Transition` (Outgoing screen slides right, Incoming screen slides in from left).
+*   **Status Bar:** Color changes dynamically based on screen theme (Light/Dark).
+
+---
+
+## 2. Screen-by-Screen Interaction Matrix
+
+### Screen 1: Onboarding & Welcome
+| Element | Trigger | Destination/State | Transition/Animation |
+| :--- | :--- | :--- | :--- |
+| Onboarding Cards | Swipe Left (RTL) | Next Card | Smooth `PageView` slide |
+| "Get Started" / "ابدأ الآن" | Tap | Home Dashboard | `Fade In` (Cross-dissolve) |
+| "Skip" / "تخطي" | Tap | Home Dashboard | Instant `Fade` |
+
+### Screen 2: Home Dashboard
+| Element | Trigger | Destination/State | Transition/Animation |
+| :--- | :--- | :--- | :--- |
+| Quick Action: Quran | Tap | Quran Index (Tab 2) | `Slide Left` (Cupertino style) |
+| Quick Action: Qibla | Tap | Prayer & Qibla | `Slide Left` |
+| Quick Action: Azkar | Tap | Azkar & Tasbeeh | `Slide Left` |
+| Prayer Card | Tap | Prayer & Qibla | `Slide Up` (Modal-like) |
+
+### Screen 3: Prayer Times & Qibla
+| Element | Trigger | Destination/State | Transition/Animation |
+| :--- | :--- | :--- | :--- |
+| Prayer List Item | Tap | Toggle Checkmark | `Scale & Bounce` (Micro-interaction) |
+| Qibla Compass | Real-time | Alignment Check | `Haptic Vibration` + Glowing Icon when aligned to Mecca |
+| "Change Location" | Tap | Location Search Modal | `Bottom Sheet` Slide Up |
+
+### Screen 4: The Holy Quran (Index to Reading)
+| Element | Trigger | Destination/State | Transition/Animation |
+| :--- | :--- | :--- | :--- |
+| Surah List Item | Tap | Quran Reading View | **Hero Animation:** Surah name/number moves to AppBar |
+| Font Size Slider | Slide | Font Size Value | Real-time `Re-rendering` of text |
+| Audio Play/Pause | Tap | Audio Playback State | `Rotation` (Disc icon) or `Fade Swap` (Play/Pause) |
+
+### Screen 5: Azkar & Smart Tasbeeh
+| Element | Trigger | Destination/State | Transition/Animation |
+| :--- | :--- | :--- | :--- |
+| Tasbeeh Counter | Tap | Increment Count | `Haptic Feedback` (Medium) + `Bounce` animation on circular button |
+| Reset Button | Tap | Counter = 0 | `Quick Fade` reset |
+| Category Card | Tap | Azkar List | `Slide Left` |
+
+### Screen 6: User Settings & Profile
+| Element | Trigger | Destination/State | Transition/Animation |
+| :--- | :--- | :--- | :--- |
+| Dark/Light Toggle | Tap | Global Theme Change | `Cross-fade` (Entire App Palette) |
+| Adhan Toggle | Tap | Notification State | `Slide Toggle` + `Soft Haptic` |
+| Calc. Method | Tap | Method Selector | `Modal Bottom Sheet` |
+
+---
+
+## 3. State Management & Modal Triggers
+
+### Modal Bottom Sheets
+Used for quick selections to keep the user in context:
+*   **Calculation Method:** Triggered from Settings. Slides up from bottom.
+*   **Location Permissions:** Triggered on first Qibla access.
+*   **Notification Customization:** Deep-dive into specific prayer sound settings.
+
+### Micro-interactions (Flutter Specifications)
+*   **InkWell Ripple:** Used on all cards and buttons. Color: `primary_emerald_green.withOpacity(0.1)`.
+*   **Haptics:**
+    *   `lightImpact`: Tab switching.
+    *   `mediumImpact`: Tasbeeh increment.
+    *   `heavyImpact`: Qibla alignment success.
+*   **Loading States:** Custom shimmering effect (`Shimmer` package) on Dashboard cards during initial data fetch.
+
+---
+
+**End of Document**

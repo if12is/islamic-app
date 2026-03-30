@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/services/startup_sync_service.dart';
 
 /// State notifier for theme mode management.
 ///
@@ -65,6 +65,31 @@ Future<void> initializeThemeProvider() async {
   _globalPrefs = await SharedPreferences.getInstance();
 }
 
+bool _startupSyncCompleted = false;
+bool _startupSyncInProgress = false;
+
+/// Run startup cache warm-up once per app session.
+Future<void> runStartupSync({bool force = false}) async {
+  if (_startupSyncInProgress) {
+    return;
+  }
+
+  if (_startupSyncCompleted && !force) {
+    return;
+  }
+
+  _startupSyncInProgress = true;
+
+  try {
+    await StartupSyncService.warmCaches(prefs: _globalPrefs);
+    _startupSyncCompleted = true;
+  } catch (e) {
+    print('⚠️ Startup sync failed: $e');
+  } finally {
+    _startupSyncInProgress = false;
+  }
+}
+
 /// Notifier for prayer calculation method selection.
 class PrayerMethodNotifier extends StateNotifier<int> {
   final SharedPreferences prefs;
@@ -90,4 +115,78 @@ class PrayerMethodNotifier extends StateNotifier<int> {
 /// Provider for prayer calculation method.
 final prayerMethodProvider = StateNotifierProvider<PrayerMethodNotifier, int>((ref) {
   return PrayerMethodNotifier(prefs: _globalPrefs);
+});
+
+/// Notifier for enabling/disabling notifications.
+class NotificationsEnabledNotifier extends StateNotifier<bool> {
+  final SharedPreferences prefs;
+
+  NotificationsEnabledNotifier({required this.prefs}) : super(false) {
+    _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    state = prefs.getBool(AppConstants.notificationsEnabledKey) ?? false;
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    state = enabled;
+    await prefs.setBool(AppConstants.notificationsEnabledKey, enabled);
+    print('✅ Notifications enabled: $enabled');
+  }
+}
+
+/// Provider for notification enabled/disabled state.
+final notificationsEnabledProvider =
+    StateNotifierProvider<NotificationsEnabledNotifier, bool>((ref) {
+  return NotificationsEnabledNotifier(prefs: _globalPrefs);
+});
+
+/// Notifier for application locale (Arabic/English).
+class LocaleNotifier extends StateNotifier<Locale> {
+  final SharedPreferences prefs;
+
+  LocaleNotifier({required this.prefs}) : super(const Locale('ar')) {
+    _loadSavedLocale();
+  }
+
+  Future<void> _loadSavedLocale() async {
+    final code = prefs.getString(AppConstants.localeKey);
+    if (code == 'ar' || code == 'en') {
+      state = Locale(code!);
+    }
+  }
+
+  Future<void> setLocale(String languageCode) async {
+    if (languageCode != 'ar' && languageCode != 'en') {
+      return;
+    }
+
+    state = Locale(languageCode);
+    await prefs.setString(AppConstants.localeKey, languageCode);
+    print('✅ Locale changed to: $languageCode');
+  }
+}
+
+/// Provider for app locale state.
+final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
+  return LocaleNotifier(prefs: _globalPrefs);
+});
+
+/// Notifier for onboarding visibility on first app launch.
+class FirstLaunchNotifier extends StateNotifier<bool> {
+  final SharedPreferences prefs;
+
+  FirstLaunchNotifier({required this.prefs})
+      : super(prefs.getBool(AppConstants.isFirstLaunchKey) ?? true);
+
+  Future<void> completeOnboarding() async {
+    state = false;
+    await prefs.setBool(AppConstants.isFirstLaunchKey, false);
+  }
+}
+
+/// Provider that determines whether onboarding should be displayed.
+final firstLaunchProvider = StateNotifierProvider<FirstLaunchNotifier, bool>((ref) {
+  return FirstLaunchNotifier(prefs: _globalPrefs);
 });

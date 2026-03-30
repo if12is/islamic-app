@@ -1,4 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../shared/providers/app_providers.dart';
 
 /// Onboarding page showing welcome screens for new users.
 ///
@@ -7,16 +15,17 @@ import 'package:flutter/material.dart';
 /// - Location permission request
 /// - Notification permission request
 /// - Beautiful page transitions
-class OnboardingPage extends StatefulWidget {
+class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({Key? key}) : super(key: key);
 
   @override
-  State<OnboardingPage> createState() => _OnboardingPageState();
+  ConsumerState<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingPageState extends State<OnboardingPage> {
+class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   late PageController _pageController;
   int _currentPage = 0;
+  bool _isFinishing = false;
 
   @override
   void initState() {
@@ -32,166 +41,338 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (int page) => setState(() => _currentPage = page),
-        children: [
-          // Page 1: Welcome
-          _buildWelcomePage(context),
-          
-          // Page 2: Location Permission
-          _buildLocationPage(context),
-          
-          // Page 3: Notifications
-          _buildNotificationsPage(context),
-        ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.primary.withOpacity(isDark ? 0.36 : 0.18),
+              Theme.of(context).scaffoldBackgroundColor,
+              colorScheme.surface.withOpacity(isDark ? 0.98 : 0.94),
+            ],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: -72,
+              right: context.isAppRtl ? null : -48,
+              left: context.isAppRtl ? -48 : null,
+              child: _GlowOrb(
+                color: colorScheme.tertiary.withOpacity(isDark ? 0.24 : 0.16),
+                size: 180,
+              ),
+            ),
+            Positioned(
+              bottom: -88,
+              left: context.isAppRtl ? null : -56,
+              right: context.isAppRtl ? -56 : null,
+              child: _GlowOrb(
+                color: colorScheme.primary.withOpacity(isDark ? 0.20 : 0.14),
+                size: 220,
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: _isFinishing ? null : _finishOnboarding,
+                          child: Text(context.tr('skip')),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: (int page) =>
+                          setState(() => _currentPage = page),
+                      children: [
+                        _buildFeaturePage(
+                          context,
+                          icon: Icons.auto_awesome,
+                          accent: colorScheme.tertiary,
+                          titleKey: 'onboarding_welcome_title',
+                          bodyKey: 'onboarding_welcome_body',
+                        ),
+                        _buildFeaturePage(
+                          context,
+                          icon: Icons.location_on,
+                          accent: colorScheme.primary,
+                          titleKey: 'onboarding_location_title',
+                          bodyKey: 'onboarding_location_body',
+                        ),
+                        _buildFeaturePage(
+                          context,
+                          icon: Icons.notifications_active,
+                          accent: colorScheme.secondary,
+                          titleKey: 'onboarding_notifications_title',
+                          bodyKey: 'onboarding_notifications_body',
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildBottomNavigation(context),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      bottomSheet: _buildBottomNavigation(context),
     );
   }
 
-  Widget _buildWelcomePage(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.mosque, size: 80, color: Colors.green),
-          const SizedBox(height: 24),
-          Text(
-            'Welcome to Islamic App',
-            style: Theme.of(context).textTheme.displaySmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Your companion for daily Islamic practices, prayer times, and the Holy Quran.',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
+  Future<void> _handleLocationPermission() async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.tr('location_services_disabled'))),
+      );
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.tr('location_permission_required'))),
+      );
+    } else {
+      unawaited(runStartupSync(force: true));
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
     );
   }
 
-  Widget _buildLocationPage(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.location_on, size: 80, color: Colors.blue),
-          const SizedBox(height: 24),
-          Text(
-            'Enable Location',
-            style: Theme.of(context).textTheme.displaySmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'We need your location to provide accurate prayer times for your area.',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Request location permission
-              _pageController.nextPage(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
-            child: const Text('Enable Location'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _finishOnboarding() async {
+    if (_isFinishing) {
+      return;
+    }
+
+    setState(() {
+      _isFinishing = true;
+    });
+
+    await NotificationService.requestPermissions();
+    unawaited(runStartupSync(force: true));
+    await ref.read(firstLaunchProvider.notifier).completeOnboarding();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isFinishing = false;
+    });
   }
 
-  Widget _buildNotificationsPage(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.notifications_active, size: 80, color: Colors.orange),
-          const SizedBox(height: 24),
-          Text(
-            'Enable Notifications',
-            style: Theme.of(context).textTheme.displaySmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Get reminders for prayer times and important Islamic events.',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
+  Widget _buildFeaturePage(
+    BuildContext context, {
+    required IconData icon,
+    required Color accent,
+    required String titleKey,
+    required String bodyKey,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colorScheme.surface.withOpacity(0.88),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.primary.withOpacity(0.08),
+              blurRadius: 30,
+              offset: const Offset(0, 14),
             ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      accent.withOpacity(0.88),
+                      Theme.of(context).colorScheme.primary,
+                    ],
+                  ),
+                ),
+                child: Icon(icon, size: 42, color: Colors.white),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                context.tr(titleKey),
+                textDirection: context.appTextDirection,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.displaySmall,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                context.tr(bodyKey),
+                textDirection: context.appTextDirection,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      height: 1.45,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Request notification permission
-              // TODO: Navigate to home page
-            },
-            child: const Text('Enable Notifications'),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildBottomNavigation(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Back button
-          TextButton(
-            onPressed: _currentPage > 0
-                ? () => _pageController.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    )
-                : null,
-            child: const Text('Back'),
-          ),
-          
-          // Page indicators
-          Row(
-            children: List.generate(
-              3,
-              (index) => Container(
-                width: 10,
-                height: 10,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentPage == index ? Colors.green : Colors.grey,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withOpacity(0.90),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  3,
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: _currentPage == index ? 24 : 10,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: _currentPage == index
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.25),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          
-          // Next button
-          TextButton(
-            onPressed: _currentPage < 2
-                ? () => _pageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  if (_currentPage > 0)
+                    TextButton(
+                      onPressed: _isFinishing
+                          ? null
+                          : () => _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              ),
+                      child: Text(context.tr('back')),
                     )
-                : null,
-            child: const Text('Next'),
+                  else
+                    const SizedBox(width: 72),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _isFinishing
+                          ? null
+                          : () async {
+                              if (_currentPage == 0) {
+                                await _pageController.nextPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                                return;
+                              }
+
+                              if (_currentPage == 1) {
+                                await _handleLocationPermission();
+                                return;
+                              }
+
+                              await _finishOnboarding();
+                            },
+                      child: _isFinishing
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(_primaryActionLabel(context)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  String _primaryActionLabel(BuildContext context) {
+    if (_currentPage == 0) {
+      return context.tr('next_btn');
+    }
+
+    if (_currentPage == 1) {
+      return context.tr('enable_location');
+    }
+
+    return context.tr('enable_notifications');
+  }
+}
+
+class _GlowOrb extends StatelessWidget {
+  final Color color;
+  final double size;
+
+  const _GlowOrb({
+    required this.color,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
       ),
     );
   }
