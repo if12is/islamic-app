@@ -1,0 +1,102 @@
+{
+  "categories": [
+    {
+      "id": "morning",
+      "nameAr": "أذكار الصباح",
+      "nameEn": "Morning Azkar",
+      "azkar": [
+        {
+          "id": 1,
+          "textAr": "أصبحت وأصبح الملك لله رب العالمين",
+          "textEn": "I have become at dawn and the sovereignty belongs to Allah, the Lord of the worlds",
+          "count": 0,
+          "audio": null
+        },
+        {
+          "id": 2,
+          "textAr": "اللهم ما أصبح بي من نعمة أو بأحد من خلقك فمنك وحدك لا شريك لك، فلك الحمد ولك الشكر",
+          "textEn": "O Allah, whatever blessing has come to me or any of Your creation, it is from You alone with no partner, so for You is all praise and thanks",
+          "count": 0,
+          "audio": null
+        },
+        {
+          "id": 3,
+          "textAr": "سبحان الله وبحمده",
+          "textEn": "Glory be to Allah and with His praise",
+          "count": 33,
+          "audio": null
+        },
+        {
+          "id": 4,
+          "textAr": "لا إله إلا الله وحده لا شريك له، له الملك وله الحمد، وهو على كل شيء قدير",
+          "textEn": "There is no deity except Allah alone, without partner, for Him is sovereignty and for Him is praise, and He is over all things competent",
+          "count": 10,
+          "audio": null
+        }
+      ]
+    },
+    {
+      "id": "evening",
+      "nameAr": "أذكار المساء",
+      "nameEn": "Evening Azkar",
+      "azkar": [
+        {
+          "id": 101,
+          "textAr": "أمسيت وأمسى الملك لله رب العالمين",
+          "textEn": "I have become in the evening and the sovereignty belongs to Allah, the Lord of the worlds",
+          "count": 0,
+          "audio": null
+        },
+        {
+          "id": 102,
+          "textAr": "اللهم ما أمسى بي من نعمة أو بأحد من خلقك فمنك وحدك لا شريك لك، فلك الحمد ولك الشكر",
+          "textEn": "O Allah, whatever blessing has come to me in the evening or any of Your creation, it is from You alone with no partner, so for You is all praise and thanks",
+          "count": 0,
+          "audio": null
+        },
+        {
+          "id": 103,
+          "textAr": "سبحان الله وبحمده",
+          "textEn": "Glory be to Allah and with His praise",
+          "count": 33,
+          "audio": null
+        }
+      ]
+    },
+    {
+      "id": "tasbeeh",
+      "nameAr": "التسبيح",
+      "nameEn": "Tasbeeh",
+      "azkar": [
+        {
+          "id": 201,
+          "textAr": "سبحان الله",
+          "textEn": "Subhanallah (Glory be to Allah)",
+          "count": 33,
+          "audio": null
+        },
+        {
+          "id": 202,
+          "textAr": "الحمد لله",
+          "textEn": "Alhamdulillah (All praise is due to Allah)",
+          "count": 33,
+          "audio": null
+        },
+        {
+          "id": 203,
+          "textAr": "الله أكبر",
+          "textEn": "Allahu Akbar (Allah is the Greatest)",
+          "count": 33,
+          "audio": null
+        },
+        {
+          "id": 204,
+          "textAr": "لا إله إلا الله",
+          "textEn": "La ilaha illallah (There is no deity except Allah)",
+          "count": 10,
+          "audio": null
+        }
+      ]
+    }
+  ]
+}
