@@ -16,7 +16,7 @@ import '../../../../shared/providers/app_providers.dart';
 /// - Notification permission request
 /// - Beautiful page transitions
 class OnboardingPage extends ConsumerStatefulWidget {
-  const OnboardingPage({Key? key}) : super(key: key);
+  const OnboardingPage({super.key});
 
   @override
   ConsumerState<OnboardingPage> createState() => _OnboardingPageState();
@@ -81,7 +81,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -198,7 +198,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: colorScheme.surface.withOpacity(0.88),
@@ -212,7 +212,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+          padding: EdgeInsets.fromLTRB(24, 28, 24, 28),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -257,14 +257,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   Widget _buildBottomNavigation(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface.withOpacity(0.90),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          padding: EdgeInsets.fromLTRB(14, 10, 14, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -276,7 +276,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     duration: const Duration(milliseconds: 220),
                     width: _currentPage == index ? 24 : 10,
                     height: 10,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    margin: EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
                       color: _currentPage == index

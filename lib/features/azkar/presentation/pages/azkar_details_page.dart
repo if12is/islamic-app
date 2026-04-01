@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/design_colors.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../data/models/azkar_models.dart';
 
@@ -110,36 +112,40 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF8F9FA),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(child: CustomLoader()),
       );
     }
     
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.appTextDirection,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+            icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).textTheme.bodyLarge!.color!),
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
-            widget.category.nameAr,
-            style: const TextStyle(
-              color: Colors.black87,
+            context.isAppRtl
+                ? widget.category.nameAr
+                : (widget.category.nameEn.isNotEmpty
+                    ? widget.category.nameEn
+                    : widget.category.nameAr),
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodyLarge!.color!,
               fontWeight: FontWeight.bold,
             ),
           ),
           centerTitle: true,
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.black87),
+              icon: Icon(Icons.refresh, color: Theme.of(context).textTheme.bodyLarge!.color!),
               onPressed: _resetAll,
-              tooltip: 'إعادة تعيين الكل',
+              tooltip: context.tr('reset_all'),
             )
           ],
         ),
@@ -158,7 +164,7 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                 duration: const Duration(milliseconds: 300),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isDone ? const Color(0xFFE8F5E9) : Colors.white,
+                  color: isDone ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -168,19 +174,23 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                     ),
                   ],
                   border: Border.all(
-                    color: isDone ? Colors.green.withOpacity(0.5) : Colors.transparent,
+                    color: isDone ? Theme.of(context).colorScheme.primary.withOpacity(0.5) : Colors.transparent,
                     width: 1,
                   ),
                 ),
                 child: Column(
                   children: [
                     Text(
-                      zekr.textAr.replaceAll(RegExp(r'[\[\]{}()]'), ''),
+                      (context.isAppRtl
+                              ? zekr.textAr
+                              : (zekr.textEn.isNotEmpty ? zekr.textEn : zekr.textAr))
+                          .replaceAll(RegExp(r'[\[\]{}()]'), ''),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         height: 1.6,
+                        color: Theme.of(context).textTheme.bodyLarge!.color!,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -191,13 +201,13 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF6D167).withOpacity(0.2), // Gold tinted
+                            color: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            'التكرار: ${zekr.targetCount}',
-                            style: const TextStyle(
-                              color: Color(0xFF0B4633), // Dark Green
+                            '${context.tr('repeat_label')}: ${zekr.targetCount}',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.secondary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -208,7 +218,7 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                           children: [
                             if (currentCount > 0)
                               IconButton(
-                                icon: const Icon(Icons.refresh, color: Colors.grey, size: 20),
+                                icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
                                 onPressed: () => _reset(zekr),
                               ),
                             Stack(
@@ -219,21 +229,21 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                                   height: 50,
                                   child: CircularProgressIndicator(
                                     value: zekr.targetCount == 0 ? 1.0 : (currentCount / zekr.targetCount),
-                                    backgroundColor: Colors.grey.shade200,
+                                    backgroundColor: Theme.of(context).dividerColor,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      isDone ? Colors.green : const Color(0xFF0B4633), // Dark green or Green
+                                      isDone ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withOpacity(0.5),
                                     ),
                                     strokeWidth: 4,
                                   ),
                                 ),
                                 isDone
-                                    ? const Icon(Icons.check, color: Colors.green)
+                                    ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
                                     : Text(
                                         '$currentCount',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: Color(0xFF0B4633),
+                                          color: Theme.of(context).textTheme.bodyLarge!.color!,
                                         ),
                                       ),
                               ],

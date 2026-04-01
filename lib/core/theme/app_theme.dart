@@ -34,17 +34,17 @@ class AppTheme {
   // Dark Mode Colors
   // ========================
   
-  static const Color primaryDark = Color(0xFF95D3BA);
-  static const Color primaryDarkDark = Color(0xFF80BEA6);
-  static const Color onPrimaryDark = Color(0xFF002117);
+  static const Color primaryDark = Color(0xFF10B981);
+  static const Color primaryDarkDark = Color(0xFF064E3B); // Used as primaryContainer equivalent
+  static const Color onPrimaryDark = Color(0xFF111827);
   
   static const Color secondaryDark = Color(0xFFE9C349);
   static const Color onSecondaryDark = Color(0xFF241A00);
   
-  static const Color backgroundDark = Color(0xFF111715);
-  static const Color surfaceDark = Color(0xFF1A1F1D);
-  static const Color onSurfaceDark = Color(0xFFE2E8E4);
-  static const Color onSurfaceVariantDark = Color(0xFFBFC9C3);
+  static const Color backgroundDark = Color(0xFF111827);
+  static const Color surfaceDark = Color(0xFF1F2937);
+  static const Color onSurfaceDark = Color(0xFFF9FAFB);
+  static const Color onSurfaceVariantDark = Color(0xFF9CA3AF);
   
   static const Color errorDark = Color(0xFFBA1A1A);
   static const Color onErrorDark = Color(0xFFFFFFFF);
@@ -107,8 +107,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          textStyle: const TextStyle(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: TextStyle(
             fontFamily: fontFamily,
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -119,7 +119,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Color(0xFFF5F5F5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(borderRadius),
           borderSide: BorderSide(color: Colors.grey[300]!),
@@ -165,10 +165,13 @@ class AppTheme {
       colorScheme: ColorScheme.dark(
         primary: primaryDark,
         onPrimary: onPrimaryDark,
+        primaryContainer: primaryDarkDark,
+        onPrimaryContainer: Colors.white,
         secondary: secondaryDark,
         onSecondary: onSecondaryDark,
         surface: surfaceDark,
         onSurface: onSurfaceDark,
+        onSurfaceVariant: onSurfaceVariantDark,
         error: errorDark,
         onError: onErrorDark,
       ),
@@ -177,8 +180,8 @@ class AppTheme {
       cardColor: surfaceDark,
       
       appBarTheme: AppBarTheme(
-        backgroundColor: primaryDark,
-        foregroundColor: onPrimaryDark,
+        backgroundColor: backgroundDark,
+        foregroundColor: onSurfaceDark,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: _textThemeDark().headlineMedium,
@@ -202,8 +205,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          textStyle: const TextStyle(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: TextStyle(
             fontFamily: fontFamily,
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -214,7 +217,7 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Color(0xFF2C2C2C),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(borderRadius),
           borderSide: const BorderSide(color: Color(0xFF3A3A3A)),

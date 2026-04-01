@@ -6,20 +6,13 @@ import '../../domain/entities/prayer_times_entity.dart';
 /// It's responsible for mapping between API responses and domain entities.
 class PrayerTimesModel extends PrayerTimesEntity {
   const PrayerTimesModel({
-    required List<PrayerEntity> prayers,
-    required HijriDateEntity hijriDate,
-    required String gregorianDate,
-    required String location,
-    required double latitude,
-    required double longitude,
-  }) : super(
-    prayers: prayers,
-    hijriDate: hijriDate,
-    gregorianDate: gregorianDate,
-    location: location,
-    latitude: latitude,
-    longitude: longitude,
-  );
+    required super.prayers,
+    required super.hijriDate,
+    required super.gregorianDate,
+    required super.location,
+    required super.latitude,
+    required super.longitude,
+  });
 
   /// Create PrayerTimesModel from API response.
   /// 

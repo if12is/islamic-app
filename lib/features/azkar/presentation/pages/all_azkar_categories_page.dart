@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../data/models/azkar_models.dart';
 import 'azkar_details_page.dart';
 
 class AllAzkarCategoriesPage extends StatefulWidget {
   final List<AzkarCategory> categories;
 
-  const AllAzkarCategoriesPage({Key? key, required this.categories}) : super(key: key);
+  const AllAzkarCategoriesPage({super.key, required this.categories});
 
   @override
   State<AllAzkarCategoriesPage> createState() => _AllAzkarCategoriesPageState();
@@ -21,14 +22,16 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
     _filteredCategories = widget.categories;
   }
 
-  void _filterCategories(String query) {
+  void _filterCategories(BuildContext context, String query) {
+    final normalized = query.toLowerCase();
     setState(() {
       if (query.isEmpty) {
         _filteredCategories = widget.categories;
       } else {
         _filteredCategories = widget.categories
             .where((category) =>
-                category.nameAr.toLowerCase().contains(query.toLowerCase()))
+                category.nameAr.toLowerCase().contains(normalized) ||
+                category.nameEn.toLowerCase().contains(normalized))
             .toList();
       }
     });
@@ -43,20 +46,20 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.appTextDirection,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+            icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).colorScheme.onSurface),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          title: const Text(
-            'تصنيفات الأذكار',
+          title: Text(
+            context.tr('azkar_categories'),
             style: TextStyle(
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -65,7 +68,7 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
         body: widget.categories.isEmpty
             ? Center(
                 child: Text(
-                  'لم يتم العثور على أذكار',
+                  context.tr('no_azkar_found'),
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
                 ),
               )
@@ -73,20 +76,20 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
                 children: [
                   // Search Bar
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     child: TextField(
                       controller: _searchController,
-                      onChanged: _filterCategories,
+                      onChanged: (value) => _filterCategories(context, value),
                       decoration: InputDecoration(
-                        hintText: 'ابحث عن ذكر...',
-                        prefixIcon: const Icon(Icons.search, color: Color(0xFF0B4633)),
+                        hintText: context.tr('search_zekr_hint'),
+                        prefixIcon: Icon(Icons.search, color: Theme.of(context).colorScheme.primary),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: Theme.of(context).colorScheme.surface,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        contentPadding: EdgeInsets.symmetric(vertical: 0),
                       ),
                     ),
                   ),
@@ -95,12 +98,12 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
                     child: _filteredCategories.isEmpty
                         ? Center(
                             child: Text(
-                              'لا توجد نتائج مطابقة للبحث',
+                              context.tr('no_matching_results'),
                               style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
                             ),
                           )
                         : GridView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.all(16),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
                               crossAxisSpacing: 16,
@@ -115,7 +118,7 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
                     onTap: () {
                       if (category.azkar.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('لا توجد أذكار في هذا القسم حالياً')),
+                          SnackBar(content: Text(context.tr('no_azkar_in_section'))),
                         );
                         return;
                       }
@@ -127,40 +130,44 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircleAvatar(
-                            backgroundColor: const Color(0xFF0B4633).withOpacity(0.1),
+                            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                             radius: 28,
-                            child: const Icon(Icons.menu_book, color: Color(0xFF0B4633), size: 28),
+                            child: Icon(Icons.menu_book, color: Theme.of(context).colorScheme.primary, size: 28),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           Text(
-                            category.nameAr,
+                            context.isAppRtl
+                                ? category.nameAr
+                                : (category.nameEn.isNotEmpty
+                                    ? category.nameEn
+                                    : category.nameAr),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.black87,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           Text(
-                            '${category.azkar.length} ذكراً',
+                            '${category.azkar.length} ${context.tr('zekr_count_unit')}',
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 13,

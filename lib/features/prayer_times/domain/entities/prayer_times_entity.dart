@@ -95,6 +95,17 @@ class HijriDateEntity extends Equatable {
   @override
   List<Object?> get props => [day, month, year, monthName, monthArabic];
   
-  /// Returns formatted Hijri date as "day monthName year AH"
-  String get formattedDate => '$day $monthName $year هـ';
+  /// Returns formatted Hijri date as "day monthName year AH" with Arabic numbers
+  String get formattedDate {
+    String toArabicNumbers(String numberStr) {
+      const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+      const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      for (int i = 0; i < english.length; i++) {
+        numberStr = numberStr.replaceAll(english[i], arabic[i]);
+      }
+      return numberStr;
+    }
+    
+    return '${toArabicNumbers(day.toString())} $monthArabic ${toArabicNumbers(year.toString())} هـ';
+  }
 }

@@ -15,6 +15,16 @@ A comprehensive, production-ready Islamic mobile application with prayer times, 
 - ✅ **Notifications**: Prayer time reminders and important Islamic event alerts
 - ✅ **Location Services**: Automatic location detection for accurate prayer times
 
+## Latest Achievements (March 2026)
+
+- ✅ Delivered Prayer Times flow end-to-end (entity, model, local datasource, repository, provider, and UI)
+- ✅ Implemented Quran reader improvements with Surah page enhancements and API service updates
+- ✅ Completed Azkar experience updates with categories view, details view, and improved navigation
+- ✅ Completed onboarding and splash experience polish for first-launch flow
+- ✅ Added startup sync and shared provider wiring for better app initialization
+- ✅ Refined design/theme system and app-wide loading/error handling components
+- ✅ Updated app branding assets (Android, iOS, and Web icons/manifest)
+
 ## Screenshots
 
 > Coming soon...
@@ -95,7 +105,7 @@ For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md)
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/islamic-app.git
+   git clone https://github.com/if12is/islamic-app.git
    cd islamic-app
    ```
 
@@ -146,13 +156,14 @@ islamic_app/
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| Prayer Times | ✅ 90% | Data & Domain complete, UI in progress |
-| Quran | ⏳ 30% | API integration ready, UI needed |
-| Azkar | ✅ 50% | JSON data ready, Counter UI done |
-| Settings | ✅ 75% | Theme toggle, prayer method selector done |
+| Prayer Times | ✅ 100% | Local/remote datasources, models, and UI complete |
+| Quran | ✅ 90% | API integration, caching service, and Surah reader implemented |
+| Azkar | ✅ 100% | Categories, details pages, data sync, and Tasbeeh counter complete |
+| Settings | ✅ 100% | Theme toggle, prayer method selector, and full app settings done |
+| Onboarding | ✅ 100% | Splash screens and new user onboarding flow complete |
 | Dark Mode | ✅ 100% | Full light/dark theme support |
 | RTL Arabic | ✅ 100% | Cairo font configured, RTL layout ready |
-| Notifications | ⏳ 0% | Framework setup complete, implementation pending |
+| Notifications | ✅ 80% | Core notification service added, prayer alerts configured |
 | Qibla Compass | ⏳ 0% | Dependencies ready, implementation pending |
 
 ## API Documentation
@@ -280,9 +291,10 @@ dart fix --dry-run
 
 ## Roadmap
 
-- [ ] Complete Prayer Times UI with countdown timer
-- [ ] Implement Quran reading screen with verse navigation
-- [ ] Add prayer time notifications
+- [x] Complete Prayer Times UI with countdown timer
+- [x] Implement Quran reading screen with verse navigation
+- [x] Add prayer time notifications
+- [x] Salat reminder customization
 - [ ] Implement Qibla compass functionality
 - [ ] Add widget support
 - [ ] Implement user authentication
@@ -290,7 +302,6 @@ dart fix --dry-run
 - [ ] Offline Quran download support
 - [ ] Multiple recitation options for Quran
 - [ ] Hijri calendar view
-- [ ] Salat reminder customization
 
 ## Performance Optimization
 
@@ -321,9 +332,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- **Aladhan**: Prayer times
-
- API
+- **Aladhan**: Prayer times API
 - **Quran.com**: Quran API
 - **Flutter Team**: Amazing framework
 - **Islamic Academy**: Islamic content standards
@@ -332,8 +341,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For issues, questions, or suggestions:
 - 📧 Email: support@islamicapp.com
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/islamic-app/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/islamic-app/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/if12is/islamic-app/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/if12is/islamic-app/discussions)
 
 ## FAQ
 
@@ -353,5 +362,5 @@ A: Yes! The app fully supports Arabic with RTL layout and the Cairo font for bea
 
 **Made with ❤️ for the Muslim community**
 
-Last Updated: March 2024 | Version: 1.0.0-alpha
+Last Updated: April 2026 | Version: 1.1.0-beta
 

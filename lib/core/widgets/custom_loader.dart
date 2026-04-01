@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CustomLoader extends StatefulWidget {
-  const CustomLoader({Key? key}) : super(key: key);
+  const CustomLoader({super.key});
 
   @override
   State<CustomLoader> createState() => _CustomLoaderState();

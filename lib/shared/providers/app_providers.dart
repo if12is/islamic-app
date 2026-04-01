@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/startup_sync_service.dart';
@@ -12,19 +13,18 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   final SharedPreferences prefs;
 
   /// Constructor - initializes with saved theme or defaults to system
-  ThemeModeNotifier({required this.prefs})
-      : super(ThemeMode.system) {
+  ThemeModeNotifier({required this.prefs}) : super(ThemeMode.dark) {
     _loadSavedTheme();
   }
 
   /// Load saved theme mode from storage.
   Future<void> _loadSavedTheme() async {
     final savedTheme = prefs.getString(AppConstants.themeModeKey);
-    
+
     if (savedTheme != null) {
       final themeMode = ThemeMode.values.firstWhere(
         (mode) => mode.toString() == savedTheme,
-        orElse: () => ThemeMode.system,
+        orElse: () => ThemeMode.dark,
       );
       state = themeMode;
     }
@@ -32,7 +32,8 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 
   /// Toggle between light and dark themes.
   Future<void> toggleTheme() async {
-    final newTheme = state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    final newTheme =
+        state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     await setTheme(newTheme);
   }
 
@@ -45,12 +46,16 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 }
 
 /// Provider for SharedPreferences instance.
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
+  ref,
+) async {
   return await SharedPreferences.getInstance();
 });
 
 /// Provider for theme mode state management.
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((
+  ref,
+) {
   // Create a ThemeModeNotifier with default system theme
   // In a real app, we'd wait for SharedPreferences, but for simplicity:
   return ThemeModeNotifier(prefs: _globalPrefs);
@@ -64,6 +69,75 @@ late SharedPreferences _globalPrefs;
 Future<void> initializeThemeProvider() async {
   _globalPrefs = await SharedPreferences.getInstance();
 }
+
+class UserCoordinates {
+  final double latitude;
+  final double longitude;
+
+  const UserCoordinates({required this.latitude, required this.longitude});
+}
+
+const UserCoordinates _fallbackCoordinates = UserCoordinates(
+  latitude: 31.0345728,
+  longitude: 30.4676864,
+);
+
+/// Provider for the best available user location.
+///
+/// Priority:
+/// 1. Fresh GPS location (when permission/service are available)
+/// 2. Last saved coordinates in SharedPreferences
+/// 3. Safe fallback coordinates
+final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
+  ref,
+) async {
+  final savedLatitude = _globalPrefs.getDouble(AppConstants.userLatitudeKey);
+  final savedLongitude = _globalPrefs.getDouble(AppConstants.userLongitudeKey);
+
+  final hasSaved = savedLatitude != null && savedLongitude != null;
+  final savedCoordinates =
+      hasSaved
+          ? UserCoordinates(latitude: savedLatitude, longitude: savedLongitude)
+          : null;
+
+  try {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return savedCoordinates ?? _fallbackCoordinates;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return savedCoordinates ?? _fallbackCoordinates;
+    }
+
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.medium,
+      timeLimit: const Duration(seconds: 8),
+    );
+
+    await _globalPrefs.setDouble(
+      AppConstants.userLatitudeKey,
+      position.latitude,
+    );
+    await _globalPrefs.setDouble(
+      AppConstants.userLongitudeKey,
+      position.longitude,
+    );
+
+    return UserCoordinates(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+  } catch (_) {
+    return savedCoordinates ?? _fallbackCoordinates;
+  }
+});
 
 bool _startupSyncCompleted = false;
 bool _startupSyncInProgress = false;
@@ -113,7 +187,9 @@ class PrayerMethodNotifier extends StateNotifier<int> {
 }
 
 /// Provider for prayer calculation method.
-final prayerMethodProvider = StateNotifierProvider<PrayerMethodNotifier, int>((ref) {
+final prayerMethodProvider = StateNotifierProvider<PrayerMethodNotifier, int>((
+  ref,
+) {
   return PrayerMethodNotifier(prefs: _globalPrefs);
 });
 
@@ -139,8 +215,8 @@ class NotificationsEnabledNotifier extends StateNotifier<bool> {
 /// Provider for notification enabled/disabled state.
 final notificationsEnabledProvider =
     StateNotifierProvider<NotificationsEnabledNotifier, bool>((ref) {
-  return NotificationsEnabledNotifier(prefs: _globalPrefs);
-});
+      return NotificationsEnabledNotifier(prefs: _globalPrefs);
+    });
 
 /// Notifier for application locale (Arabic/English).
 class LocaleNotifier extends StateNotifier<Locale> {
@@ -178,7 +254,7 @@ class FirstLaunchNotifier extends StateNotifier<bool> {
   final SharedPreferences prefs;
 
   FirstLaunchNotifier({required this.prefs})
-      : super(prefs.getBool(AppConstants.isFirstLaunchKey) ?? true);
+    : super(prefs.getBool(AppConstants.isFirstLaunchKey) ?? true);
 
   Future<void> completeOnboarding() async {
     state = false;
@@ -187,6 +263,8 @@ class FirstLaunchNotifier extends StateNotifier<bool> {
 }
 
 /// Provider that determines whether onboarding should be displayed.
-final firstLaunchProvider = StateNotifierProvider<FirstLaunchNotifier, bool>((ref) {
+final firstLaunchProvider = StateNotifierProvider<FirstLaunchNotifier, bool>((
+  ref,
+) {
   return FirstLaunchNotifier(prefs: _globalPrefs);
 });

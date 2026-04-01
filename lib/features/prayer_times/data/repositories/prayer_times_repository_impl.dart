@@ -4,7 +4,6 @@ import '../../domain/entities/prayer_times_entity.dart';
 import '../../domain/repositories/prayer_times_repository.dart';
 import '../datasources/prayer_times_local_datasource.dart';
 import '../datasources/prayer_times_remote_datasource.dart';
-import '../models/prayer_times_model.dart';
 
 /// Implementation of [PrayerTimesRepository].
 ///

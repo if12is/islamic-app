@@ -7,8 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/services/app_services.dart';
 import 'core/theme/app_theme.dart';
-import 'features/home/presentation/pages/home_page.dart';
-import 'features/onboarding/presentation/pages/onboarding_page.dart';
 import 'features/onboarding/presentation/pages/splash_screen.dart';
 import 'shared/providers/app_providers.dart';
 
@@ -38,7 +36,7 @@ void main() async {
 /// - Light and dark themes
 /// - Provider scope for Riverpod
 class IslamicApp extends ConsumerWidget {
-  const IslamicApp({Key? key}) : super(key: key);
+  const IslamicApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

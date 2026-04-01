@@ -32,6 +32,19 @@ class QuranApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchJuz(int juzNumber) async {
+    try {
+      final response = await _dio.get('https://api.alquran.cloud/v1/juz/$juzNumber/quran-uthmani');
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['data'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching juz texts: $e');
+      return null;
+    }
+  }
+
   /// Searches for Ayahs containing a specific keyword
   Future<List<dynamic>> searchAyah(String keyword) async {
     try {

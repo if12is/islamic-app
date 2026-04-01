@@ -82,7 +82,7 @@ class PrayerTimesLocalDataSource {
         date: date,
       );
       
-      final cachedData = box.get(cacheKey) as Map?;
+      final cachedData = box.get(cacheKey);
       if (cachedData == null) {
         return null;
       }

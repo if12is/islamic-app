@@ -1,6 +1,6 @@
 {
-    "name": "islamic_app",
-    "short_name": "islamic_app",
+    "name": "الفجر",
+    "short_name": "الفجر",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

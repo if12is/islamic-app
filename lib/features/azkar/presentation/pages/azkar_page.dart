@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/design_colors.dart';
 import '../../../../core/services/azkar_data_service.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../data/models/azkar_models.dart';
@@ -71,7 +73,7 @@ class _AzkarPageState extends State<AzkarPage> {
   void _navigateToDetails(AzkarCategory category) {
     if (category.azkar.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا توجد أذكار في هذا القسم حالياً')),
+        SnackBar(content: Text(context.tr('no_azkar_in_section'))),
       );
       return;
     }
@@ -86,20 +88,20 @@ class _AzkarPageState extends State<AzkarPage> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: context.appTextDirection,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA), // Soft off-white
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87),
+            icon: Icon(Icons.menu, color: Theme.of(context).textTheme.bodyLarge!.color!),
             onPressed: () {},
           ),
-          title: const Text(
-            'الأذكار',
+          title: Text(
+            context.tr('azkar'),
             style: TextStyle(
-              color: Colors.black87,
+              color: Theme.of(context).textTheme.bodyLarge!.color!,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -108,8 +110,8 @@ class _AzkarPageState extends State<AzkarPage> {
             Padding(
               padding: const EdgeInsets.only(left: 16.0),
               child: CircleAvatar(
-                backgroundColor: Colors.grey.shade300,
-                child: const Icon(Icons.person, color: Colors.white),
+                backgroundColor: Theme.of(context).cardColor,
+                child: Icon(Icons.person, color: Theme.of(context).textTheme.bodyLarge!.color!),
               ),
             ),
           ],
@@ -139,12 +141,12 @@ class _AzkarPageState extends State<AzkarPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'أذكار المسلم',
+        Text(
+          context.tr('muslim_azkar'),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: Theme.of(context).textTheme.bodyLarge!.color!,
           ),
         ),
         GestureDetector(
@@ -156,12 +158,12 @@ class _AzkarPageState extends State<AzkarPage> {
               ),
             );
           },
-          child: const Text(
-            'عرض الكل',
+          child: Text(
+            context.tr('view_all'),
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.brown,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
         ),
@@ -169,23 +171,43 @@ class _AzkarPageState extends State<AzkarPage> {
     );
   }
 
+  String _displayCategoryName(
+    BuildContext context,
+    AzkarCategory category,
+    String fallbackKey,
+  ) {
+    if (context.isAppRtl) {
+      return category.nameAr.isNotEmpty ? category.nameAr : context.tr(fallbackKey);
+    }
+
+    if (category.nameEn.isNotEmpty) {
+      return category.nameEn;
+    }
+
+    if (category.nameAr.isNotEmpty) {
+      return category.nameAr;
+    }
+
+    return context.tr(fallbackKey);
+  }
+
   Widget _buildAdhkarGrid() {
     // Making keyword-based lookups more robust according to what remote API typically provides.
-    final morningCat = _getCategory('morning', 'صباح', 'أذكار الصباح');
-    final prayerCat = _getCategory('prayer', 'صلاة', 'بعد الصلاة');
-    final eveningCat = _getCategory('evening', 'مساء', 'أذكار المساء');
-    final sleepCat = _getCategory('sleep', 'نوم', 'أذكار النوم');
+    final morningCat = _getCategory('morning', 'صباح', context.tr('morning_azkar'));
+    final prayerCat = _getCategory('prayer', 'صلاة', context.tr('after_prayer_azkar'));
+    final eveningCat = _getCategory('evening', 'مساء', context.tr('evening_azkar'));
+    final sleepCat = _getCategory('sleep', 'نوم', context.tr('sleep_azkar'));
 
     // Make the display names clean based exactly on the matched object instead of forcing fallbacks
     return Column(
       children: [
         // Morning Adhkar (Top)
         _buildAdhkarCard(
-          title: morningCat.nameAr.isNotEmpty ? morningCat.nameAr : 'أذكار الصباح',
-          subtitle: 'تبدأ من طلوع الفجر',
+          title: _displayCategoryName(context, morningCat, 'morning_azkar'),
+          subtitle: context.tr('morning_azkar_subtitle'),
           count: morningCat.azkar.length.toString(),
           icon: Icons.wb_sunny,
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           isFullWidth: true,
           onTap: () => _navigateToDetails(morningCat),
         ),
@@ -195,11 +217,11 @@ class _AzkarPageState extends State<AzkarPage> {
           children: [
             Expanded(
               child: _buildAdhkarCard(
-                title: prayerCat.nameAr.isNotEmpty ? prayerCat.nameAr : 'بعد الصلاة',
-                subtitle: 'دبر كل صلاة',
+                title: _displayCategoryName(context, prayerCat, 'after_prayer_azkar'),
+                subtitle: context.tr('after_prayer_azkar_subtitle'),
                 count: prayerCat.azkar.length.toString(),
                 icon: Icons.mosque,
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 isFullWidth: false,
                 onTap: () => _navigateToDetails(prayerCat),
               ),
@@ -207,11 +229,11 @@ class _AzkarPageState extends State<AzkarPage> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildAdhkarCard(
-                title: eveningCat.nameAr.isNotEmpty ? eveningCat.nameAr : 'أذكار المساء',
-                subtitle: 'بعد صلاة العصر',
+                title: _displayCategoryName(context, eveningCat, 'evening_azkar'),
+                subtitle: context.tr('evening_azkar_subtitle'),
                 count: eveningCat.azkar.length.toString(),
                 icon: Icons.nights_stay,
-                color: const Color(0xFFD3EADD), // Light pastel green
+                color: Theme.of(context).colorScheme.primaryContainer,
                 isFullWidth: false,
                 onTap: () => _navigateToDetails(eveningCat),
               ),
@@ -221,11 +243,11 @@ class _AzkarPageState extends State<AzkarPage> {
         const SizedBox(height: 12),
         // Sleep Adhkar (Bottom)
         _buildAdhkarCard(
-          title: sleepCat.nameAr.isNotEmpty ? sleepCat.nameAr : 'أذكار النوم',
-          subtitle: 'قبل النوم',
+          title: _displayCategoryName(context, sleepCat, 'sleep_azkar'),
+          subtitle: context.tr('sleep_azkar_subtitle'),
           count: sleepCat.azkar.length.toString(),
           icon: Icons.brightness_3,
-          color: const Color(0xFFEEEEEE),
+          color: Theme.of(context).cardColor,
           isFullWidth: true,
           showArrow: true,
           onTap: () => _navigateToDetails(sleepCat),
@@ -268,13 +290,13 @@ class _AzkarPageState extends State<AzkarPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.black.withOpacity(0.05),
-                  child: Icon(icon, color: Colors.amber.shade700),
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  child: Icon(icon, color: Theme.of(context).colorScheme.secondary),
                 ),
                 if (count != '0')
                   Text(
-                    '$count ذكراً',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    '$count ${context.tr('zekr_count_unit')}',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
                   ),
               ],
             ),
@@ -289,16 +311,17 @@ class _AzkarPageState extends State<AzkarPage> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: Theme.of(context).textTheme.bodyLarge!.color!,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.grey.shade600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontSize: 12,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -307,7 +330,7 @@ class _AzkarPageState extends State<AzkarPage> {
                   ),
                 ),
                 if (showArrow)
-                  const Icon(Icons.arrow_back_ios, size: 16, color: Colors.black54),
+                  Icon(Icons.arrow_back_ios, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ],
             ),
           ],
@@ -341,20 +364,20 @@ class _AzkarPageState extends State<AzkarPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.end,
-          children: const [
+          children: [
             Text(
-              'آية اليوم',
+              context.tr('ayah_of_the_day'),
               style: TextStyle(
-                color: Color(0xFFF6D167), // Gold
+                color: Theme.of(context).colorScheme.secondary,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
-              'أَلا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ',
+              context.tr('azkar_ayah_of_day_text'),
               style: TextStyle(
-                color: Colors.white,
+                color: Theme.of(context).textTheme.bodyLarge!.color!,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -378,22 +401,24 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   final int _target = 33;
   int _currentZekrIndex = 0;
 
-  final List<String> _azkarList = [
-    'سبحان الله',
-    'الحمد لله',
-    'لا إله إلا الله',
-    'الله أكبر',
-    'استغفر الله',
-    'لا حول ولا قوة إلا بالله',
-  ];
+  List<String> _azkarList(BuildContext context) {
+    return [
+      context.tr('tasbeeh_phrase_subhanallah'),
+      context.tr('tasbeeh_phrase_alhamdulillah'),
+      context.tr('tasbeeh_phrase_la_ilaha_illa_allah'),
+      context.tr('tasbeeh_phrase_allahu_akbar'),
+      context.tr('tasbeeh_phrase_astaghfirullah'),
+      context.tr('tasbeeh_phrase_hawqala'),
+    ];
+  }
 
-  void _increment() {
+  void _increment(int phrasesLength) {
     HapticFeedback.lightImpact();
     setState(() {
       _tasbeehCount++;
       if (_tasbeehCount > _target) {
         _tasbeehCount = 1; // Rollover and move to next
-        _currentZekrIndex = (_currentZekrIndex + 1) % _azkarList.length;
+        _currentZekrIndex = (_currentZekrIndex + 1) % phrasesLength;
         HapticFeedback.heavyImpact();
       }
     });
@@ -406,142 +431,236 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     });
   }
 
-  void _previousZekr() {
+  void _previousZekr(int phrasesLength) {
     HapticFeedback.lightImpact();
     setState(() {
-      _currentZekrIndex = (_currentZekrIndex - 1) < 0 ? _azkarList.length - 1 : _currentZekrIndex - 1;
+      _currentZekrIndex = (_currentZekrIndex - 1) < 0 ? phrasesLength - 1 : _currentZekrIndex - 1;
       _tasbeehCount = 0;
     });
   }
 
-  void _nextZekr() {
+  void _nextZekr(int phrasesLength) {
     HapticFeedback.lightImpact();
     setState(() {
-      _currentZekrIndex = (_currentZekrIndex + 1) % _azkarList.length;
+      _currentZekrIndex = (_currentZekrIndex + 1) % phrasesLength;
       _tasbeehCount = 0;
     });
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.12),
+            border: Border.all(color: Colors.white.withOpacity(0.18)),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white.withOpacity(0.9),
+            size: 20,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final double progress = _tasbeehCount / _target;
-    final currentZekr = _azkarList[_currentZekrIndex];
+    final azkarList = _azkarList(context);
+    final double progress = (_tasbeehCount / _target).clamp(0.0, 1.0);
+    final int remaining = (_target - _tasbeehCount).clamp(0, _target);
+    final currentZekr = azkarList[_currentZekrIndex];
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B4633), // Primary Dark Green
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0C6653),
+            Color(0xFF084236),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.20),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Text(
-                'المسبحة الذكية',
-                style: TextStyle(
-                  color: Color(0xFFF6D167), // Gold
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+            children: [
+              Expanded(
+                child: Text(
+                  context.tr('smart_tasbeeh'),
+                  style: const TextStyle(
+                    color: DesignColors.gold,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: Colors.white.withOpacity(0.18)),
+                ),
+                child: Text(
+                  '${_tasbeehCount.toString()} / $_target',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
+          const SizedBox(height: 18),
+          Row(
             children: [
-              GestureDetector(
-                onTap: _increment,
-                child: SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CircularProgressIndicator(
-                        value: progress == 0 ? 1 : progress, // when 0 show grey ring entirely
-                        strokeWidth: 8,
-                        backgroundColor: Colors.white.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          progress == 0 ? Colors.white.withOpacity(0.1) : const Color(0xFFF6D167),
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _tasbeehCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '/ $_target',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 16,
-                            ),
-                          ),
+              _buildControlButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () => _previousZekr(azkarList.length),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _increment(azkarList.length),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    height: 210,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.16),
+                          Colors.white.withOpacity(0.03),
                         ],
                       ),
-                    ],
+                      border: Border.all(color: Colors.white.withOpacity(0.14)),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 170,
+                        height: 170,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF0C4F41),
+                          border: Border.all(color: Colors.white.withOpacity(0.10)),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 162,
+                              height: 162,
+                              child: CircularProgressIndicator(
+                                value: progress,
+                                strokeWidth: 10,
+                                backgroundColor: Colors.white.withOpacity(0.12),
+                                valueColor: const AlwaysStoppedAnimation<Color>(DesignColors.gold),
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _tasbeehCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 52,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$remaining ${context.tr('count')}',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.70),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              // Previous zekr
-              Positioned(
-                left: -20,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.white54),
-                  onPressed: _previousZekr,
-                ),
-              ),
-              // Next zekr
-              Positioned(
-                right: -20,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
-                  onPressed: _nextZekr,
-                ),
-              ),
-              // Reset button
-              Positioned(
-                bottom: -15,
-                child: GestureDetector(
-                  onTap: _reset,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F5A42),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
-                    ),
-                    child: const Icon(
-                      Icons.refresh,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
+              const SizedBox(width: 12),
+              _buildControlButton(
+                icon: Icons.arrow_forward_ios_rounded,
+                onTap: () => _nextZekr(azkarList.length),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          Text(
-            currentZekr,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 16),
+          GestureDetector(
+            onTap: _reset,
+            child: Container(
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.12),
+                border: Border.all(color: Colors.white.withOpacity(0.24)),
+              ),
+              child: const Icon(
+                Icons.refresh_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
-            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: Text(
+                currentZekr,
+                key: ValueKey(currentZekr),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ],
       ),

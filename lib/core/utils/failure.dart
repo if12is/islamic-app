@@ -19,10 +19,9 @@ abstract class Failure {
 class NetworkFailure extends Failure {
   NetworkFailure({
     String? message,
-    String? stackTrace,
+    super.stackTrace,
   }) : super(
     message: message ?? 'An error occurred with the network',
-    stackTrace: stackTrace,
   );
 }
 
@@ -33,11 +32,10 @@ class ServerFailure extends Failure {
 
   ServerFailure({
     String? message,
-    String? stackTrace,
+    super.stackTrace,
     this.statusCode,
   }) : super(
     message: message ?? 'An error occurred with the server',
-    stackTrace: stackTrace,
   );
 }
 
@@ -45,10 +43,9 @@ class ServerFailure extends Failure {
 class DataFailure extends Failure {
   DataFailure({
     String? message,
-    String? stackTrace,
+    super.stackTrace,
   }) : super(
     message: message ?? 'An error occurred parsing data',
-    stackTrace: stackTrace,
   );
 }
 
@@ -56,10 +53,9 @@ class DataFailure extends Failure {
 class CacheFailure extends Failure {
   CacheFailure({
     String? message,
-    String? stackTrace,
+    super.stackTrace,
   }) : super(
     message: message ?? 'An error occurred with the cache',
-    stackTrace: stackTrace,
   );
 }
 
@@ -67,10 +63,9 @@ class CacheFailure extends Failure {
 class NotFoundFailure extends Failure {
   NotFoundFailure({
     String? message,
-    String? stackTrace,
+    super.stackTrace,
   }) : super(
     message: message ?? 'Data not found',
-    stackTrace: stackTrace,
   );
 }
 
@@ -78,9 +73,8 @@ class NotFoundFailure extends Failure {
 class UnknownFailure extends Failure {
   UnknownFailure({
     String? message,
-    String? stackTrace,
+    super.stackTrace,
   }) : super(
     message: message ?? 'An unknown error occurred',
-    stackTrace: stackTrace,
   );
 }
