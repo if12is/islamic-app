@@ -4,15 +4,21 @@ A comprehensive, production-ready Islamic mobile application with prayer times, 
 
 ## Features
 
-- ✅ **Prayer Times**: Real-time prayer times using the Aladhan API with customizable calculation methods
-- ✅ **Holy Quran**: 114 Surahs with verses, translations, and audio recitation (Quran.com API)
+- ✅ **Prayer Times**: Calculated on device (`adhan`) — works offline, for any date, with selectable methods
+- ✅ **Holy Quran**: The full Mushaf ships with the app — instant, offline, with page/juz/sajdah data
+- ✅ **Reader controls**: Font, size, line spacing, margins, reading themes, brightness lock, auto-scroll
+- ✅ **Verse tools**: Tafsir (5 editions, cached), bookmarks with tags and notes, share as text or image
+- ✅ **Index**: Surahs, juz, hizb, Mushaf pages, sajdah verses, and "go to" any exact reference
+- ✅ **Reflections**: A notes screen with search, ordering, and plain-text export
+- ✅ **Hijri calendar**: The Islamic month with its events, fasting days, and each day's prayer times
+- ✅ **Recitation**: Verse-by-verse playback with synced highlight, background audio, adjustable speed, range repetition for memorisation, and a sleep timer
 - ✅ **Azkar**: Morning and evening remembrances with an interactive Tasbeeh counter
 - ✅ **Qibla Direction**: Compass showing the direction to Kaaba from your location
 - ✅ **Hijri Calendar**: Islamic calendar dates integrated throughout the app
 - ✅ **Dark Mode**: Full support for light and dark themes
 - ✅ **RTL Arabic**: Complete right-to-left support for Arabic language using Cairo font
 - ✅ **Offline Access**: Cache offline data for prayer times and Quran verses
-- ✅ **Notifications**: Prayer time reminders and important Islamic event alerts
+- ✅ **Notifications**: Real scheduling seven days ahead — per-prayer alert modes, pre-adhan and iqama reminders, sun-anchored azkar, quiet hours, all from one notification centre
 - ✅ **Location Services**: Automatic location detection for accurate prayer times
 
 ## Latest Achievements (March 2026)

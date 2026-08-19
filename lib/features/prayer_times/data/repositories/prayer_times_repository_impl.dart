@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:dartz/dartz.dart';
+import '../../../../core/services/prayer_calculation_service.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/failure.dart';
 import '../../domain/entities/prayer_times_entity.dart';
 import '../../domain/repositories/prayer_times_repository.dart';
+import '../datasources/prayer_times_calculator_datasource.dart';
 import '../datasources/prayer_times_local_datasource.dart';
 import '../datasources/prayer_times_remote_datasource.dart';
+import '../models/prayer_times_model.dart';
 
 /// Implementation of [PrayerTimesRepository].
 ///
@@ -12,28 +17,35 @@ import '../datasources/prayer_times_remote_datasource.dart';
 /// and the domain layer. It implements the core business logic for fetching prayer times,
 /// including error handling, retry logic, and cache management.
 class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
-  /// Remote API data source
+  /// Remote API data source (fallback only)
   final PrayerTimesRemoteDataSource remoteDataSource;
   
   /// Local cache data source
   final PrayerTimesLocalDataSource localDataSource;
 
+  /// On-device calculation, the primary source.
+  final PrayerTimesCalculatorDataSource calculator;
+
+  /// Madhab / high-latitude / manual offsets applied to the calculation.
+  final PrayerCalculationSettings calculationSettings;
+
   /// Constructor
   PrayerTimesRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
+    this.calculator = const PrayerTimesCalculatorDataSource(),
+    this.calculationSettings = const PrayerCalculationSettings(),
   });
 
-  /// Fetch prayer times, preferring fresh API data but using cache as fallback.
+  /// Fetch prayer times, offline-first.
   ///
-  /// This method implements a smart caching strategy:
-  /// 1. Tries to get data from remote API first
-  /// 2. If API fails and cache exists, uses cached data
-  /// 3. If both fail, returns an error
-  /// 4. After successful API call, updates the cache
+  /// Resolution order:
+  /// 1. On-device astronomical calculation (instant, works with no network)
+  /// 2. Aladhan API, if the calculation somehow fails
+  /// 3. Cached values, if the API also fails
   ///
-  /// This ensures the app has the latest data while gracefully
-  /// degrading to cached data if network is unavailable.
+  /// Every successful result refreshes the cache so other screens and the
+  /// notification scheduler can reuse it.
   @override
   Future<Either<Failure, PrayerTimesEntity>> getPrayerTimes({
     required double latitude,
@@ -41,6 +53,33 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
     int method = 3,
     String? date,
   }) async {
+    final requestedDate = date == null || date.isEmpty
+        ? null
+        : DateTime.tryParse(date);
+
+    try {
+      final computed = calculator.getPrayerTimes(
+        latitude: latitude,
+        longitude: longitude,
+        method: method,
+        location: _getLocationName(latitude, longitude),
+        date: requestedDate,
+        settings: calculationSettings,
+      );
+
+      unawaited(_cacheQuietly(
+        model: computed,
+        latitude: latitude,
+        longitude: longitude,
+        method: method,
+        date: date,
+      ));
+
+      return Right(computed);
+    } catch (e) {
+      AppLogger.warning('Local prayer calculation failed: $e, falling back to API');
+    }
+
     try {
       // Attempt to fetch from remote API
       final remoteModel = await remoteDataSource.getPrayerTimes(
@@ -107,6 +146,27 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
     } catch (e) {
       AppLogger.warning('Error retrieving cached prayer times: $e');
       return null;
+    }
+  }
+
+  /// Persist a result without letting cache failures break the request.
+  Future<void> _cacheQuietly({
+    required PrayerTimesModel model,
+    required double latitude,
+    required double longitude,
+    required int method,
+    String? date,
+  }) async {
+    try {
+      await localDataSource.cachePrayerTimes(
+        prayerTimes: model,
+        latitude: latitude,
+        longitude: longitude,
+        method: method,
+        date: date,
+      );
+    } catch (e) {
+      AppLogger.warning('Failed to cache prayer times: $e');
     }
   }
 

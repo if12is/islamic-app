@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/app_services.dart';
+import '../../../../shared/providers/app_providers.dart';
 import '../../data/datasources/prayer_times_local_datasource.dart';
 import '../../data/datasources/prayer_times_remote_datasource.dart';
 import '../../data/repositories/prayer_times_repository_impl.dart';
@@ -46,10 +47,12 @@ final prayerTimesLocalDataSourceProvider = Provider<PrayerTimesLocalDataSource>(
 final prayerTimesRepositoryProvider = Provider<PrayerTimesRepository>((ref) {
   final remoteDataSource = ref.watch(prayerTimesRemoteDataSourceProvider);
   final localDataSource = ref.watch(prayerTimesLocalDataSourceProvider);
+  final calculationSettings = ref.watch(prayerCalculationSettingsProvider);
 
   return PrayerTimesRepositoryImpl(
     remoteDataSource: remoteDataSource,
     localDataSource: localDataSource,
+    calculationSettings: calculationSettings,
   );
 });
 

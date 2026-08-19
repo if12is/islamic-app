@@ -1,10 +1,14 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/models/notification_preferences.dart';
+import '../../core/services/notification_scheduler.dart';
+import '../../core/services/prayer_calculation_service.dart';
+import '../../core/services/prayer_settings_store.dart';
 import '../../core/services/startup_sync_service.dart';
 import '../../core/utils/app_logger.dart';
 import '../../core/utils/input_validators.dart';
@@ -59,6 +63,12 @@ Future<void> initializeThemeProvider() async {
   _globalPrefs = await SharedPreferences.getInstance();
 }
 
+/// The already-open preferences instance.
+///
+/// Lets notifiers build their initial state synchronously instead of flashing
+/// defaults for a frame while an async read completes.
+SharedPreferences get appPreferences => _globalPrefs;
+
 class UserCoordinates {
   final double latitude;
   final double longitude;
@@ -112,6 +122,11 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
       ),
     );
 
+    final movedFar =
+        savedCoordinates == null ||
+        (savedCoordinates.latitude - position.latitude).abs() > 0.05 ||
+        (savedCoordinates.longitude - position.longitude).abs() > 0.05;
+
     await _globalPrefs.setDouble(
       AppConstants.userLatitudeKey,
       position.latitude,
@@ -120,6 +135,11 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
       AppConstants.userLongitudeKey,
       position.longitude,
     );
+
+    // A new city means new prayer times, so re-arm the week's reminders.
+    if (movedFar) {
+      unawaited(NotificationScheduler.refresh(preferences: _globalPrefs));
+    }
 
     return UserCoordinates(
       latitude: position.latitude,
@@ -166,29 +186,125 @@ class PrayerMethodNotifier extends Notifier<int> {
     state = method;
     await _globalPrefs.setInt(AppConstants.prayerMethodKey, method);
     AppLogger.info('Prayer method changed to: $method');
+
+    // Prayer times just moved, so the queued reminders are stale.
+    await NotificationScheduler.refresh(preferences: _globalPrefs);
   }
 }
 
 final prayerMethodProvider =
     NotifierProvider<PrayerMethodNotifier, int>(PrayerMethodNotifier.new);
 
-class NotificationsEnabledNotifier extends Notifier<bool> {
+/// Madhab, manual per-prayer offsets, high-latitude rule, and the Hijri
+/// correction. Any change re-arms the notification schedule, because the
+/// prayer times it was built from have just moved.
+class PrayerCalculationSettingsNotifier
+    extends Notifier<PrayerCalculationSettings> {
   @override
-  bool build() {
-    return _globalPrefs.getBool(AppConstants.notificationsEnabledKey) ?? false;
+  PrayerCalculationSettings build() => PrayerSettingsStore.read(_globalPrefs);
+
+  Future<void> update(PrayerCalculationSettings next) async {
+    state = next;
+    await PrayerSettingsStore.write(_globalPrefs, next);
+    await NotificationScheduler.refresh(preferences: _globalPrefs);
+    AppLogger.info('Prayer calculation settings updated');
   }
 
-  Future<void> setEnabled(bool enabled) async {
-    state = enabled;
-    await _globalPrefs.setBool(AppConstants.notificationsEnabledKey, enabled);
-    AppLogger.info('Notifications enabled: $enabled');
+  Future<void> setHanafiAsr(bool value) =>
+      update(state.copyWith(hanafiAsr: value));
+
+  Future<void> setHighLatitudeRule(HighLatitudeRule rule) =>
+      update(state.copyWith(highLatitudeRule: rule));
+
+  Future<void> setHijriOffset(int days) =>
+      update(state.copyWith(hijriOffsetDays: days));
+
+  Future<void> setOffset(String prayerId, int minutes) {
+    final offsets = Map<String, int>.from(state.minuteAdjustments);
+    if (minutes == 0) {
+      offsets.remove(prayerId);
+    } else {
+      offsets[prayerId] = minutes;
+    }
+    return update(state.copyWith(minuteAdjustments: offsets));
+  }
+
+  Future<void> resetOffsets() =>
+      update(state.copyWith(minuteAdjustments: const {}));
+}
+
+final prayerCalculationSettingsProvider =
+    NotifierProvider<
+      PrayerCalculationSettingsNotifier,
+      PrayerCalculationSettings
+    >(PrayerCalculationSettingsNotifier.new);
+
+/// Single source of truth for every reminder the app schedules.
+///
+/// Any change persists immediately and reschedules the next seven days, so
+/// what the user sees in the notification centre is always what the platform
+/// will actually deliver.
+class NotificationPreferencesNotifier extends Notifier<NotificationPreferences> {
+  @override
+  NotificationPreferences build() {
+    return NotificationScheduler.readPreferences(_globalPrefs);
+  }
+
+  Future<ScheduleResult> update(NotificationPreferences next) async {
+    state = next;
+    await NotificationScheduler.savePreferences(_globalPrefs, next);
+    final result = await NotificationScheduler.refresh(
+      preferences: _globalPrefs,
+      overrides: next,
+    );
+    AppLogger.info('Notification settings saved (${result.scheduled} queued)');
+    return result;
+  }
+
+  Future<ScheduleResult> setMasterEnabled(bool enabled) =>
+      update(state.copyWith(masterEnabled: enabled));
+
+  Future<ScheduleResult> setPrayerMode(String prayerId, PrayerAlertMode mode) {
+    final modes = Map<String, PrayerAlertMode>.from(state.prayerModes);
+    modes[prayerId] = mode;
+    return update(state.copyWith(prayerModes: modes));
+  }
+
+  /// Quick on/off used by the compact settings card.
+  Future<ScheduleResult> togglePrayer(String prayerId) {
+    final current = state.modeFor(prayerId);
+    return setPrayerMode(
+      prayerId,
+      current.isEnabled ? PrayerAlertMode.off : PrayerAlertMode.adhan,
+    );
+  }
+
+  Future<ScheduleResult> setAllPrayers(PrayerAlertMode mode) {
+    return update(
+      state.copyWith(
+        prayerModes: {for (final id in PrayerIds.obligatory) id: mode},
+      ),
+    );
+  }
+
+  /// Re-run scheduling without changing anything (location or method changed).
+  Future<ScheduleResult> reschedule() {
+    return NotificationScheduler.refresh(
+      preferences: _globalPrefs,
+      overrides: state,
+    );
   }
 }
 
-final notificationsEnabledProvider =
-    NotifierProvider<NotificationsEnabledNotifier, bool>(
-      NotificationsEnabledNotifier.new,
+final notificationPreferencesProvider =
+    NotifierProvider<NotificationPreferencesNotifier, NotificationPreferences>(
+      NotificationPreferencesNotifier.new,
     );
+
+/// Convenience view of the master switch for simple widgets.
+final notificationsEnabledProvider = Provider<bool>((ref) {
+  return ref.watch(notificationPreferencesProvider).masterEnabled;
+});
 
 class LocaleNotifier extends Notifier<Locale> {
   @override
@@ -291,53 +407,3 @@ class UserProfileNotifier extends Notifier<UserProfile> {
 final userProfileProvider =
     NotifierProvider<UserProfileNotifier, UserProfile>(UserProfileNotifier.new);
 
-class PrayerAlertPrefsNotifier extends Notifier<Map<String, bool>> {
-  static const _ids = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
-
-  @override
-  Map<String, bool> build() {
-    final raw = _globalPrefs.getString(AppConstants.prayerNotificationPrefsKey);
-    if (raw == null) {
-      return {for (final id in _ids) id: true};
-    }
-
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        return {
-          for (final id in _ids)
-            id: decoded[id] is bool ? decoded[id] as bool : true,
-        };
-      }
-    } catch (error, stackTrace) {
-      AppLogger.error('Failed to parse prayer alert prefs', error, stackTrace);
-    }
-    return {for (final id in _ids) id: true};
-  }
-
-  Future<void> setPrayer(String id, bool enabled) async {
-    final key = InputValidators.sanitizePrayerId(id);
-    if (!_ids.contains(key)) {
-      return;
-    }
-    state = {...state, key: enabled};
-    await _persist();
-  }
-
-  Future<void> setAll(bool enabled) async {
-    state = {for (final id in _ids) id: enabled};
-    await _persist();
-  }
-
-  Future<void> _persist() async {
-    await _globalPrefs.setString(
-      AppConstants.prayerNotificationPrefsKey,
-      jsonEncode(state),
-    );
-  }
-}
-
-final prayerAlertPrefsProvider =
-    NotifierProvider<PrayerAlertPrefsNotifier, Map<String, bool>>(
-      PrayerAlertPrefsNotifier.new,
-    );

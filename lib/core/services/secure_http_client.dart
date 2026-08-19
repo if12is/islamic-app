@@ -13,6 +13,7 @@ class SecureHttpClient {
     'api.quran.com',
     'api.alquran.cloud',
     'raw.githubusercontent.com',
+    'cdn.islamic.network',
   };
 
   static Dio create({String? baseUrl}) {

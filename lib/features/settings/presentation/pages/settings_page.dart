@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/models/notification_preferences.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
+import '../../../prayer_times/presentation/pages/prayer_settings_page.dart';
+import 'notification_center_page.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/input_validators.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -32,7 +36,7 @@ class SettingsPage extends ConsumerWidget {
     final isNotificationsEnabled = ref.watch(notificationsEnabledProvider);
     final prayerMethod = ref.watch(prayerMethodProvider);
     final profile = ref.watch(userProfileProvider);
-    final prayerAlerts = ref.watch(prayerAlertPrefsProvider);
+    final notificationPrefs = ref.watch(notificationPreferencesProvider);
 
     final isDark = themeMode == ThemeMode.dark;
 
@@ -190,7 +194,7 @@ class SettingsPage extends ConsumerWidget {
                         _buildPrayerIconTile(
                           context.tr('fajr'),
                           Icons.wb_twilight,
-                          prayerAlerts['fajr'] ?? true,
+                          notificationPrefs.modeFor('fajr').isEnabled,
                           primaryColor,
                           subtitleColor,
                           onTap: () => _togglePrayerAlert(ref, 'fajr'),
@@ -198,7 +202,7 @@ class SettingsPage extends ConsumerWidget {
                         _buildPrayerIconTile(
                           context.tr('dhuhr'),
                           Icons.wb_sunny,
-                          prayerAlerts['dhuhr'] ?? true,
+                          notificationPrefs.modeFor('dhuhr').isEnabled,
                           primaryColor,
                           subtitleColor,
                           onTap: () => _togglePrayerAlert(ref, 'dhuhr'),
@@ -206,7 +210,7 @@ class SettingsPage extends ConsumerWidget {
                         _buildPrayerIconTile(
                           context.tr('asr'),
                           Icons.wb_cloudy,
-                          prayerAlerts['asr'] ?? true,
+                          notificationPrefs.modeFor('asr').isEnabled,
                           primaryColor,
                           subtitleColor,
                           onTap: () => _togglePrayerAlert(ref, 'asr'),
@@ -214,7 +218,7 @@ class SettingsPage extends ConsumerWidget {
                         _buildPrayerIconTile(
                           context.tr('maghrib'),
                           Icons.nights_stay,
-                          prayerAlerts['maghrib'] ?? true,
+                          notificationPrefs.modeFor('maghrib').isEnabled,
                           primaryColor,
                           subtitleColor,
                           onTap: () => _togglePrayerAlert(ref, 'maghrib'),
@@ -222,7 +226,7 @@ class SettingsPage extends ConsumerWidget {
                         _buildPrayerIconTile(
                           context.tr('isha'),
                           Icons.bedtime,
-                          prayerAlerts['isha'] ?? true,
+                          notificationPrefs.modeFor('isha').isEnabled,
                           primaryColor,
                           subtitleColor,
                           onTap: () => _togglePrayerAlert(ref, 'isha'),
@@ -331,6 +335,59 @@ class SettingsPage extends ConsumerWidget {
                             ),
                           )
                           .toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Tools: everything with its own screen.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(32),
+                ),
+                child: Column(
+                  children: [
+                    _buildToolTile(
+                      context,
+                      icon: Icons.notifications_active,
+                      color: accentColor,
+                      title: context.tr('notification_center'),
+                      subtitle: context.tr('notification_center_desc'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const NotificationCenterPage(),
+                        ),
+                      ),
+                    ),
+                    _buildToolTile(
+                      context,
+                      icon: Icons.tune,
+                      color: accentColor,
+                      title: context.tr('prayer_calculation_settings'),
+                      subtitle: context.tr('manual_offsets_desc'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const PrayerSettingsPage(),
+                        ),
+                      ),
+                    ),
+                    _buildToolTile(
+                      context,
+                      icon: Icons.calendar_month,
+                      color: accentColor,
+                      title: context.tr('hijri_calendar'),
+                      subtitle: context.tr('hijri_calendar_desc'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const HijriCalendarPage(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -652,6 +709,39 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
+  Widget _buildToolTile(
+    BuildContext context, {
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+      ),
+      subtitle: Text(
+        subtitle,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Icon(
+        context.isAppRtl
+            ? Icons.keyboard_arrow_left
+            : Icons.keyboard_arrow_right,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      onTap: onTap,
+    );
+  }
+
   Future<void> _setNotificationsEnabled(
     BuildContext context,
     WidgetRef ref,
@@ -670,13 +760,14 @@ class SettingsPage extends ConsumerWidget {
         }
         return;
       }
-      await ref.read(notificationsEnabledProvider.notifier).setEnabled(true);
-      await NotificationService.showTestNotification(
-        title: title,
-        body: body,
-      );
+      await ref
+          .read(notificationPreferencesProvider.notifier)
+          .setMasterEnabled(true);
+      await NotificationService.showNow(title: title, body: body);
     } else {
-      await ref.read(notificationsEnabledProvider.notifier).setEnabled(false);
+      await ref
+          .read(notificationPreferencesProvider.notifier)
+          .setMasterEnabled(false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.tr('notifications_disabled'))),
@@ -686,55 +777,19 @@ class SettingsPage extends ConsumerWidget {
   }
 
   Future<void> _togglePrayerAlert(WidgetRef ref, String prayerId) async {
-    final current = ref.read(prayerAlertPrefsProvider)[prayerId] ?? true;
-    await ref.read(prayerAlertPrefsProvider.notifier).setPrayer(prayerId, !current);
+    await ref
+        .read(notificationPreferencesProvider.notifier)
+        .togglePrayer(prayerId);
   }
 
+  /// The compact card only toggles prayers on and off; every other reminder
+  /// (modes, pre-adhan, iqama, azkar, quiet hours) lives in the notification
+  /// centre.
   Future<void> _openCustomizeSheet(BuildContext context, WidgetRef ref) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return Consumer(
-          builder: (context, ref, _) {
-            final alerts = ref.watch(prayerAlertPrefsProvider);
-            final prayers = <String, String>{
-              'fajr': context.tr('fajr'),
-              'dhuhr': context.tr('dhuhr'),
-              'asr': context.tr('asr'),
-              'maghrib': context.tr('maghrib'),
-              'isha': context.tr('isha'),
-            };
-
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      context.tr('customize_prayer_alerts'),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 12),
-                    ...prayers.entries.map(
-                      (entry) => SwitchListTile.adaptive(
-                        title: Text(entry.value),
-                        value: alerts[entry.key] ?? true,
-                        onChanged: (value) {
-                          ref
-                              .read(prayerAlertPrefsProvider.notifier)
-                              .setPrayer(entry.key, value);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const NotificationCenterPage(),
+      ),
     );
   }
 
@@ -835,7 +890,9 @@ class SettingsPage extends ConsumerWidget {
     }
 
     await ref.read(userProfileProvider.notifier).clear();
-    await ref.read(notificationsEnabledProvider.notifier).setEnabled(false);
+    await ref
+        .read(notificationPreferencesProvider.notifier)
+        .setMasterEnabled(false);
     ref.read(mainTabIndexProvider.notifier).openHome();
 
     if (!context.mounted) {

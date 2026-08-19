@@ -16,8 +16,11 @@ class AppConstants {
   /// Quran.com metadata API
   static const String quranApiBaseUrl = 'https://api.quran.com/api/v4';
 
-  /// AlQuran Cloud API used for Uthmani text, juz, and search
+  /// AlQuran Cloud API used for tafsir editions
   static const String alQuranCloudApiBaseUrl = 'https://api.alquran.cloud/v1';
+
+  /// Verse-by-verse and full-surah recitation CDN
+  static const String quranAudioCdnBaseUrl = 'https://cdn.islamic.network';
 
   /// Free public Azkar JSON source (open GitHub dataset)
   static const String azkarJsonUrl =
@@ -35,6 +38,9 @@ class AppConstants {
   
   /// Cache duration for Azkar data (30 days)
   static const Duration azkarCacheDuration = Duration(days: 30);
+
+  /// Tafsir text never changes, so cache it for a year.
+  static const Duration tafsirCacheDuration = Duration(days: 365);
 
   // ========================
   // Prayer Times Configuration
@@ -95,8 +101,26 @@ class AppConstants {
   /// Last opened azkar category id for resume
   static const String lastAzkarCategoryIdKey = 'last_azkar_category_id';
 
-  /// Per-prayer adhan alert flags (JSON map)
+  /// Legacy per-prayer adhan alert flags (JSON map of bools).
+  ///
+  /// Superseded by [notificationPreferencesKey]; still read once so existing
+  /// installs keep their choices.
   static const String prayerNotificationPrefsKey = 'prayer_notification_prefs';
+
+  /// Full notification settings (modes, reminders, quiet hours) as JSON.
+  static const String notificationPreferencesKey = 'notification_prefs_v1';
+
+  /// Prayer calculation fine-tuning (madhab, offsets) as JSON.
+  static const String prayerCalculationSettingsKey = 'prayer_calc_settings_v1';
+
+  /// Reader display settings (font, size, spacing, theme) as JSON.
+  static const String readerSettingsKey = 'quran_reader_settings_v1';
+
+  /// Selected tafsir edition identifier.
+  static const String tafsirEditionKey = 'quran_tafsir_edition';
+
+  /// Selected verse-audio reciter identifier.
+  static const String verseReciterKey = 'quran_verse_reciter';
 
   /// Support inbox used by the contact form
   static const String supportEmail = 'support@alfajr.app';

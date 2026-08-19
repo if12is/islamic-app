@@ -2,29 +2,27 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
+import '../../features/prayer_times/data/datasources/prayer_times_calculator_datasource.dart';
 import '../../features/prayer_times/data/datasources/prayer_times_local_datasource.dart';
-import '../../features/prayer_times/data/datasources/prayer_times_remote_datasource.dart';
-import 'app_services.dart';
 import 'azkar_data_service.dart';
+import 'notification_scheduler.dart';
 import 'prayer_method_resolver.dart';
-import 'quran_cache_service.dart';
 import '../utils/app_logger.dart';
 
-/// Warms offline-first caches at app startup.
+/// Prepares offline data at app startup.
 ///
-/// This runs in background to make first screen interactions faster and
-/// keep core content available when offline.
+/// The Quran no longer appears here: its text ships with the app, so there is
+/// nothing to download. What is left is refreshing the location-dependent
+/// pieces — prayer times (calculated on device) and the notification schedule
+/// that depends on them — plus the Azkar dataset.
 class StartupSyncService {
   StartupSyncService._();
 
-  static Future<void> warmCaches({
-    required SharedPreferences prefs,
-  }) async {
-    await Future.wait([
-      _warmAzkar(),
-      _warmQuran(),
-      _warmPrayerTimes(prefs: prefs),
-    ]);
+  static Future<void> warmCaches({required SharedPreferences prefs}) async {
+    await Future.wait([_warmAzkar(), _warmPrayerTimes(prefs: prefs)]);
+
+    // Re-arm reminders last, so they use the freshest location and method.
+    await NotificationScheduler.refresh(preferences: prefs);
   }
 
   static Future<void> _warmAzkar() async {
@@ -36,24 +34,7 @@ class StartupSyncService {
     }
   }
 
-  static Future<void> _warmQuran() async {
-    try {
-      final dio = AppServices.createDioClient();
-      dio.options.baseUrl = AppConstants.quranApiBaseUrl;
-      final cache = QuranCacheService();
-
-      final chapters = await cache.getChapters(dio: dio);
-      if (chapters.isNotEmpty) {
-        final firstChapterId = (chapters.first['id'] as int?) ?? 1;
-        await cache.getVerses(dio: dio, chapterId: firstChapterId);
-      }
-
-      AppLogger.info('Startup sync: Quran cache is ready');
-    } catch (e) {
-      AppLogger.warning('Startup sync: Quran warm-up failed: $e');
-    }
-  }
-
+  /// Refresh the saved location and recompute today's prayer times locally.
   static Future<void> _warmPrayerTimes({
     required SharedPreferences prefs,
   }) async {
@@ -80,11 +61,12 @@ class StartupSyncService {
       await prefs.setDouble(AppConstants.userLongitudeKey, position.longitude);
 
       final savedMethod = prefs.getInt(AppConstants.prayerMethodKey) ?? 3;
-      final resolvedMethod = await PrayerMethodResolver.resolveMethodFromCoordinates(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        fallbackMethod: savedMethod,
-      );
+      final resolvedMethod =
+          await PrayerMethodResolver.resolveMethodFromCoordinates(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            fallbackMethod: savedMethod,
+          );
 
       final method = savedMethod == 3 ? resolvedMethod : savedMethod;
       if (method != savedMethod) {
@@ -92,19 +74,19 @@ class StartupSyncService {
       }
 
       final date = DateTime.now().toIso8601String().split('T').first;
-      final remote = PrayerTimesRemoteDataSource(dio: AppServices.createDioClient());
-      final local = PrayerTimesLocalDataSource();
 
-      final prayerModel = await remote.getPrayerTimes(
+      // Calculated on device: no network call, works in airplane mode.
+      const calculator = PrayerTimesCalculatorDataSource();
+      final prayerModel = calculator.getPrayerTimes(
         latitude: position.latitude,
         longitude: position.longitude,
         method: method,
-        date: date,
         location:
-            '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}',
+            '${position.latitude.toStringAsFixed(4)}, '
+            '${position.longitude.toStringAsFixed(4)}',
       );
 
-      await local.cachePrayerTimes(
+      await PrayerTimesLocalDataSource().cachePrayerTimes(
         prayerTimes: prayerModel,
         latitude: position.latitude,
         longitude: position.longitude,

@@ -4,8 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/services/app_services.dart';
+import 'core/services/notification_router.dart';
+import 'core/services/notification_scheduler.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/onboarding/presentation/pages/splash_screen.dart';
 import 'shared/providers/app_providers.dart';
@@ -14,14 +18,30 @@ void main() async {
   // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize all app services (Hive, Dio, etc.)
+  // Initialize all app services (Hive, notifications, time zones, etc.)
   await AppServices.initialize();
-  
+
+  // Lock-screen and background controls for Quran recitation.
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.islamicapp.islamic_app.audio',
+    androidNotificationChannelName: 'Quran playback',
+    androidNotificationOngoing: true,
+    androidStopForegroundOnPause: true,
+  );
+
   // Initialize SharedPreferences and theme provider
   await initializeThemeProvider();
 
   // Warm offline-first caches in the background.
   unawaited(runStartupSync());
+
+  // Re-arm prayer reminders for the week ahead. Cheap when nothing changed,
+  // and it repairs the schedule after a reboot, a time-zone change, or an
+  // Android process kill.
+  unawaited(NotificationScheduler.refresh());
+
+  // If a notification started the app, remember where it wanted to go.
+  unawaited(NotificationService.handleLaunchPayload());
 
   // Run the app
   runApp(const ProviderScope(child: IslamicApp()));
@@ -48,6 +68,9 @@ class IslamicApp extends ConsumerWidget {
       // App metadata
       onGenerateTitle: (context) => context.tr('app_title'),
       debugShowCheckedModeBanner: false,
+
+      /// Lets notification taps open a screen without a BuildContext.
+      navigatorKey: appNavigatorKey,
 
       // ========================
       // Theme Configuration
@@ -86,6 +109,14 @@ class IslamicApp extends ConsumerWidget {
       // Home Screen
       // ========================
       home: const SplashScreen(),
+
+      /// Once the first screen is up, open whatever a notification asked for.
+      builder: (context, child) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          NotificationRouter.flushPending();
+        });
+        return child ?? const SizedBox.shrink();
+      },
 
       // ========================
       // Global Settings

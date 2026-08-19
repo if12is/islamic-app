@@ -55,6 +55,12 @@ class AppTheme {
   
   static const String fontFamily = 'Cairo';
   static const String altFontFamily = 'Tajawal';
+
+  /// Display face used for page titles, Surah names, and section headers.
+  ///
+  /// Reem Kufi is a modern Kufic Arabic face; it carries headings without
+  /// competing with Cairo for body copy. Bundled under SIL OFL 1.1.
+  static const String displayFontFamily = 'ReemKufi';
   static const double borderRadius = 8;
 
   // ========================
@@ -321,33 +327,38 @@ class AppTheme {
   static TextTheme _textThemeLight() {
     return TextTheme(
       displayLarge: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 32,
         fontWeight: FontWeight.w700,
+        height: 1.5,
         color: onSurfaceLight,
       ),
       displayMedium: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 28,
         fontWeight: FontWeight.w700,
+        height: 1.5,
         color: onSurfaceLight,
       ),
       displaySmall: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 24,
         fontWeight: FontWeight.w700,
+        height: 1.5,
         color: onSurfaceLight,
       ),
       headlineMedium: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 20,
         fontWeight: FontWeight.w600,
+        height: 1.5,
         color: onSurfaceLight,
       ),
       headlineSmall: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 18,
         fontWeight: FontWeight.w600,
+        height: 1.5,
         color: onSurfaceLight,
       ),
       titleLarge: TextStyle(
@@ -392,33 +403,38 @@ class AppTheme {
   static TextTheme _textThemeDark() {
     return TextTheme(
       displayLarge: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 32,
         fontWeight: FontWeight.w700,
+        height: 1.5,
         color: onSurfaceDark,
       ),
       displayMedium: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 28,
         fontWeight: FontWeight.w700,
+        height: 1.5,
         color: onSurfaceDark,
       ),
       displaySmall: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 24,
         fontWeight: FontWeight.w700,
+        height: 1.5,
         color: onSurfaceDark,
       ),
       headlineMedium: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 20,
         fontWeight: FontWeight.w600,
+        height: 1.5,
         color: onSurfaceDark,
       ),
       headlineSmall: TextStyle(
-        fontFamily: fontFamily,
+        fontFamily: displayFontFamily,
         fontSize: 18,
         fontWeight: FontWeight.w600,
+        height: 1.5,
         color: onSurfaceDark,
       ),
       titleLarge: TextStyle(

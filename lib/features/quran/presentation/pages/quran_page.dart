@@ -6,9 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
-import '../../data/services/quran_api_service.dart';
+import '../../data/services/quran_local_service.dart';
 import 'surah_reader_page.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+
+/// What the index is listing right now.
+enum QuranIndexMode { surahs, juz, hizb, pages, sajdah }
 
 // --- DATA MODEL ---
 class Surah {
@@ -83,9 +87,6 @@ class _QuranPageState extends State<QuranPage> {
   Color get _primaryDarkGreen => Theme.of(context).colorScheme.primary;
   Color get _accentGold => Theme.of(context).colorScheme.secondary;
 
-  // Services
-  final QuranApiService _apiService = QuranApiService();
-
   // States
   final AudioPlayer _audioPlayer = AudioPlayer();
   String _selectedReciterUrl = 'https://server12.mp3quran.net/maher';
@@ -98,10 +99,30 @@ class _QuranPageState extends State<QuranPage> {
   List<Surah> _filteredSurahs = [];
   final List<int> _allJuzNumbers = List<int>.generate(30, (index) => index + 1);
   List<int> _filteredJuzNumbers = List<int>.generate(30, (index) => index + 1);
+  final List<int> _allHizbNumbers = List<int>.generate(
+    QuranLocalService.hizbCount,
+    (index) => index + 1,
+  );
+  List<int> _filteredHizbNumbers = List<int>.generate(
+    QuranLocalService.hizbCount,
+    (index) => index + 1,
+  );
+  final List<int> _allPages = List<int>.generate(
+    QuranLocalService.pageCount,
+    (index) => index + 1,
+  );
+  List<int> _filteredPages = List<int>.generate(
+    QuranLocalService.pageCount,
+    (index) => index + 1,
+  );
+  final List<QuranVerse> _sajdahVerses = QuranLocalService.sajdahList();
   List<AyahSearchResult> _ayahSearchResults = [];
   bool _isLoading = true;
   bool _isAyahSearchLoading = false;
-  bool _isSurahMode = true;
+  QuranIndexMode _mode = QuranIndexMode.surahs;
+
+  /// Ayah search and the surah tools only apply to the surah list.
+  bool get _isSurahMode => _mode == QuranIndexMode.surahs;
   String _errorKey = '';
 
   final TextEditingController _searchController = TextEditingController();
@@ -150,20 +171,19 @@ class _QuranPageState extends State<QuranPage> {
     });
 
     try {
-      final rawList = await _apiService.fetchSurahsList();
-      if (rawList.isEmpty) {
-        setState(() {
-          _errorKey = 'unable_load_surahs_now';
-          _isLoading = false;
-        });
-        return;
-      }
-
+      // The index comes from the bundled Mushaf: no network, no waiting.
       final surahs =
-          rawList.map((json) {
-            final safeMap = Map<String, dynamic>.from(json as Map);
-            return Surah.fromApiJson(safeMap);
-          }).toList();
+          QuranLocalService.surahs()
+              .map(
+                (info) => Surah(
+                  id: info.id,
+                  nameAr: info.nameAr,
+                  nameEn: info.nameEn,
+                  versesCount: info.versesCount,
+                  type: info.isMeccan ? 'مكية' : 'مدنية',
+                ),
+              )
+              .toList();
 
       final prefs = await SharedPreferences.getInstance();
       final lastReadId = prefs.getInt('last_read_surah_id');
@@ -304,16 +324,18 @@ class _QuranPageState extends State<QuranPage> {
       return;
     }
 
-    setState(() {
+    bool matchesNumber(int value) {
       if (normalizedDigitsQuery.isEmpty) {
-        _filteredJuzNumbers = List.from(_allJuzNumbers);
-      } else {
-        _filteredJuzNumbers =
-            _allJuzNumbers.where((juz) {
-              return juz.toString().contains(normalizedDigitsQuery) ||
-                  _toArabicDigits(juz).contains(rawQuery);
-            }).toList();
+        return true;
       }
+      return value.toString().contains(normalizedDigitsQuery) ||
+          _toArabicDigits(value).contains(rawQuery);
+    }
+
+    setState(() {
+      _filteredJuzNumbers = _allJuzNumbers.where(matchesNumber).toList();
+      _filteredHizbNumbers = _allHizbNumbers.where(matchesNumber).toList();
+      _filteredPages = _allPages.where(matchesNumber).toList();
       _ayahSearchResults = [];
       _isAyahSearchLoading = false;
     });
@@ -334,25 +356,28 @@ class _QuranPageState extends State<QuranPage> {
       _isAyahSearchLoading = true;
     });
 
-    final rawMatches = await _apiService.searchAyah(trimmed);
+    // Offline search over the bundled text, ignoring diacritics.
+    final matches = QuranLocalService.search(trimmed, limit: 60);
     if (!mounted) return;
 
-    // Ignore stale search responses from previous queries.
+    // Ignore stale results from a query the user has already changed.
     if (_searchController.text.trim() != trimmed || !_isSurahMode) {
       return;
     }
 
-    final parsedMatches =
-        rawMatches
-            .map(
-              (json) => AyahSearchResult.fromApiJson(
-                Map<String, dynamic>.from(json as Map),
-              ),
-            )
-            .toList();
-
     setState(() {
-      _ayahSearchResults = parsedMatches;
+      _ayahSearchResults =
+          matches
+              .map(
+                (verse) => AyahSearchResult(
+                  surahId: verse.surahNumber,
+                  verseNumber: verse.numberInSurah,
+                  surahNameAr: verse.surahNameAr,
+                  surahNameEn: verse.surahNameEn,
+                  ayahText: verse.text,
+                ),
+              )
+              .toList();
       _isAyahSearchLoading = false;
     });
   }
@@ -375,12 +400,12 @@ class _QuranPageState extends State<QuranPage> {
         .join('');
   }
 
-  void _setListMode(bool showSurahs) {
-    if (_isSurahMode == showSurahs) return;
+  void _setMode(QuranIndexMode mode) {
+    if (_mode == mode) return;
 
     setState(() {
-      _isSurahMode = showSurahs;
-      if (!showSurahs) {
+      _mode = mode;
+      if (mode != QuranIndexMode.surahs) {
         _ayahSearchResults = [];
         _isAyahSearchLoading = false;
       }
@@ -413,7 +438,24 @@ class _QuranPageState extends State<QuranPage> {
           throw StateError('Untrusted reciter URL');
         }
 
-        await _audioPlayer.setUrl(url);
+        final surahName =
+            _allSurahs
+                .cast<Surah?>()
+                .firstWhere((item) => item?.id == surahId, orElse: () => null)
+                ?.nameAr ??
+            '';
+
+        await _audioPlayer.setAudioSource(
+          AudioSource.uri(
+            Uri.parse(url),
+            tag: MediaItem(
+              id: 'surah_$surahId',
+              album: 'القرآن الكريم',
+              title: 'سورة $surahName',
+              artist: _reciters[_selectedReciterUrl] ?? '',
+            ),
+          ),
+        );
         await _audioPlayer.play();
       }
     } catch (e) {
@@ -480,7 +522,7 @@ class _QuranPageState extends State<QuranPage> {
                     const SizedBox(height: 16),
                     _buildSurahIndexHeader(),
                     const SizedBox(height: 12),
-                    _isSurahMode ? _buildSurahList() : _buildJuzList(),
+                    _buildIndexBody(),
                     if (_isSurahMode &&
                         _searchController.text.trim().isNotEmpty) ...[
                       const SizedBox(height: 24),
@@ -550,10 +592,14 @@ class _QuranPageState extends State<QuranPage> {
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText:
-              _isSurahMode
-                  ? context.tr('search_surah_or_number_hint')
-                  : context.tr('search_juz_hint'),
+          hintText: switch (_mode) {
+            QuranIndexMode.surahs =>
+              context.tr('search_surah_or_number_hint'),
+            QuranIndexMode.juz => context.tr('search_juz_hint'),
+            QuranIndexMode.hizb => context.tr('search_hizb_hint'),
+            QuranIndexMode.pages => context.tr('search_page_hint'),
+            QuranIndexMode.sajdah => context.tr('sajdah_index'),
+          },
           hintStyle: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: 14,
@@ -646,7 +692,10 @@ class _QuranPageState extends State<QuranPage> {
                             MaterialPageRoute(
                               builder:
                                   (context) =>
-                                      SurahReaderPage(surah: _lastReadSurah!),
+                                      SurahReaderPage(
+                                        surahNumber: _lastReadSurah!.id,
+                                        initialVerse: _lastReadVerse,
+                                      ),
                             ),
                           )
                           .then((_) {
@@ -789,22 +838,62 @@ class _QuranPageState extends State<QuranPage> {
       ),
       child: Row(
         children: [
-          _buildModeButton(label: context.tr('surahs_tab'), showSurahs: true),
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _buildModeButton(
+                    label: context.tr('surahs_tab'),
+                    mode: QuranIndexMode.surahs,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildModeButton(
+                    label: context.tr('juz_tab'),
+                    mode: QuranIndexMode.juz,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildModeButton(
+                    label: context.tr('hizb_tab'),
+                    mode: QuranIndexMode.hizb,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildModeButton(
+                    label: context.tr('pages_tab'),
+                    mode: QuranIndexMode.pages,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildModeButton(
+                    label: context.tr('sajdah_tab'),
+                    mode: QuranIndexMode.sajdah,
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(width: 8),
-          _buildModeButton(label: context.tr('juz_tab'), showSurahs: false),
+          IconButton.filledTonal(
+            tooltip: context.tr('jump_to'),
+            icon: const Icon(Icons.my_location, size: 20),
+            onPressed: _openJumpSheet,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildModeButton({required String label, required bool showSurahs}) {
-    final isSelected = _isSurahMode == showSurahs;
-    return Expanded(
+  Widget _buildModeButton({
+    required String label,
+    required QuranIndexMode mode,
+  }) {
+    final isSelected = _mode == mode;
+    return SizedBox(
       child: GestureDetector(
-        onTap: () => _setListMode(showSurahs),
+        onTap: () => _setMode(mode),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
-          padding: EdgeInsets.symmetric(vertical: 10),
+          padding: EdgeInsets.symmetric(vertical: 10, horizontal: 18),
           decoration: BoxDecoration(
             color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -826,12 +915,30 @@ class _QuranPageState extends State<QuranPage> {
 
   Widget _buildSurahIndexHeader() {
     final hasQuery = _searchController.text.trim().isNotEmpty;
-    final title =
-        _isSurahMode
-            ? (hasQuery
-                ? context.tr('surahs_results')
-                : context.tr('surahs_index'))
-            : context.tr('juz_index');
+    final title = switch (_mode) {
+      QuranIndexMode.surahs =>
+        hasQuery ? context.tr('surahs_results') : context.tr('surahs_index'),
+      QuranIndexMode.juz => context.tr('juz_index'),
+      QuranIndexMode.hizb => context.tr('hizb_index'),
+      QuranIndexMode.pages => context.tr('pages_index'),
+      QuranIndexMode.sajdah => context.tr('sajdah_index'),
+    };
+
+    final counter = switch (_mode) {
+      QuranIndexMode.surahs => null,
+      QuranIndexMode.juz =>
+        '${_formatNumber(context, _filteredJuzNumbers.length)} '
+            '${context.tr('juz_word')}',
+      QuranIndexMode.hizb =>
+        '${_formatNumber(context, _filteredHizbNumbers.length)} '
+            '${context.tr('hizb_label')}',
+      QuranIndexMode.pages =>
+        '${_formatNumber(context, _filteredPages.length)} '
+            '${context.tr('page_word')}',
+      QuranIndexMode.sajdah =>
+        '${_formatNumber(context, _sajdahVerses.length)} '
+            '${context.tr('sajdah_word')}',
+    };
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -859,7 +966,7 @@ class _QuranPageState extends State<QuranPage> {
               },
             ),
           ),
-        if (!_isSurahMode)
+        if (counter != null)
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
@@ -867,7 +974,7 @@ class _QuranPageState extends State<QuranPage> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              '${_formatNumber(context, _filteredJuzNumbers.length)} ${context.tr('juz_word')}',
+              counter,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -906,7 +1013,9 @@ class _QuranPageState extends State<QuranPage> {
             Navigator.of(context)
                 .push(
                   MaterialPageRoute(
-                    builder: (context) => SurahReaderPage(surah: surah),
+                    builder:
+                        (context) =>
+                            SurahReaderPage(surahNumber: surah.id),
                   ),
                 )
                 .then((_) {
@@ -1045,7 +1154,8 @@ class _QuranPageState extends State<QuranPage> {
             Navigator.of(context)
                 .push(
                   MaterialPageRoute(
-                    builder: (context) => SurahReaderPage(juzId: juzNumber),
+                    builder:
+                        (context) => SurahReaderPage(juzNumber: juzNumber),
                   ),
                 )
                 .then((_) {
@@ -1136,6 +1246,386 @@ class _QuranPageState extends State<QuranPage> {
     );
   }
 
+  /// The list that matches the selected index mode.
+  Widget _buildIndexBody() {
+    switch (_mode) {
+      case QuranIndexMode.surahs:
+        return _buildSurahList();
+      case QuranIndexMode.juz:
+        return _buildJuzList();
+      case QuranIndexMode.hizb:
+        return _buildHizbList();
+      case QuranIndexMode.pages:
+        return _buildPagesList();
+      case QuranIndexMode.sajdah:
+        return _buildSajdahList();
+    }
+  }
+
+  Widget _buildHizbList() {
+    return _buildIndexList(
+      count: _filteredHizbNumbers.length,
+      emptyKey: 'no_results',
+      builder: (index) {
+        final hizb = _filteredHizbNumbers[index];
+        final start = QuranLocalService.hizbStart(hizb);
+        return _IndexEntry(
+          badge: _formatNumber(context, hizb),
+          title: '${context.tr('hizb_label')} ${_formatNumber(context, hizb)}',
+          subtitle:
+              '${context.tr('starts_at')} ${start.surahNameAr} '
+              '${_formatNumber(context, start.numberInSurah)} · '
+              '${context.tr('juz_word')} ${_formatNumber(context, start.juz)}',
+          trailing:
+              '${context.tr('page_word')} ${_formatNumber(context, start.page)}',
+          onTap: () => _openReader(SurahReaderPage(hizbNumber: hizb)),
+        );
+      },
+    );
+  }
+
+  Widget _buildPagesList() {
+    return _buildIndexList(
+      count: _filteredPages.length,
+      emptyKey: 'no_results',
+      viewportHeight: 560,
+      builder: (index) {
+        final page = _filteredPages[index];
+        final start = QuranLocalService.pageStart(page);
+        final names = QuranLocalService.surahNamesOnPage(page);
+        return _IndexEntry(
+          badge: _formatNumber(context, page),
+          title:
+              '${context.tr('page_word')} ${_formatNumber(context, page)}',
+          subtitle: names.join(' · '),
+          trailing:
+              '${context.tr('juz_word')} ${_formatNumber(context, start.juz)}',
+          onTap: () => _openReader(SurahReaderPage(pageNumber: page)),
+        );
+      },
+    );
+  }
+
+  Widget _buildSajdahList() {
+    return _buildIndexList(
+      count: _sajdahVerses.length,
+      emptyKey: 'no_results',
+      builder: (index) {
+        final verse = _sajdahVerses[index];
+        return _IndexEntry(
+          badge: '۩',
+          title:
+              '${context.tr('surah_word')} ${verse.surahNameAr} · '
+              '${context.tr('ayah_word')} '
+              '${_formatNumber(context, verse.numberInSurah)}',
+          subtitle:
+              '${context.tr('juz_word')} ${_formatNumber(context, verse.juz)}'
+              ' · ${context.tr('page_word')} '
+              '${_formatNumber(context, verse.page)}',
+          trailing: context.tr('sajdah_word'),
+          onTap: () => _openReader(
+            SurahReaderPage(
+              surahNumber: verse.surahNumber,
+              initialVerse: verse.numberInSurah,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Shared card list used by the juz, hizb, page, and sajdah indexes.
+  Widget _buildIndexList({
+    required int count,
+    required String emptyKey,
+    required _IndexEntry Function(int index) builder,
+    double? viewportHeight,
+  }) {
+    if (count == 0) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            context.tr(emptyKey),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Long indexes (604 pages) get their own viewport so the rows are built
+    // lazily instead of all at once inside the page scroll view.
+    final list = ListView.separated(
+      shrinkWrap: viewportHeight == null,
+      physics: viewportHeight == null
+          ? const NeverScrollableScrollPhysics()
+          : null,
+      itemCount: count,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final entry = builder(index);
+        return GestureDetector(
+          onTap: entry.onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      entry.badge,
+                      style: TextStyle(
+                        color: _primaryDarkGreen,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).textTheme.bodyLarge!.color!,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        entry.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  entry.trailing,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    return viewportHeight == null
+        ? list
+        : SizedBox(height: viewportHeight, child: list);
+  }
+
+  void _openReader(Widget page) {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (context) => page))
+        .then((_) => _loadLastRead());
+  }
+
+  /// "Go to" — open the reader at an exact surah:verse, juz, hizb, or page.
+  Future<void> _openJumpSheet() async {
+    final surahController = TextEditingController();
+    final verseController = TextEditingController();
+    final numberController = TextEditingController();
+    var target = QuranIndexMode.surahs;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: sheetContext.appTextDirection,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setSheetState) {
+                final isVerseTarget = target == QuranIndexMode.surahs;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.tr('jump_to'),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 16),
+                    SegmentedButton<QuranIndexMode>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: QuranIndexMode.surahs,
+                          label: Text(context.tr('ayah_word')),
+                        ),
+                        ButtonSegment(
+                          value: QuranIndexMode.juz,
+                          label: Text(context.tr('juz_word')),
+                        ),
+                        ButtonSegment(
+                          value: QuranIndexMode.hizb,
+                          label: Text(context.tr('hizb_label')),
+                        ),
+                        ButtonSegment(
+                          value: QuranIndexMode.pages,
+                          label: Text(context.tr('page_word')),
+                        ),
+                      ],
+                      selected: {target},
+                      onSelectionChanged: (value) =>
+                          setSheetState(() => target = value.first),
+                    ),
+                    const SizedBox(height: 16),
+                    if (isVerseTarget)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: surahController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: context.tr('surah_number_label'),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: verseController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: context.tr('ayah_word'),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      TextField(
+                        controller: numberController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: switch (target) {
+                            QuranIndexMode.juz => context.tr('juz_word'),
+                            QuranIndexMode.hizb => context.tr('hizb_label'),
+                            _ => context.tr('page_word'),
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          final page = _resolveJumpTarget(
+                            target,
+                            surahController.text,
+                            verseController.text,
+                            numberController.text,
+                          );
+                          if (page == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(context.tr('invalid_reference')),
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.of(sheetContext).pop();
+                          _openReader(page);
+                        },
+                        icon: const Icon(Icons.menu_book, size: 18),
+                        label: Text(context.tr('open')),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    surahController.dispose();
+    verseController.dispose();
+    numberController.dispose();
+  }
+
+  /// Validates the typed reference and returns the reader to open, or null.
+  Widget? _resolveJumpTarget(
+    QuranIndexMode target,
+    String surahText,
+    String verseText,
+    String numberText,
+  ) {
+    int? parse(String value) =>
+        int.tryParse(_normalizeDigits(value.trim()));
+
+    switch (target) {
+      case QuranIndexMode.surahs:
+      case QuranIndexMode.sajdah:
+        final surah = parse(surahText);
+        if (surah == null || surah < 1 || surah > QuranLocalService.surahCount) {
+          return null;
+        }
+        final verse = parse(verseText) ?? 1;
+        final count = QuranLocalService.surahInfo(surah).versesCount;
+        if (verse < 1 || verse > count) {
+          return null;
+        }
+        return SurahReaderPage(surahNumber: surah, initialVerse: verse);
+      case QuranIndexMode.juz:
+        final juz = parse(numberText);
+        if (juz == null || juz < 1 || juz > QuranLocalService.juzCount) {
+          return null;
+        }
+        return SurahReaderPage(juzNumber: juz);
+      case QuranIndexMode.hizb:
+        final hizb = parse(numberText);
+        if (hizb == null || hizb < 1 || hizb > QuranLocalService.hizbCount) {
+          return null;
+        }
+        return SurahReaderPage(hizbNumber: hizb);
+      case QuranIndexMode.pages:
+        final page = parse(numberText);
+        if (page == null || page < 1 || page > QuranLocalService.pageCount) {
+          return null;
+        }
+        return SurahReaderPage(pageNumber: page);
+    }
+  }
+
   Widget _buildAyahSearchHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1189,18 +1679,15 @@ class _QuranPageState extends State<QuranPage> {
 
         return GestureDetector(
           onTap: () {
-            final surah = Surah(
-              id: result.surahId,
-              nameAr: result.surahNameAr,
-              nameEn: result.surahNameEn,
-              versesCount: 0,
-              type: '',
-            );
-
+            // Open the reader on the matched verse, not the top of the surah.
             Navigator.of(context)
                 .push(
                   MaterialPageRoute(
-                    builder: (context) => SurahReaderPage(surah: surah),
+                    builder:
+                        (context) => SurahReaderPage(
+                          surahNumber: result.surahId,
+                          initialVerse: result.verseNumber,
+                        ),
                   ),
                 )
                 .then((_) {
@@ -1384,4 +1871,21 @@ class _QuranPageState extends State<QuranPage> {
       ),
     );
   }
+}
+
+/// One row in a Quran index list.
+class _IndexEntry {
+  const _IndexEntry({
+    required this.badge,
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+    required this.onTap,
+  });
+
+  final String badge;
+  final String title;
+  final String subtitle;
+  final String trailing;
+  final VoidCallback onTap;
 }

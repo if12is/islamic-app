@@ -35,6 +35,15 @@ dependencies:
   dartz: ^0.10.1
   url_launcher: ^6.3.2
   logger: ^2.6.0
+  adhan: ^2.0.0+1
+  quran: ^1.4.1
+  hijri: ^3.0.1
+  flutter_timezone: ^5.1.0
+  just_audio_background: ^0.0.1-beta.17
+  wakelock_plus: ^1.7.0
+  screenshot: ^3.0.0
+  share_plus: ^13.3.0
+  screen_brightness: ^2.1.11
 
 dev_dependencies:
   flutter_test:
@@ -58,6 +67,24 @@ flutter:
         - asset: assets/fonts/Cairo-Variable.ttf
           weight: 600
         - asset: assets/fonts/Cairo-Variable.ttf
+          weight: 700
+    # Quran text faces, bundled so the reader works with no network (OFL 1.1).
+    - family: AmiriQuran
+      fonts:
+        - asset: assets/fonts/AmiriQuran-Regular.ttf
+    - family: ScheherazadeNew
+      fonts:
+        - asset: assets/fonts/ScheherazadeNew-Regular.ttf
+    # Display face for headings and Surah names (SIL OFL 1.1).
+    - family: ReemKufi
+      fonts:
+        - asset: assets/fonts/ReemKufi.ttf
+          weight: 400
+        - asset: assets/fonts/ReemKufi.ttf
+          weight: 500
+        - asset: assets/fonts/ReemKufi.ttf
+          weight: 600
+        - asset: assets/fonts/ReemKufi.ttf
           weight: 700
 
 flutter_launcher_icons:
