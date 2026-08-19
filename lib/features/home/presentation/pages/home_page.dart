@@ -14,6 +14,7 @@ import '../../../prayer_times/domain/entities/prayer_times_entity.dart';
 import '../../../prayer_times/presentation/providers/prayer_times_providers.dart';
 import '../../../quran/presentation/pages/quran_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../../shared/widgets/shell_header_buttons.dart';
 
 class _PrayerSlot {
   final String id;
@@ -28,22 +29,21 @@ class _PrayerSlot {
 }
 
 // --- MAIN PAGE (CONTROLS NAV) ---
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _selectedNavIndex = 0;
-
+class _HomePageState extends ConsumerState<HomePage> {
   void _onTabTapped(int index) {
-    setState(() => _selectedNavIndex = index);
+    ref.read(mainTabIndexProvider.notifier).setIndex(index);
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedNavIndex = ref.watch(mainTabIndexProvider);
     final tabs = <Widget>[
       _HomeDashboard(onOpenTab: _onTabTapped),
       const QuranPage(),
@@ -57,7 +57,7 @@ class _HomePageState extends State<HomePage> {
       textDirection: context.appTextDirection,
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
-        body: IndexedStack(index: _selectedNavIndex, children: tabs),
+        body: IndexedStack(index: selectedNavIndex, children: tabs),
         bottomNavigationBar: NavigationBarTheme(
           data: NavigationBarThemeData(
             backgroundColor: theme.scaffoldBackgroundColor,
@@ -89,7 +89,7 @@ class _HomePageState extends State<HomePage> {
             }),
           ),
           child: NavigationBar(
-            selectedIndex: _selectedNavIndex,
+            selectedIndex: selectedNavIndex,
             onDestinationSelected: _onTabTapped,
             destinations: [
               NavigationDestination(
@@ -277,10 +277,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: Theme.of(context).textTheme.bodyLarge!.color!, size: 32),
-          onPressed: () => widget.onOpenTab(3),
-        ),
+        leading: const ShellMenuButton(iconSize: 32),
         title: Text(
           context.tr('app_title'),
           style: TextStyle(
@@ -292,19 +289,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
           ),
         ),
         centerTitle: false,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: InkWell(
-              onTap: () => widget.onOpenTab(3),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundColor: Theme.of(context).cardColor,
-                child: Icon(Icons.person, color: Theme.of(context).textTheme.bodyLarge!.color!),
-              ),
-            ),
-          ),
-        ],
+        actions: const [ShellProfileButton()],
       ),
       body: prayerTimesAsync.when(
         data: (entity) {
@@ -494,7 +479,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                   children: [
                     Icon(
                       Icons.wifi_off_rounded,
-                      color: Color(0xFFBA1A1A),
+                      color: Theme.of(context).colorScheme.error,
                       size: 48,
                     ),
                     const SizedBox(height: 16),
@@ -518,8 +503,8 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                       ),
                       child: Text(
                         context.tr('retry'),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
                           fontFamily: 'Cairo',
                         ),
                       ),
@@ -597,13 +582,13 @@ class _HeroCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF0B634C),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.22),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Text(
               context.tr('next_prayer'),
               style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
                 fontFamily: 'Cairo',
@@ -614,7 +599,7 @@ class _HeroCard extends StatelessWidget {
           Text(
             arabicName,
             style: TextStyle(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
               fontSize: 56,
               fontWeight: FontWeight.w900,
               height: 1.0,
@@ -651,7 +636,7 @@ class _HeroCard extends StatelessWidget {
           const SizedBox(height: 36),
           Container(
             height: 1,
-            color: Colors.white.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.12),
             margin: const EdgeInsets.only(bottom: 24),
           ),
           FittedBox(
@@ -783,7 +768,7 @@ class _ActionCard extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, size: 30, color: Theme.of(context).colorScheme.primary),
@@ -841,10 +826,11 @@ class _AyahCard extends ConsumerWidget {
             child: Icon(
               Icons.menu_book,
               size: 140,
-              color: Colors.white.withValues(alpha: 0.05),
+              color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.05),
             ),
           ),
           ayahAsync.when(
+            skipLoadingOnReload: true,
             loading:
                 () => const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
@@ -853,16 +839,27 @@ class _AyahCard extends ConsumerWidget {
             error:
                 (_, _) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Center(
-                    child: Text(
-                      context.tr('error_loading_ayah'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.bold,
+                  child: Column(
+                    children: [
+                      Text(
+                        context.tr('error_loading_ayah'),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
+                      IconButton(
+                        tooltip: context.tr('random_ayah'),
+                        onPressed: () =>
+                            ref.read(dailyAyahIndexProvider.notifier).shuffle(),
+                        icon: Icon(
+                          Icons.shuffle_rounded,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             data: (ayahData) {
@@ -885,32 +882,70 @@ class _AyahCard extends ConsumerWidget {
                   context.isAppRtl
                       ? 'سورة $surahNameAr - آية $verseNumberText'
                       : 'Surah $surahNameEn - Verse $verseNumberText';
+              final isShuffling = ayahAsync.isLoading;
 
               return Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 32,
-                        height: 1.5,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        context.tr('ayah_of_the_day'),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.secondary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          fontFamily: 'Cairo',
+                      const SizedBox(width: 40),
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 1.5,
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              context.tr('ayah_of_the_day'),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.secondary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                fontFamily: 'Cairo',
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 32,
+                              height: 1.5,
+                              color: Theme.of(context).colorScheme.secondary,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 32,
-                        height: 1.5,
-                        color: Theme.of(context).colorScheme.secondary,
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: IconButton(
+                          tooltip: context.tr('random_ayah'),
+                          onPressed: isShuffling
+                              ? null
+                              : () => ref
+                                  .read(dailyAyahIndexProvider.notifier)
+                                  .shuffle(),
+                          icon: isShuffling
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.shuffle_rounded,
+                                  size: 20,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer,
+                                ),
+                        ),
                       ),
                     ],
                   ),
@@ -923,7 +958,7 @@ class _AyahCard extends ConsumerWidget {
                       fontSize: 30,
                       height: 1.9,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -931,7 +966,7 @@ class _AyahCard extends ConsumerWidget {
                     reference,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.amiriQuran(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                      color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
                     ),
@@ -992,14 +1027,14 @@ class _PrayerTile extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: isCurrent ? Theme.of(context).scaffoldBackgroundColor : Theme.of(context).textTheme.bodyLarge!.color!,
+                color: isCurrent ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
                 size: 28,
               ),
               const SizedBox(width: 16),
               Text(
                 name,
                 style: TextStyle(
-                  color: isCurrent ? Theme.of(context).scaffoldBackgroundColor : Theme.of(context).textTheme.bodyLarge!.color!,
+                  color: isCurrent ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   fontFamily: 'Cairo',
@@ -1012,7 +1047,7 @@ class _PrayerTile extends StatelessWidget {
             style: TextStyle(
               color:
                   isCurrent
-                      ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.84)
+                      ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.84)
                       : Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1032,8 +1067,8 @@ class _PrayerTile extends StatelessWidget {
                       isDone
                           ? Theme.of(context).colorScheme.secondary
                           : (isCurrent
-                              ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45)
-                              : Theme.of(context).dividerColor),
+                              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.45)
+                              : Theme.of(context).colorScheme.outline),
                   width: 2,
                 ),
                 color: isDone ? Theme.of(context).colorScheme.secondary : Colors.transparent,
@@ -1043,7 +1078,7 @@ class _PrayerTile extends StatelessWidget {
                       ? Icon(
                         Icons.check,
                         size: 20,
-                        color: Theme.of(context).scaffoldBackgroundColor,
+                        color: Theme.of(context).colorScheme.onSecondary,
                       )
                       : null,
             ),

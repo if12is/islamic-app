@@ -88,6 +88,18 @@ class AppConstants {
   
   /// Key for storing user's city name
   static const String userCityKey = 'user_city';
+
+  /// Display name shown on the settings profile card
+  static const String userNameKey = 'user_display_name';
+
+  /// Last opened azkar category id for resume
+  static const String lastAzkarCategoryIdKey = 'last_azkar_category_id';
+
+  /// Per-prayer adhan alert flags (JSON map)
+  static const String prayerNotificationPrefsKey = 'prayer_notification_prefs';
+
+  /// Support inbox used by the contact form
+  static const String supportEmail = 'support@alfajr.app';
   
   /// Key for storing notifications enabled status
   static const String notificationsEnabledKey = 'notifications_enabled';

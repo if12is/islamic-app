@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/input_validators.dart';
 import '../../../../shared/providers/app_providers.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -27,18 +31,19 @@ class SettingsPage extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final isNotificationsEnabled = ref.watch(notificationsEnabledProvider);
     final prayerMethod = ref.watch(prayerMethodProvider);
+    final profile = ref.watch(userProfileProvider);
+    final prayerAlerts = ref.watch(prayerAlertPrefsProvider);
 
     final isDark = themeMode == ThemeMode.dark;
 
-    // Colors
-    final bgColor = isDark ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF9F9F9);
-    final textColor = isDark ? Theme.of(context).textTheme.bodyLarge!.color! : const Color(0xFF1A1C1C);
-    final subtitleColor =
-        isDark ? Theme.of(context).colorScheme.onSurfaceVariant : const Color(0xFF707974);
-    final cardColor = isDark ? Theme.of(context).cardColor : Colors.white;
-    final primaryColor =
-        isDark ? Theme.of(context).colorScheme.primary : const Color(0xFF003527);
-    final accentColor = isDark ? Theme.of(context).colorScheme.secondary : const Color(0xFF735C00);
+    final colorScheme = Theme.of(context).colorScheme;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = colorScheme.onSurface;
+    final subtitleColor = colorScheme.onSurfaceVariant;
+    final cardColor = Theme.of(context).cardColor;
+    final primaryColor = colorScheme.primary;
+    final accentColor = colorScheme.secondary;
+    final mutedFill = colorScheme.surfaceContainerHighest;
 
     return Directionality(
       textDirection: context.appTextDirection,
@@ -86,7 +91,7 @@ class SettingsPage extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color:
                             isDark
-                                ? const Color(0xFF374151)
+                                ? colorScheme.surfaceContainerHighest
                                 : const Color(0xFF1A1C1C),
                         borderRadius: BorderRadius.circular(28),
                       ),
@@ -99,13 +104,21 @@ class SettingsPage extends ConsumerWidget {
                     Positioned(
                       bottom: -8,
                       right: -8,
-                      child: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: accentColor,
-                          shape: BoxShape.circle,
+                      child: Material(
+                        color: accentColor,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => _editProfile(context, ref),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Icon(
+                              Icons.edit,
+                              size: 16,
+                              color: colorScheme.onSecondary,
+                            ),
+                          ),
                         ),
-                        child: Icon(Icons.edit, size: 16, color: Colors.white),
                       ),
                     ),
                   ],
@@ -114,7 +127,7 @@ class SettingsPage extends ConsumerWidget {
               const SizedBox(height: 16),
               Center(
                 child: Text(
-                  context.tr('user_name'),
+                  profile.name.isEmpty ? context.tr('user_name') : profile.name,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -124,7 +137,9 @@ class SettingsPage extends ConsumerWidget {
               ),
               Center(
                 child: Text(
-                  context.tr('user_location'),
+                  profile.location.isEmpty
+                      ? context.tr('user_location')
+                      : profile.location,
                   style: TextStyle(fontSize: 14, color: subtitleColor),
                 ),
               ),
@@ -163,9 +178,7 @@ class SettingsPage extends ConsumerWidget {
                         Switch.adaptive(
                           value: isNotificationsEnabled,
                           onChanged: (value) {
-                            ref
-                                .read(notificationsEnabledProvider.notifier)
-                                .setEnabled(value);
+                            _setNotificationsEnabled(context, ref, value);
                           },
                         ),
                       ],
@@ -177,37 +190,42 @@ class SettingsPage extends ConsumerWidget {
                         _buildPrayerIconTile(
                           context.tr('fajr'),
                           Icons.wb_twilight,
-                          true,
+                          prayerAlerts['fajr'] ?? true,
                           primaryColor,
                           subtitleColor,
+                          onTap: () => _togglePrayerAlert(ref, 'fajr'),
                         ),
                         _buildPrayerIconTile(
                           context.tr('dhuhr'),
                           Icons.wb_sunny,
-                          true,
+                          prayerAlerts['dhuhr'] ?? true,
                           primaryColor,
                           subtitleColor,
+                          onTap: () => _togglePrayerAlert(ref, 'dhuhr'),
                         ),
                         _buildPrayerIconTile(
                           context.tr('asr'),
                           Icons.wb_cloudy,
-                          false,
+                          prayerAlerts['asr'] ?? true,
                           primaryColor,
                           subtitleColor,
+                          onTap: () => _togglePrayerAlert(ref, 'asr'),
                         ),
                         _buildPrayerIconTile(
                           context.tr('maghrib'),
                           Icons.nights_stay,
-                          true,
+                          prayerAlerts['maghrib'] ?? true,
                           primaryColor,
                           subtitleColor,
+                          onTap: () => _togglePrayerAlert(ref, 'maghrib'),
                         ),
                         _buildPrayerIconTile(
                           context.tr('isha'),
                           Icons.bedtime,
-                          true,
+                          prayerAlerts['isha'] ?? true,
                           primaryColor,
                           subtitleColor,
+                          onTap: () => _togglePrayerAlert(ref, 'isha'),
                         ),
                       ],
                     ),
@@ -217,24 +235,25 @@ class SettingsPage extends ConsumerWidget {
                           context.isAppRtl
                               ? Alignment.centerLeft
                               : Alignment.centerRight,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              isDark
-                                  ? Theme.of(context).dividerColor
-                                  : const Color(0xFFF0F0F0),
+                      child: Material(
+                        color: mutedFill,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          context.tr('customize_all'),
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                          onTap: () => _openCustomizeSheet(context, ref),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Text(
+                              context.tr('customize_all'),
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -338,10 +357,7 @@ class SettingsPage extends ConsumerWidget {
                           Container(
                             padding: EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color:
-                                  isDark
-                                      ? Theme.of(context).dividerColor
-                                      : const Color(0xFFF9F9F9),
+                              color: mutedFill,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(Icons.language, color: textColor),
@@ -383,10 +399,7 @@ class SettingsPage extends ConsumerWidget {
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Divider(
-                        color:
-                            isDark
-                                ? Colors.grey.shade800
-                                : Colors.grey.shade200,
+                        color: colorScheme.outlineVariant,
                         thickness: 1,
                       ),
                     ),
@@ -399,10 +412,7 @@ class SettingsPage extends ConsumerWidget {
                           Container(
                             padding: EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color:
-                                  isDark
-                                      ? Theme.of(context).dividerColor
-                                      : const Color(0xFFF9F9F9),
+                              color: mutedFill,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -435,10 +445,8 @@ class SettingsPage extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          Switch(
+                          Switch.adaptive(
                             value: isDark,
-                            activeThumbColor: Colors.white,
-                            activeTrackColor: primaryColor,
                             onChanged: (val) {
                               ref
                                   .read(themeModeProvider.notifier)
@@ -459,10 +467,15 @@ class SettingsPage extends ConsumerWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(32),
                   gradient: LinearGradient(
-                    colors:
-                        isDark
-                            ? [Theme.of(context).colorScheme.primaryContainer, Theme.of(context).scaffoldBackgroundColor]
-                            : const [Color(0xFF003527), Color(0xFF001A13)],
+                    colors: isDark
+                        ? [
+                            colorScheme.primaryContainer,
+                            bgColor,
+                          ]
+                        : const [
+                            Color(0xFF003527),
+                            Color(0xFF001A13),
+                          ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -487,7 +500,9 @@ class SettingsPage extends ConsumerWidget {
                             context.tr('contact_us'),
                             style: TextStyle(
                               fontSize: 20,
-                              color: Colors.white,
+                              color: isDark
+                                  ? colorScheme.onPrimaryContainer
+                                  : Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -495,39 +510,35 @@ class SettingsPage extends ConsumerWidget {
                           Text(
                             context.tr('contact_us_desc'),
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: (isDark
+                                      ? colorScheme.onPrimaryContainer
+                                      : Colors.white)
+                                  .withValues(alpha: 0.8),
                               fontSize: 14,
                               height: 1.5,
                             ),
                           ),
                           const SizedBox(height: 24),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
+                          FilledButton.icon(
+                            onPressed: () => _sendMessage(context),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: colorScheme.secondary,
+                              foregroundColor: colorScheme.onSecondary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD4B86A),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.send,
-                                  color: Color(0xFF241A00),
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  context.tr('send_message'),
-                                  style: TextStyle(
-                                    color: Color(0xFF241A00),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
+                            icon: const Icon(Icons.send, size: 20),
+                            label: Text(
+                              context.tr('send_message'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ],
@@ -540,20 +551,20 @@ class SettingsPage extends ConsumerWidget {
 
               // Logout Button
               Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      context.tr('logout'),
-                      style: TextStyle(
-                        color: Color(0xFFBA1A1A),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                child: TextButton.icon(
+                  onPressed: () => _logout(context, ref),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.error,
+                    minimumSize: const Size(48, 48),
+                  ),
+                  icon: const Icon(Icons.logout),
+                  label: Text(
+                    context.tr('logout'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
-                    const SizedBox(width: 12),
-                    Icon(Icons.logout, color: Color(0xFFBA1A1A)),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 48),
@@ -564,26 +575,306 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  Future<void> _editProfile(BuildContext context, WidgetRef ref) async {
+    final profile = ref.read(userProfileProvider);
+    final nameController = TextEditingController(
+      text: profile.name.isEmpty ? '' : profile.name,
+    );
+    final locationController = TextEditingController(
+      text: profile.location.isEmpty ? '' : profile.location,
+    );
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(dialogContext.tr('edit_profile')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: dialogContext.tr('profile_name_label'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: locationController,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: dialogContext.tr('profile_location_label'),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(dialogContext.tr('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(dialogContext.tr('save')),
+            ),
+          ],
+        );
+      },
+    );
+
+    final name = nameController.text;
+    final location = locationController.text;
+    nameController.dispose();
+    locationController.dispose();
+
+    if (saved != true) {
+      return;
+    }
+    if (!InputValidators.isDisplayName(name) ||
+        !InputValidators.isLocationLabel(location)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('profile_invalid'))),
+        );
+      }
+      return;
+    }
+
+    await ref.read(userProfileProvider.notifier).update(
+          name: name,
+          location: location,
+        );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('profile_saved'))),
+      );
+    }
+  }
+
+  Future<void> _setNotificationsEnabled(
+    BuildContext context,
+    WidgetRef ref,
+    bool enabled,
+  ) async {
+    if (enabled) {
+      final title = context.tr('adhan_notifications');
+      final body = context.tr('notifications_enabled_body');
+      final deniedMessage = context.tr('notifications_permission_denied');
+      final granted = await NotificationService.requestPermissions();
+      if (!granted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(deniedMessage)),
+          );
+        }
+        return;
+      }
+      await ref.read(notificationsEnabledProvider.notifier).setEnabled(true);
+      await NotificationService.showTestNotification(
+        title: title,
+        body: body,
+      );
+    } else {
+      await ref.read(notificationsEnabledProvider.notifier).setEnabled(false);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('notifications_disabled'))),
+        );
+      }
+    }
+  }
+
+  Future<void> _togglePrayerAlert(WidgetRef ref, String prayerId) async {
+    final current = ref.read(prayerAlertPrefsProvider)[prayerId] ?? true;
+    await ref.read(prayerAlertPrefsProvider.notifier).setPrayer(prayerId, !current);
+  }
+
+  Future<void> _openCustomizeSheet(BuildContext context, WidgetRef ref) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final alerts = ref.watch(prayerAlertPrefsProvider);
+            final prayers = <String, String>{
+              'fajr': context.tr('fajr'),
+              'dhuhr': context.tr('dhuhr'),
+              'asr': context.tr('asr'),
+              'maghrib': context.tr('maghrib'),
+              'isha': context.tr('isha'),
+            };
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      context.tr('customize_prayer_alerts'),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    ...prayers.entries.map(
+                      (entry) => SwitchListTile.adaptive(
+                        title: Text(entry.value),
+                        value: alerts[entry.key] ?? true,
+                        onChanged: (value) {
+                          ref
+                              .read(prayerAlertPrefsProvider.notifier)
+                              .setPrayer(entry.key, value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _sendMessage(BuildContext context) async {
+    final subject = context.tr('contact_email_subject');
+    final invalidMessage = context.tr('contact_message_invalid');
+    final launchFailed = context.tr('contact_launch_failed');
+    final messageController = TextEditingController();
+    final sent = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(dialogContext.tr('send_message')),
+          content: TextField(
+            controller: messageController,
+            maxLines: 5,
+            decoration: InputDecoration(
+              hintText: dialogContext.tr('contact_message_hint'),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(dialogContext.tr('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(dialogContext.tr('send_message')),
+            ),
+          ],
+        );
+      },
+    );
+
+    final message = messageController.text;
+    messageController.dispose();
+    if (sent != true) {
+      return;
+    }
+    if (!InputValidators.isFeedbackMessage(message)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(invalidMessage)),
+        );
+      }
+      return;
+    }
+
+    final uri = Uri.parse(
+      'mailto:${AppConstants.supportEmail}'
+      '?subject=${Uri.encodeComponent(subject)}'
+      '&body=${Uri.encodeComponent(InputValidators.sanitizeMessage(message))}',
+    );
+
+    try {
+      final launched = await launchUrl(uri);
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(launchFailed)),
+        );
+      }
+    } catch (error, stackTrace) {
+      AppLogger.error('Failed to open mail app', error, stackTrace);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(launchFailed)),
+        );
+      }
+    }
+  }
+
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(dialogContext.tr('logout')),
+          content: Text(dialogContext.tr('logout_confirm')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(dialogContext.tr('cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              ),
+              child: Text(dialogContext.tr('logout')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await ref.read(userProfileProvider.notifier).clear();
+    await ref.read(notificationsEnabledProvider.notifier).setEnabled(false);
+    ref.read(mainTabIndexProvider.notifier).openHome();
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr('logged_out'))),
+    );
+  }
+
   Widget _buildPrayerIconTile(
     String title,
     IconData icon,
     bool active,
     Color primaryColor,
-    Color subtitleColor,
-  ) {
-    return Column(
-      children: [
-        Icon(icon, color: active ? primaryColor : subtitleColor, size: 28),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: active ? FontWeight.bold : FontWeight.normal,
-            color: active ? primaryColor : subtitleColor,
-          ),
+    Color subtitleColor, {
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Column(
+          children: [
+            Icon(icon, color: active ? primaryColor : subtitleColor, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                color: active ? primaryColor : subtitleColor,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -5,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/startup_sync_service.dart';
 import '../../core/utils/app_logger.dart';
+import '../../core/utils/input_validators.dart';
 
 /// State notifier for theme mode management.
 ///
@@ -214,14 +217,127 @@ final localeProvider =
 class FirstLaunchNotifier extends Notifier<bool> {
   @override
   bool build() {
-    return _globalPrefs.getBool(AppConstants.isFirstLaunchKey) ?? true;
+    return !_hasCompletedOnboarding();
   }
 
+  static bool _hasCompletedOnboarding() {
+    return _globalPrefs.getBool(AppConstants.isFirstLaunchKey) == false;
+  }
+
+  /// Source of truth from disk — not in-memory state.
+  bool get shouldShowOnboarding => !_hasCompletedOnboarding();
+
   Future<void> completeOnboarding() async {
-    state = false;
     await _globalPrefs.setBool(AppConstants.isFirstLaunchKey, false);
+    state = false;
+    AppLogger.info('Onboarding completed and saved');
   }
 }
 
 final firstLaunchProvider =
     NotifierProvider<FirstLaunchNotifier, bool>(FirstLaunchNotifier.new);
+
+class MainTabNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void setIndex(int index) {
+    if (index < 0 || index > 3) {
+      return;
+    }
+    state = index;
+  }
+
+  void openHome() => setIndex(0);
+
+  void openSettings() => setIndex(3);
+}
+
+final mainTabIndexProvider =
+    NotifierProvider<MainTabNotifier, int>(MainTabNotifier.new);
+
+class UserProfile {
+  final String name;
+  final String location;
+
+  const UserProfile({required this.name, required this.location});
+}
+
+class UserProfileNotifier extends Notifier<UserProfile> {
+  @override
+  UserProfile build() {
+    return UserProfile(
+      name: _globalPrefs.getString(AppConstants.userNameKey) ?? '',
+      location: _globalPrefs.getString(AppConstants.userCityKey) ?? '',
+    );
+  }
+
+  Future<void> update({required String name, required String location}) async {
+    final sanitizedName = InputValidators.sanitizeDisplayName(name);
+    final sanitizedLocation = InputValidators.sanitizeLocationLabel(location);
+    state = UserProfile(name: sanitizedName, location: sanitizedLocation);
+    await _globalPrefs.setString(AppConstants.userNameKey, sanitizedName);
+    await _globalPrefs.setString(AppConstants.userCityKey, sanitizedLocation);
+    AppLogger.info('Profile updated');
+  }
+
+  Future<void> clear() async {
+    state = const UserProfile(name: '', location: '');
+    await _globalPrefs.remove(AppConstants.userNameKey);
+    await _globalPrefs.remove(AppConstants.userCityKey);
+  }
+}
+
+final userProfileProvider =
+    NotifierProvider<UserProfileNotifier, UserProfile>(UserProfileNotifier.new);
+
+class PrayerAlertPrefsNotifier extends Notifier<Map<String, bool>> {
+  static const _ids = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+  @override
+  Map<String, bool> build() {
+    final raw = _globalPrefs.getString(AppConstants.prayerNotificationPrefsKey);
+    if (raw == null) {
+      return {for (final id in _ids) id: true};
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return {
+          for (final id in _ids)
+            id: decoded[id] is bool ? decoded[id] as bool : true,
+        };
+      }
+    } catch (error, stackTrace) {
+      AppLogger.error('Failed to parse prayer alert prefs', error, stackTrace);
+    }
+    return {for (final id in _ids) id: true};
+  }
+
+  Future<void> setPrayer(String id, bool enabled) async {
+    final key = InputValidators.sanitizePrayerId(id);
+    if (!_ids.contains(key)) {
+      return;
+    }
+    state = {...state, key: enabled};
+    await _persist();
+  }
+
+  Future<void> setAll(bool enabled) async {
+    state = {for (final id in _ids) id: enabled};
+    await _persist();
+  }
+
+  Future<void> _persist() async {
+    await _globalPrefs.setString(
+      AppConstants.prayerNotificationPrefsKey,
+      jsonEncode(state),
+    );
+  }
+}
+
+final prayerAlertPrefsProvider =
+    NotifierProvider<PrayerAlertPrefsNotifier, Map<String, bool>>(
+      PrayerAlertPrefsNotifier.new,
+    );

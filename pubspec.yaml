@@ -33,6 +33,7 @@ dependencies:
   timezone: ^0.11.1
   equatable: ^2.0.7
   dartz: ^0.10.1
+  url_launcher: ^6.3.2
   logger: ^2.6.0
 
 dev_dependencies:

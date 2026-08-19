@@ -69,7 +69,7 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
             ? Center(
                 child: Text(
                   context.tr('no_azkar_found'),
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
                 ),
               )
             : Column(
@@ -99,7 +99,7 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
                         ? Center(
                             child: Text(
                               context.tr('no_matching_results'),
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
                             ),
                           )
                         : GridView.builder(
@@ -169,7 +169,7 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
                           Text(
                             '${category.azkar.length} ${context.tr('zekr_count_unit')}',
                             style: TextStyle(
-                              color: Colors.grey.shade600,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 13,
                             ),
                           ),

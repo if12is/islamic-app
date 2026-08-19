@@ -71,7 +71,7 @@ class _QiblaCompassState extends State<QiblaCompass> {
                 height: 320,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFFF0F2F1),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.02),
@@ -240,7 +240,9 @@ class _QiblaCompassState extends State<QiblaCompass> {
                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   decoration: BoxDecoration(
                     color:
-                        isFacingQibla ? const Color(0xFF003527) : Colors.white,
+                        isFacingQibla
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
@@ -260,8 +262,8 @@ class _QiblaCompassState extends State<QiblaCompass> {
                           fontSize: 14,
                           color:
                               isFacingQibla
-                                  ? Colors.white
-                                  : const Color(0xFF1A1C1C),
+                                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                                  : Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -272,8 +274,8 @@ class _QiblaCompassState extends State<QiblaCompass> {
                           shape: BoxShape.circle,
                           color:
                               isFacingQibla
-                                  ? const Color(0xFFFFE088)
-                                  : const Color(0xFF735C00),
+                                  ? Theme.of(context).colorScheme.secondary
+                                  : Theme.of(context).colorScheme.secondary,
                         ),
                       ),
                     ],

@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/design_colors.dart';
 import '../../../../core/services/azkar_data_service.dart';
 import '../../../../core/widgets/custom_loader.dart';
+import '../../../../shared/widgets/shell_header_buttons.dart';
+import '../../../home/presentation/providers/ayah_provider.dart';
+import '../../data/azkar_progress_store.dart';
 import '../../data/models/azkar_models.dart';
 import 'all_azkar_categories_page.dart';
 import 'azkar_details_page.dart';
 
-class AzkarPage extends StatefulWidget {
+class AzkarPage extends ConsumerStatefulWidget {
   const AzkarPage({super.key});
 
   @override
-  State<AzkarPage> createState() => _AzkarPageState();
+  ConsumerState<AzkarPage> createState() => _AzkarPageState();
 }
 
-class _AzkarPageState extends State<AzkarPage> {
+class _AzkarPageState extends ConsumerState<AzkarPage> {
   final AzkarDataService _azkarDataService = AzkarDataService();
   bool _isLoading = true;
   List<AzkarCategory> _categories = [];
+  AzkarProgressSnapshot? _lastAzkar;
 
   @override
   void initState() {
@@ -51,6 +56,7 @@ class _AzkarPageState extends State<AzkarPage> {
         _categories = parsedCategories;
         _isLoading = false;
       });
+      await _refreshLastAzkar();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -70,6 +76,16 @@ class _AzkarPageState extends State<AzkarPage> {
     }
   }
 
+  Future<void> _refreshLastAzkar() async {
+    final snapshot = await AzkarProgressStore.lastOpened(categories: _categories);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _lastAzkar = snapshot;
+    });
+  }
+
   void _navigateToDetails(AzkarCategory category) {
     if (category.azkar.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,12 +93,14 @@ class _AzkarPageState extends State<AzkarPage> {
       );
       return;
     }
-    
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AzkarDetailsPage(category: category),
-      ),
-    );
+
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => AzkarDetailsPage(category: category),
+          ),
+        )
+        .then((_) => _refreshLastAzkar());
   }
 
   @override
@@ -94,10 +112,7 @@ class _AzkarPageState extends State<AzkarPage> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.menu, color: Theme.of(context).textTheme.bodyLarge!.color!),
-            onPressed: () {},
-          ),
+          leading: const ShellMenuButton(),
           title: Text(
             context.tr('azkar'),
             style: TextStyle(
@@ -106,15 +121,7 @@ class _AzkarPageState extends State<AzkarPage> {
             ),
           ),
           centerTitle: true,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: CircleAvatar(
-                backgroundColor: Theme.of(context).cardColor,
-                child: Icon(Icons.person, color: Theme.of(context).textTheme.bodyLarge!.color!),
-              ),
-            ),
-          ],
+          actions: const [ShellProfileButton()],
         ),
         body: _isLoading
             ? const Center(child: CustomLoader())
@@ -127,6 +134,10 @@ class _AzkarPageState extends State<AzkarPage> {
                     const SizedBox(height: 24),
                     _buildAdhkarSectionHeader(),
                     const SizedBox(height: 16),
+                    if (_lastAzkar != null) ...[
+                      _buildContinueAzkarCard(_lastAzkar!),
+                      const SizedBox(height: 16),
+                    ],
                     _buildAdhkarGrid(),
                     const SizedBox(height: 16),
                     _buildAyahOfTheDayCard(),
@@ -152,11 +163,13 @@ class _AzkarPageState extends State<AzkarPage> {
         GestureDetector(
           onTap: () {
             // Navigate to robust grid listing all azkar from the API
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => AllAzkarCategoriesPage(categories: _categories),
-              ),
-            );
+            Navigator.of(context)
+                .push(
+                  MaterialPageRoute(
+                    builder: (context) => AllAzkarCategoriesPage(categories: _categories),
+                  ),
+                )
+                .then((_) => _refreshLastAzkar());
           },
           child: Text(
             context.tr('view_all'),
@@ -189,6 +202,42 @@ class _AzkarPageState extends State<AzkarPage> {
     }
 
     return context.tr(fallbackKey);
+  }
+
+  Widget _buildContinueAzkarCard(AzkarProgressSnapshot snapshot) {
+    final category = snapshot.category;
+    final title = _displayCategoryName(context, category, 'sleep_azkar');
+    final progressLabel = snapshot.isComplete
+        ? context.tr('azkar_session_complete')
+        : '${context.tr('continue_azkar')} • ${snapshot.completedCount}/${snapshot.totalCount}';
+
+    return _buildAdhkarCard(
+      title: title,
+      subtitle: progressLabel,
+      count: category.azkar.length.toString(),
+      icon: _iconForCategory(category),
+      color: Theme.of(context).colorScheme.primaryContainer,
+      isFullWidth: true,
+      showArrow: true,
+      onTap: () => _navigateToDetails(category),
+    );
+  }
+
+  IconData _iconForCategory(AzkarCategory category) {
+    final haystack = '${category.id} ${category.nameAr} ${category.nameEn}'.toLowerCase();
+    if (haystack.contains('sleep') || haystack.contains('نوم')) {
+      return Icons.nights_stay;
+    }
+    if (haystack.contains('evening') || haystack.contains('مساء')) {
+      return Icons.nights_stay;
+    }
+    if (haystack.contains('morning') || haystack.contains('صباح')) {
+      return Icons.wb_sunny;
+    }
+    if (haystack.contains('prayer') || haystack.contains('صلاة')) {
+      return Icons.mosque;
+    }
+    return Icons.auto_awesome;
   }
 
   Widget _buildAdhkarGrid() {
@@ -290,7 +339,7 @@ class _AzkarPageState extends State<AzkarPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 CircleAvatar(
-                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: Icon(icon, color: Theme.of(context).colorScheme.secondary),
                 ),
                 if (count != '0')
@@ -340,11 +389,15 @@ class _AzkarPageState extends State<AzkarPage> {
   }
 
   Widget _buildAyahOfTheDayCard() {
+    final ayahAsync = ref.watch(dailyAyahProvider);
+    final overlayText = Colors.white;
+
     return Container(
       width: double.infinity,
-      height: 120,
+      constraints: const BoxConstraints(minHeight: 132),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF0C4F41),
         image: const DecorationImage(
           image: NetworkImage(
               'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'),
@@ -355,7 +408,10 @@ class _AzkarPageState extends State<AzkarPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
-            colors: [Colors.black.withValues(alpha: 0.7), Colors.black.withValues(alpha: 0.3)],
+            colors: [
+              Colors.black.withValues(alpha: 0.82),
+              Colors.black.withValues(alpha: 0.45),
+            ],
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
           ),
@@ -365,21 +421,86 @@ class _AzkarPageState extends State<AzkarPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              context.tr('ayah_of_the_day'),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.secondary,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.tr('ayah_of_the_day'),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: context.tr('random_ayah'),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: ayahAsync.isLoading
+                      ? null
+                      : () => ref
+                          .read(dailyAyahIndexProvider.notifier)
+                          .shuffle(),
+                  icon: ayahAsync.isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.shuffle_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              context.tr('azkar_ayah_of_day_text'),
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge!.color!,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+            const SizedBox(height: 8),
+            ayahAsync.when(
+              skipLoadingOnReload: true,
+              data: (ayahData) {
+                final ayahText = (ayahData['text'] as String? ?? '').trim();
+                return Text(
+                  ayahText.isEmpty
+                      ? context.tr('azkar_ayah_of_day_text')
+                      : ayahText,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: overlayText,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    height: 1.5,
+                    shadows: const [
+                      Shadow(color: Colors.black87, blurRadius: 8),
+                    ],
+                  ),
+                );
+              },
+              loading: () => Text(
+                context.tr('azkar_ayah_of_day_text'),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: overlayText,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  height: 1.5,
+                ),
+              ),
+              error: (_, _) => Text(
+                context.tr('azkar_ayah_of_day_text'),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: overlayText,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  height: 1.5,
+                ),
               ),
             ),
           ],

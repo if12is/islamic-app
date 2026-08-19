@@ -17,3 +17,10 @@ class DesignColors {
   static const Color text = Color(0xFFF9FAFB);
   static const Color textMuted = Color(0xFF9CA3AF);
 }
+
+extension AppThemeColors on BuildContext {
+  ColorScheme get colors => Theme.of(this).colorScheme;
+
+  /// Chip, icon-circle, and muted button fill. Never use [ThemeData.dividerColor].
+  Color get mutedFill => colors.surfaceContainerHighest;
+}

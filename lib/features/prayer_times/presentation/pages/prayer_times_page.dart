@@ -231,9 +231,9 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.wifi_off_rounded,
-                        color: Color(0xFFBA1A1A),
+                        color: Theme.of(context).colorScheme.error,
                         size: 48,
                       ),
                       const SizedBox(height: 14),
@@ -260,8 +260,8 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                         ),
                         child: Text(
                           context.tr('retry'),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
                             fontFamily: 'Cairo',
                           ),
                         ),
@@ -512,13 +512,13 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                 decoration: BoxDecoration(
                   color:
                       isCurrent
-                          ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.12)
+                          ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.12)
                           : Colors.transparent,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
-                  color: isCurrent ? Theme.of(context).scaffoldBackgroundColor : Theme.of(context).textTheme.bodyLarge!.color!,
+                  color: isCurrent ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
                   size: 28,
                 ),
               ),
@@ -531,7 +531,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                     style: TextStyle(
                       color:
                           isCurrent
-                              ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8)
+                              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8)
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -540,7 +540,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                   Text(
                     time,
                     style: TextStyle(
-                      color: isCurrent ? Theme.of(context).scaffoldBackgroundColor : Theme.of(context).textTheme.bodyLarge!.color!,
+                      color: isCurrent ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
                     ),
@@ -564,7 +564,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                   child: Text(
                     context.tr('current_prayer'),
                     style: TextStyle(
-                      color: Theme.of(context).scaffoldBackgroundColor,
+                      color: Theme.of(context).colorScheme.onSecondary,
                       fontWeight: FontWeight.w800,
                       fontSize: 13,
                     ),
@@ -583,8 +583,8 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                           isDone
                               ? Theme.of(context).colorScheme.secondary
                               : (isCurrent
-                                  ? Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45)
-                                  : Theme.of(context).dividerColor),
+                                  ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.45)
+                                  : Theme.of(context).colorScheme.outline),
                       width: 2,
                     ),
                     color:
@@ -595,7 +595,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                           ? Icon(
                             Icons.check,
                             size: 20,
-                            color: Theme.of(context).scaffoldBackgroundColor,
+                            color: Theme.of(context).colorScheme.onSecondary,
                           )
                           : null,
                 ),

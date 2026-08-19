@@ -133,6 +133,39 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
     await prefs.setDouble('quran_font_size', _fontSize);
   }
 
+  bool get _isJuzMode => widget.juzId != null;
+
+  int get _unitIndex => _isJuzMode ? widget.juzId! : widget.surah!.id;
+
+  int get _maxUnit => _isJuzMode ? 30 : 114;
+
+  bool get _hasPreviousUnit => _unitIndex > 1;
+
+  bool get _hasNextUnit => _unitIndex < _maxUnit;
+
+  void _openNeighbor({required bool next}) {
+    if (next && !_hasNextUnit) return;
+    if (!next && !_hasPreviousUnit) return;
+
+    final target = next ? _unitIndex + 1 : _unitIndex - 1;
+    final page =
+        _isJuzMode
+            ? SurahReaderPage(juzId: target)
+            : SurahReaderPage(
+              surah: Surah(
+                id: target,
+                nameAr: '$target',
+                nameEn: '$target',
+                versesCount: 0,
+                type: '',
+              ),
+            );
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
   @override
   void dispose() {
     for (var recognizer in _recognizers) {
@@ -377,14 +410,14 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
         height: 46.0,
         padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         decoration: BoxDecoration(
-          color: isDark ? Theme.of(context).cardColor : Color(0xFFE8F0EA),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           border: Border(
             top: BorderSide(
-              color: isDark ? Colors.black : Colors.grey.shade300,
+              color: Theme.of(context).colorScheme.outlineVariant,
               width: 0.5,
             ),
             bottom: BorderSide(
-              color: isDark ? Colors.black : Colors.grey.shade300,
+              color: Theme.of(context).colorScheme.outlineVariant,
               width: 1.5,
             ),
           ),
@@ -395,7 +428,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
             Text(
               juzText,
               style: TextStyle(
-                color: isDark ? Theme.of(context).colorScheme.secondary : Color(0xFF0B4633),
+                color: Theme.of(context).colorScheme.secondary,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
                 fontFamily: GoogleFonts.cairo().fontFamily,
@@ -404,7 +437,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
             Text(
               '${context.tr('surah_word')} $currentSurahName',
               style: TextStyle(
-                color: isDark ? Colors.white : Color(0xFF0B4633),
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
                 fontFamily: GoogleFonts.cairo().fontFamily,
@@ -413,7 +446,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
             Text(
               hizbText,
               style: TextStyle(
-                color: isDark ? Theme.of(context).colorScheme.secondary : Color(0xFF0B4633),
+                color: Theme.of(context).colorScheme.secondary,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
                 fontFamily: GoogleFonts.cairo().fontFamily,
@@ -502,7 +535,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
                     children: [
                       Text(
                         context.tr(_errorKey),
-                        style: TextStyle(color: Colors.red.shade800),
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
                       ),
                       SizedBox(height: 16),
                       ElevatedButton(
@@ -539,6 +572,26 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Tooltip(
+                          message: _previousUnitLabel,
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.skip_previous,
+                              color: _hasPreviousUnit
+                                  ? (isDark
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Colors.black87)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.38),
+                            ),
+                            onPressed: _hasPreviousUnit
+                                ? () => _openNeighbor(next: false)
+                                : null,
+                          ),
+                        ),
+                        _buildDivider(),
                         // Bookmark icon
                         IconButton(
                           icon: Icon(
@@ -561,7 +614,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
                             }
                           },
                         ),
-                        _buildDivider(isDark),
+                        _buildDivider(),
                         // Dark Mode icon
                         IconButton(
                           icon: Icon(
@@ -575,7 +628,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
                             ref.read(themeModeProvider.notifier).toggleTheme();
                           },
                         ),
-                        _buildDivider(isDark),
+                        _buildDivider(),
                         // Decrease Font
                         IconButton(
                           icon: Icon(
@@ -584,7 +637,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
                           ),
                           onPressed: () => _changeFontSize(-2.0),
                         ),
-                        _buildDivider(isDark),
+                        _buildDivider(),
                         // Increase Font
                         IconButton(
                           icon: Icon(
@@ -593,6 +646,26 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
                           ),
                           onPressed: () => _changeFontSize(2.0),
                         ),
+                        _buildDivider(),
+                        Tooltip(
+                          message: _nextUnitLabel,
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.skip_next,
+                              color: _hasNextUnit
+                                  ? (isDark
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Colors.black87)
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.38),
+                            ),
+                            onPressed: _hasNextUnit
+                                ? () => _openNeighbor(next: true)
+                                : null,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -600,16 +673,142 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
               ),
           ],
         ),
+        bottomNavigationBar: _buildAdjacentNavBar(),
       ),
     );
   }
 
-  Widget _buildDivider(bool isDark) {
+  Widget _buildDivider() {
     return Container(
       height: 24,
       width: 1,
       margin: EdgeInsets.symmetric(horizontal: 8),
-      color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+      color: Theme.of(context).colorScheme.outlineVariant,
+    );
+  }
+
+  String get _previousUnitLabel =>
+      _isJuzMode ? context.tr('previous_juz') : context.tr('previous_surah');
+
+  String get _nextUnitLabel =>
+      _isJuzMode ? context.tr('next_juz') : context.tr('next_surah');
+
+  Widget _buildAdjacentNavBar() {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: Theme.of(context).cardColor,
+      elevation: 8,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: _previousUnitLabel,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        _hasPreviousUnit
+                            ? () => _openNeighbor(next: false)
+                            : null,
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    label: Text(
+                      context.tr('reader_previous'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: scheme.onSurface,
+                      disabledForegroundColor: scheme.onSurface.withValues(
+                        alpha: 0.38,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: BorderSide(color: scheme.outline),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Tooltip(
+                  message: _nextUnitLabel,
+                  child: FilledButton.icon(
+                    onPressed:
+                        _hasNextUnit ? () => _openNeighbor(next: true) : null,
+                    icon: const Icon(Icons.arrow_forward, size: 18),
+                    label: Text(
+                      context.tr('reader_next'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      disabledBackgroundColor: scheme.surfaceContainerHighest,
+                      disabledForegroundColor: scheme.onSurface.withValues(
+                        alpha: 0.38,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEndOfReaderNav() {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Column(
+        children: [
+          if (_hasNextUnit)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _openNeighbor(next: true),
+                icon: const Icon(Icons.arrow_forward),
+                label: Text(_nextUnitLabel),
+                style: FilledButton.styleFrom(
+                  backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+            ),
+          if (_hasNextUnit && _hasPreviousUnit) const SizedBox(height: 12),
+          if (_hasPreviousUnit)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openNeighbor(next: false),
+                icon: const Icon(Icons.arrow_back),
+                label: Text(_previousUnitLabel),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: scheme.onSurface,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -810,55 +1009,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
     // Flush remaining spans
     flushSpans();
 
-    if (widget.surah != null && widget.surah!.id < 114) {
-      contentChildren.add(const SizedBox(height: 32));
-      contentChildren.add(
-        Center(
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder:
-                      (context) => SurahReaderPage(
-                        surah: Surah(
-                          id: widget.surah!.id + 1,
-                          nameAr: 'السورة التالية',
-                          nameEn: 'Next Surah',
-                          versesCount: 0,
-                          type: '',
-                        ),
-                      ),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.arrow_back_ios_new, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  context.tr('next_surah') != 'next_surah'
-                      ? context.tr('next_surah')
-                      : 'السورة التالية',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    contentChildren.add(_buildEndOfReaderNav());
 
     return SingleChildScrollView(
       controller: _scrollController,

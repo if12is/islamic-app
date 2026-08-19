@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/custom_loader.dart';
+import '../../data/azkar_progress_store.dart';
 import '../../data/models/azkar_models.dart';
 
 class AzkarDetailsPage extends StatefulWidget {
@@ -24,6 +25,7 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
   void initState() {
     super.initState();
     _initAndLoadProgress();
+    AzkarProgressStore.markOpened(widget.category.id);
   }
 
   String get _currentSessionKey {
@@ -228,7 +230,7 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                                   height: 50,
                                   child: CircularProgressIndicator(
                                     value: zekr.targetCount == 0 ? 1.0 : (currentCount / zekr.targetCount),
-                                    backgroundColor: Theme.of(context).dividerColor,
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       isDone ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                                     ),

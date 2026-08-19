@@ -6,7 +6,9 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../../home/presentation/pages/home_page.dart';
 
 /// Onboarding page showing welcome screens for new users.
 ///
@@ -63,18 +65,24 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               top: -72,
               right: context.isAppRtl ? null : -48,
               left: context.isAppRtl ? -48 : null,
-              child: _GlowOrb(
-                color: colorScheme.tertiary.withValues(alpha: isDark ? 0.24 : 0.16),
-                size: 180,
+              child: IgnorePointer(
+                child: _GlowOrb(
+                  color: colorScheme.tertiary
+                      .withValues(alpha: isDark ? 0.24 : 0.16),
+                  size: 180,
+                ),
               ),
             ),
             Positioned(
               bottom: -88,
               left: context.isAppRtl ? null : -56,
               right: context.isAppRtl ? -56 : null,
-              child: _GlowOrb(
-                color: colorScheme.primary.withValues(alpha: isDark ? 0.20 : 0.14),
-                size: 220,
+              child: IgnorePointer(
+                child: _GlowOrb(
+                  color: colorScheme.primary
+                      .withValues(alpha: isDark ? 0.20 : 0.14),
+                  size: 220,
+                ),
               ),
             ),
             SafeArea(
@@ -86,40 +94,47 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: _isFinishing ? null : _finishOnboarding,
+                          onPressed: _isFinishing
+                              ? null
+                              : () => _finishOnboarding(
+                                    requestNotifications: false,
+                                  ),
                           child: Text(context.tr('skip')),
                         ),
                       ],
                     ),
                   ),
                   Expanded(
-                    child: PageView(
-                      controller: _pageController,
-                      onPageChanged: (int page) =>
-                          setState(() => _currentPage = page),
-                      children: [
-                        _buildFeaturePage(
-                          context,
-                          icon: Icons.auto_awesome,
-                          accent: colorScheme.tertiary,
-                          titleKey: 'onboarding_welcome_title',
-                          bodyKey: 'onboarding_welcome_body',
-                        ),
-                        _buildFeaturePage(
-                          context,
-                          icon: Icons.location_on,
-                          accent: colorScheme.primary,
-                          titleKey: 'onboarding_location_title',
-                          bodyKey: 'onboarding_location_body',
-                        ),
-                        _buildFeaturePage(
-                          context,
-                          icon: Icons.notifications_active,
-                          accent: colorScheme.secondary,
-                          titleKey: 'onboarding_notifications_title',
-                          bodyKey: 'onboarding_notifications_body',
-                        ),
-                      ],
+                    child: Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: (int page) =>
+                            setState(() => _currentPage = page),
+                        children: [
+                          _buildFeaturePage(
+                            context,
+                            icon: Icons.auto_awesome,
+                            accent: colorScheme.tertiary,
+                            titleKey: 'onboarding_welcome_title',
+                            bodyKey: 'onboarding_welcome_body',
+                          ),
+                          _buildFeaturePage(
+                            context,
+                            icon: Icons.location_on,
+                            accent: colorScheme.primary,
+                            titleKey: 'onboarding_location_title',
+                            bodyKey: 'onboarding_location_body',
+                          ),
+                          _buildFeaturePage(
+                            context,
+                            icon: Icons.notifications_active,
+                            accent: colorScheme.secondary,
+                            titleKey: 'onboarding_notifications_title',
+                            bodyKey: 'onboarding_notifications_body',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   _buildBottomNavigation(context),
@@ -169,7 +184,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     );
   }
 
-  Future<void> _finishOnboarding() async {
+  Future<void> _finishOnboarding({bool requestNotifications = true}) async {
     if (_isFinishing) {
       return;
     }
@@ -178,17 +193,34 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       _isFinishing = true;
     });
 
-    await NotificationService.requestPermissions();
-    unawaited(runStartupSync(force: true));
-    await ref.read(firstLaunchProvider.notifier).completeOnboarding();
+    try {
+      if (requestNotifications) {
+        await NotificationService.requestPermissions().timeout(
+          const Duration(seconds: 8),
+          onTimeout: () {
+            AppLogger.warning('Notification permission request timed out');
+            return false;
+          },
+        );
+      }
+      unawaited(runStartupSync(force: true));
+    } catch (error, stackTrace) {
+      AppLogger.error('Failed to finish onboarding', error, stackTrace);
+    }
+
+    try {
+      await ref.read(firstLaunchProvider.notifier).completeOnboarding();
+    } catch (error, stackTrace) {
+      AppLogger.error('Failed to persist onboarding completion', error, stackTrace);
+    }
 
     if (!mounted) {
       return;
     }
 
-    setState(() {
-      _isFinishing = false;
-    });
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
   }
 
   Widget _buildFeaturePage(
@@ -326,7 +358,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                                 return;
                               }
 
-                              await _finishOnboarding();
+                              await _finishOnboarding(
+                                requestNotifications: true,
+                              );
                             },
                       child: _isFinishing
                           ? const SizedBox(

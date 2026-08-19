@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,15 +37,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _logoController.forward();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      final isFirstLaunch = ref.read(firstLaunchProvider);
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => isFirstLaunch ? const OnboardingPage() : const HomePage(),
-        ),
-      );
-    });
+    unawaited(_openNextScreen());
+  }
+
+  Future<void> _openNextScreen() async {
+    final showOnboarding =
+        ref.read(firstLaunchProvider.notifier).shouldShowOnboarding;
+    await Future<void>.delayed(
+      showOnboarding
+          ? const Duration(milliseconds: 1800)
+          : const Duration(milliseconds: 400),
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final stillShowOnboarding =
+        ref.read(firstLaunchProvider.notifier).shouldShowOnboarding;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => stillShowOnboarding
+            ? const OnboardingPage()
+            : const HomePage(),
+      ),
+    );
   }
 
   @override
@@ -186,9 +202,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildDot(Theme.of(context).dividerColor),
+                      _buildDot(Theme.of(context).colorScheme.outline),
                       const SizedBox(width: 8),
-                      _buildDot(Theme.of(context).dividerColor),
+                      _buildDot(Theme.of(context).colorScheme.outline),
                       const SizedBox(width: 8),
                       _buildDot(Theme.of(context).colorScheme.secondary),
                     ],
@@ -213,7 +229,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         height: 2,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: ClipRRect(

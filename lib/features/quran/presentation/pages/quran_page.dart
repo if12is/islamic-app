@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../shared/widgets/shell_header_buttons.dart';
 import '../../data/services/quran_api_service.dart';
 import 'surah_reader_page.dart';
 import 'package:just_audio/just_audio.dart';
@@ -516,10 +517,7 @@ class _QuranPageState extends State<QuranPage> {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.menu, color: Theme.of(context).textTheme.bodyLarge!.color!),
-        onPressed: () {},
-      ),
+      leading: const ShellMenuButton(),
       title: AnimatedSwitcher(
         duration: const Duration(milliseconds: 500),
         child: Text(
@@ -532,15 +530,7 @@ class _QuranPageState extends State<QuranPage> {
         ),
       ),
       centerTitle: true,
-      actions: [
-        Padding(
-          padding: EdgeInsets.only(left: 16.0),
-          child: CircleAvatar(
-            backgroundColor: Theme.of(context).cardColor,
-            child: Icon(Icons.person, color: Theme.of(context).textTheme.bodyLarge!.color!),
-          ),
-        ),
-      ],
+      actions: const [ShellProfileButton()],
     );
   }
 
@@ -581,7 +571,7 @@ class _QuranPageState extends State<QuranPage> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: _primaryDarkGreen, // #0B4633
+        color: Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Stack(
@@ -591,7 +581,7 @@ class _QuranPageState extends State<QuranPage> {
             left: -10,
             child: Opacity(
               opacity: 0.1,
-              child: Icon(Icons.menu_book, size: 140, color: Colors.white),
+              child: Icon(Icons.menu_book, size: 140, color: Theme.of(context).colorScheme.onPrimaryContainer),
             ),
           ),
           Padding(
@@ -604,7 +594,7 @@ class _QuranPageState extends State<QuranPage> {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0B634C),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -612,14 +602,14 @@ class _QuranPageState extends State<QuranPage> {
                       children: [
                         Icon(
                           Icons.history,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
                           size: 14,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           context.tr('last_read'),
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
                             fontSize: 12,
                           ),
                         ),
@@ -633,7 +623,7 @@ class _QuranPageState extends State<QuranPage> {
                       ? '${context.tr('surah_word')} ${_lastReadSurah!.nameAr}'
                       : '${context.tr('surah_word')} ${_lastReadSurah!.nameEn}',
                   style: GoogleFonts.amiriQuran(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                   ),
@@ -642,7 +632,7 @@ class _QuranPageState extends State<QuranPage> {
                 Text(
                   '${context.tr('reached_verse')}: ${_formatNumber(context, _lastReadVerse)}',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                    color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -665,7 +655,7 @@ class _QuranPageState extends State<QuranPage> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.secondary,
-                      foregroundColor: Theme.of(context).scaffoldBackgroundColor,
+                      foregroundColor: Theme.of(context).colorScheme.onSecondary,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
@@ -740,7 +730,7 @@ class _QuranPageState extends State<QuranPage> {
             child: LinearProgressIndicator(
               value: _khatmahProgress,
               minHeight: 12,
-              backgroundColor: Theme.of(context).dividerColor,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(
                 Theme.of(context).colorScheme.primary,
               ),
@@ -825,7 +815,7 @@ class _QuranPageState extends State<QuranPage> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? Theme.of(context).scaffoldBackgroundColor : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -857,7 +847,7 @@ class _QuranPageState extends State<QuranPage> {
         if (_isSurahMode)
           Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).dividerColor,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -873,7 +863,7 @@ class _QuranPageState extends State<QuranPage> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Theme.of(context).dividerColor,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
@@ -942,7 +932,7 @@ class _QuranPageState extends State<QuranPage> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
@@ -1081,7 +1071,7 @@ class _QuranPageState extends State<QuranPage> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Center(
@@ -1349,7 +1339,7 @@ class _QuranPageState extends State<QuranPage> {
                             : 0.0;
                     return LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Theme.of(context).dividerColor,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation(
                         Theme.of(context).colorScheme.secondary,
                       ),
