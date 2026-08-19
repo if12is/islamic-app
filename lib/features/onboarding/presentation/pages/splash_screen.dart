@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/design_colors.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../home/presentation/pages/home_page.dart';
 import 'onboarding_page.dart';
@@ -67,7 +66,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             Positioned.fill(
               child: CustomPaint(
                 painter: StarPatternPainter(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -81,7 +80,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Theme.of(context).colorScheme.primaryContainer.withOpacity(0.35),
+                      Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.35),
                       Colors.transparent,
                     ],
                   ),
@@ -96,7 +95,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Theme.of(context).colorScheme.primaryContainer.withOpacity(0.25),
+                      Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25),
                       Colors.transparent,
                     ],
                   ),
@@ -126,7 +125,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                            height: 60,
                            child: ImageFilterFiltered(
                              imageFilter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                             child: Container(color: Theme.of(context).colorScheme.secondary.withOpacity(0.3)),
+                             child: Container(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
                            )
                          ),
                          
@@ -178,7 +177,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       fontSize: 18,
                       letterSpacing: 6.0,
                       fontWeight: FontWeight.w500,
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: 48),
@@ -214,7 +213,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         height: 2,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).dividerColor.withOpacity(0.5),
+                          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: ClipRRect(

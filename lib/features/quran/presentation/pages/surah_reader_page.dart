@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/design_colors.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../data/services/quran_api_service.dart';
@@ -23,8 +22,6 @@ class SurahReaderPage extends ConsumerStatefulWidget {
 }
 
 class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
-  // Constants & Colors
-  Color get _bgOffWhite => Theme.of(context).scaffoldBackgroundColor;
   Color get _primaryDarkGreen => Theme.of(context).colorScheme.primary;
   Color get _accentGold => Theme.of(context).colorScheme.secondary;
 

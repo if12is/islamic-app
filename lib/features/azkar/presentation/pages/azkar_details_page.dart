@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/design_colors.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../data/models/azkar_models.dart';
 
 class AzkarDetailsPage extends StatefulWidget {
   final AzkarCategory category;
 
-  const AzkarDetailsPage({Key? key, required this.category}) : super(key: key);
+  const AzkarDetailsPage({super.key, required this.category});
 
   @override
   State<AzkarDetailsPage> createState() => _AzkarDetailsPageState();
@@ -168,13 +167,13 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                   border: Border.all(
-                    color: isDone ? Theme.of(context).colorScheme.primary.withOpacity(0.5) : Colors.transparent,
+                    color: isDone ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5) : Colors.transparent,
                     width: 1,
                   ),
                 ),
@@ -201,7 +200,7 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
+                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -231,7 +230,7 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
                                     value: zekr.targetCount == 0 ? 1.0 : (currentCount / zekr.targetCount),
                                     backgroundColor: Theme.of(context).dividerColor,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      isDone ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                                      isDone ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                                     ),
                                     strokeWidth: 4,
                                   ),

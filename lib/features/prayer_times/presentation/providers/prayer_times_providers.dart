@@ -151,9 +151,11 @@ final cachedPrayerTimesProvider = FutureProvider<PrayerTimesEntity?>((
   return await useCase();
 });
 
-class DailyPrayerCompletionNotifier extends StateNotifier<Set<String>> {
-  DailyPrayerCompletionNotifier() : super(<String>{}) {
-    _loadForToday();
+class DailyPrayerCompletionNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() {
+    Future.microtask(_loadForToday);
+    return <String>{};
   }
 
   String _todayStorageKey() {
@@ -194,6 +196,6 @@ class DailyPrayerCompletionNotifier extends StateNotifier<Set<String>> {
 }
 
 final dailyPrayerCompletionProvider =
-    StateNotifierProvider<DailyPrayerCompletionNotifier, Set<String>>((ref) {
-      return DailyPrayerCompletionNotifier();
-    });
+    NotifierProvider<DailyPrayerCompletionNotifier, Set<String>>(
+      DailyPrayerCompletionNotifier.new,
+    );

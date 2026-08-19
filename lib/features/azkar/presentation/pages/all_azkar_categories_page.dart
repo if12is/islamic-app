@@ -145,7 +145,7 @@ class _AllAzkarCategoriesPageState extends State<AllAzkarCategoriesPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                             radius: 28,
                             child: Icon(Icons.menu_book, color: Theme.of(context).colorScheme.primary, size: 28),
                           ),

@@ -31,7 +31,8 @@ class PrayerMethodResolver {
     int fallbackMethod = 3,
   }) async {
     try {
-      final placemarks = await placemarkFromCoordinates(latitude, longitude);
+      final placemarks =
+          await Geocoding().placemarkFromCoordinates(latitude, longitude);
       if (placemarks.isEmpty) {
         return fallbackMethod;
       }

@@ -13,5 +13,7 @@ alwaysApply: false
 - Cross-boundary errors: `Either<Failure, T>` from `lib/core/utils/failure.dart`.
 - User-facing text: add `ar` and `en` keys in `app_localizations.dart`, then `context.tr('key')`.
 - Colors and type come from `AppTheme` and `design_colors.dart`.
+- Prefer Material 3 widgets (`FilledButton`, `NavigationBar`, `MenuAnchor`, `SegmentedButton`, `Switch.adaptive`).
+- Network I/O goes through `SecureHttpClient`. Logging uses `AppLogger`.
 - Keep I/O in `lib/core/services` or feature `data/` — not inside `build()`.
 - `prayer_times` is the architecture reference. Match it when adding domain/data to other features.

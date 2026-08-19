@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/design_colors.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../domain/entities/prayer_times_entity.dart';
@@ -226,7 +225,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
         body: prayerTimesAsync.when(
           loading: () => const Center(child: CustomLoader()),
           error:
-              (_, __) => Center(
+              (_, _) => Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(

@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/design_colors.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../providers/ayah_provider.dart';
@@ -53,7 +52,6 @@ class _HomePageState extends State<HomePage> {
     ];
 
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Directionality(
       textDirection: context.appTextDirection,
@@ -95,19 +93,23 @@ class _HomePageState extends State<HomePage> {
             onDestinationSelected: _onTabTapped,
             destinations: [
               NavigationDestination(
-                icon: const Icon(Icons.home_filled),
+                icon: const Icon(Icons.home_outlined),
+                selectedIcon: const Icon(Icons.home_filled),
                 label: context.tr('home'),
               ),
               NavigationDestination(
-                icon: const Icon(Icons.menu_book),
+                icon: const Icon(Icons.menu_book_outlined),
+                selectedIcon: const Icon(Icons.menu_book),
                 label: context.tr('quran'),
               ),
               NavigationDestination(
-                icon: const Icon(Icons.auto_awesome),
+                icon: const Icon(Icons.auto_awesome_outlined),
+                selectedIcon: const Icon(Icons.auto_awesome),
                 label: context.tr('azkar'),
               ),
               NavigationDestination(
-                icon: const Icon(Icons.settings),
+                icon: const Icon(Icons.settings_outlined),
+                selectedIcon: const Icon(Icons.settings),
                 label: context.tr('settings'),
               ),
             ],
@@ -649,7 +651,7 @@ class _HeroCard extends StatelessWidget {
           const SizedBox(height: 36),
           Container(
             height: 1,
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             margin: const EdgeInsets.only(bottom: 24),
           ),
           FittedBox(
@@ -768,7 +770,7 @@ class _ActionCard extends StatelessWidget {
           ), // Fully matching image corner radii
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -849,7 +851,7 @@ class _AyahCard extends ConsumerWidget {
                   child: Center(child: CustomLoader()),
                 ),
             error:
-                (_, __) => Padding(
+                (_, _) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Center(
                     child: Text(
@@ -929,7 +931,7 @@ class _AyahCard extends ConsumerWidget {
                     reference,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.amiriQuran(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                       fontSize: 19,
                       fontWeight: FontWeight.w600,
                     ),
@@ -977,7 +979,7 @@ class _PrayerTile extends StatelessWidget {
                 ? []
                 : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),

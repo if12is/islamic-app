@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/design_colors.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../shared/providers/app_providers.dart';
 
@@ -26,6 +26,7 @@ class SettingsPage extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
     final isNotificationsEnabled = ref.watch(notificationsEnabledProvider);
+    final prayerMethod = ref.watch(prayerMethodProvider);
 
     final isDark = themeMode == ThemeMode.dark;
 
@@ -159,10 +160,8 @@ class SettingsPage extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        Switch(
+                        Switch.adaptive(
                           value: isNotificationsEnabled,
-                          activeThumbColor: Colors.white,
-                          activeTrackColor: primaryColor,
                           onChanged: (value) {
                             ref
                                 .read(notificationsEnabledProvider.notifier)
@@ -177,7 +176,7 @@ class SettingsPage extends ConsumerWidget {
                       children: [
                         _buildPrayerIconTile(
                           context.tr('fajr'),
-                          Icons.wb_twighlight,
+                          Icons.wb_twilight,
                           true,
                           primaryColor,
                           subtitleColor,
@@ -275,36 +274,44 @@ class SettingsPage extends ConsumerWidget {
                       style: TextStyle(color: subtitleColor, fontSize: 14),
                     ),
                     const SizedBox(height: 16),
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color:
-                            isDark
-                                ? Theme.of(context).dividerColor
-                                : const Color(0xFFF9F9F9),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color:
-                              isDark
-                                  ? Colors.grey.shade800
-                                  : Colors.grey.shade200,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              context.tr('egyptian_general_authority'),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
+                    MenuAnchor(
+                      builder: (context, controller, child) {
+                        return FilledButton.tonalIcon(
+                          onPressed: () {
+                            if (controller.isOpen) {
+                              controller.close();
+                            } else {
+                              controller.open();
+                            }
+                          },
+                          icon: const Icon(Icons.expand_more),
+                          label: Text(
+                            AppConstants.prayerCalculationMethods[prayerMethod] ??
+                                context.tr('egyptian_general_authority'),
+                          ),
+                        );
+                      },
+                      menuChildren: AppConstants.prayerCalculationMethods.entries
+                          .map(
+                            (entry) => MenuItemButton(
+                              onPressed: () {
+                                ref
+                                    .read(prayerMethodProvider.notifier)
+                                    .setMethod(entry.key);
+                              },
+                              child: ListTile(
+                                dense: true,
+                                title: Text(entry.value),
+                                trailing: prayerMethod == entry.key
+                                    ? Icon(
+                                        Icons.check,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      )
+                                    : null,
                               ),
                             ),
-                          ),
-                          Icon(Icons.keyboard_arrow_down, color: subtitleColor),
-                        ],
-                      ),
+                          )
+                          .toList(),
                     ),
                   ],
                 ),
@@ -468,7 +475,7 @@ class SettingsPage extends ConsumerWidget {
                       child: Icon(
                         Icons.mosque,
                         size: 120,
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
                       ),
                     ),
                     Padding(
@@ -488,7 +495,7 @@ class SettingsPage extends ConsumerWidget {
                           Text(
                             context.tr('contact_us_desc'),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                               fontSize: 14,
                               height: 1.5,
                             ),

@@ -9,7 +9,7 @@ Remote: `git@github.com:if12is/islamic-app.git` (SSH). HTTPS push needs a token.
 ## What this app is
 
 Flutter Islamic mobile app: prayer times, Quran, Azkar/Tasbeeh, Qibla, settings, onboarding.
-Stack: Flutter 3.19+ / Dart 3.7+, Riverpod, Dio, Hive, go_router (stub), Material 3, Cairo font, RTL Arabic.
+Stack: latest stable Flutter / Dart, Riverpod, Dio (via SecureHttpClient), Hive, Material 3, Cairo font, RTL Arabic.
 
 Package name: `islamic_app` (`pubspec.yaml`).
 Android applicationId: `com.islamicapp.islamic_app`.
@@ -17,11 +17,11 @@ App version: `version:` in `pubspec.yaml` (`1.0.0+1` = name `1.0.0`, build `1`).
 
 ## How to run during development
 
-Flutter is required (`flutter` must be on PATH). On macOS:
+Flutter is required (`flutter` must be on PATH). This machine can use:
 
 ```bash
-brew install --cask flutter
-flutter doctor
+export PATH="$HOME/flutter/bin:$PATH"
+flutter --version   # expect latest stable
 ```
 
 Then from the project root (`islamic-app/`):
@@ -95,7 +95,21 @@ lib/features/<name>/
 1. `main.dart` → `AppServices.initialize()` → theme/locale prefs → background `runStartupSync()`.
 2. `IslamicApp` shows splash/onboarding on first launch, then `HomePage`.
 3. `HomePage` bottom nav: Dashboard (0), Quran (1), Azkar (2), Settings (3). Prayer times and Qibla open from the dashboard, not the nav bar.
-4. APIs: Aladhan (`api.aladhan.com`) for timings; Quran.com v4 for chapters/verses; Azkar from bundled JSON + optional remote JSON.
+4. APIs: Aladhan (`api.aladhan.com`) for timings; AlQuran Cloud (`api.alquran.cloud`) for Uthmani text/search; Quran.com v4 for cached chapter metadata; Azkar from bundled JSON + GitHub JSON.
+
+## Keep Flutter and packages current
+
+Agents MUST use the latest stable Flutter SDK and the newest compatible package versions.
+
+- Before adding a package, check pub.dev for the current stable version. Do not copy old versions from memory.
+- After Flutter upgrades: `flutter pub upgrade --major-versions`, then `flutter analyze` and `flutter test`.
+- Prefer Material 3 widgets: `NavigationBar`, `NavigationDestination` (with `selectedIcon`), `FilledButton` / `FilledButton.tonal`, `SegmentedButton`, `MenuAnchor`, `SearchAnchor`, `ListTile`, `Switch.adaptive`, `Card`, `CircleAvatar`, `CircularProgressIndicator.adaptive`.
+- Use `Color.withValues(alpha:)` instead of `withOpacity`.
+- HTTP only through `SecureHttpClient` (`lib/core/services/secure_http_client.dart`). Never construct a raw `Dio()` for production APIs.
+- Log with `AppLogger`, never `print`.
+- Validate coordinates, surah/juz numbers, search queries, and reciter URLs before network I/O.
+- Android: keep `usesCleartextTraffic=false` and `network_security_config.xml`. Do not allow HTTP.
+- UI copy stays bilingual via `context.tr`. Touch targets >= 48px. Respect `MediaQuery.disableAnimationsOf`.
 
 ## Architecture rules for agents
 

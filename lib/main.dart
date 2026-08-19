@@ -43,7 +43,6 @@ class IslamicApp extends ConsumerWidget {
     // Watch the theme mode - will rebuild when theme changes
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
-    final isFirstLaunch = ref.watch(firstLaunchProvider);
 
     return MaterialApp(
       // App metadata

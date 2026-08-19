@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/secure_http_client.dart';
+import '../../../../core/utils/input_validators.dart';
 import '../models/prayer_times_model.dart';
 
 /// Exception thrown when a remote API call fails.
@@ -31,45 +33,10 @@ class PrayerTimesRemoteDataSource {
   /// Creates a new instance with the provided Dio client.
   /// If no Dio instance is provided, a default one will be created.
   PrayerTimesRemoteDataSource({Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: AppConstants.aladhanApiBaseUrl,
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 10),
-                responseType: ResponseType.json,
-              ),
-            ) {
-    // Ensure a base URL exists even when a preconfigured Dio instance is injected.
+      : _dio = dio ?? SecureHttpClient.forAladhan() {
     if (_dio.options.baseUrl.isEmpty) {
       _dio.options.baseUrl = AppConstants.aladhanApiBaseUrl;
     }
-    _setupInterceptors();
-  }
-
-  /// Setup Dio interceptors for logging and error handling.
-  void _setupInterceptors() {
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          // Log request
-          print('📤 [API Request] ${options.method.toUpperCase()} ${options.path}');
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-          // Log response
-          print(
-              '📥 [API Response] Status: ${response.statusCode} - ${response.requestOptions.path}');
-          return handler.next(response);
-        },
-        onError: (error, handler) {
-          // Log error
-          print(
-              '❌ [API Error] ${error.type} - ${error.message}');
-          return handler.next(error);
-        },
-      ),
-    );
   }
 
   /// Fetch prayer times for a given location.
@@ -92,6 +59,12 @@ class PrayerTimesRemoteDataSource {
     String? date,
   }) async {
     try {
+      if (!InputValidators.isLatitude(latitude) ||
+          !InputValidators.isLongitude(longitude) ||
+          !InputValidators.isSupportedPrayerMethod(method)) {
+        throw RemoteException(message: 'Invalid prayer times request parameters');
+      }
+
       final dateKey = _resolveDatePath(date);
 
       // Build query parameters
@@ -176,6 +149,10 @@ class PrayerTimesRemoteDataSource {
 
         case DioExceptionType.cancel:
           message = 'Request was cancelled';
+          break;
+
+        case DioExceptionType.transformTimeout:
+          message = 'Response processing timed out. Please try again.';
           break;
       }
 

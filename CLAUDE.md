@@ -29,10 +29,16 @@ Hot reload: `r`. Hot restart: `R`. Analyze: `flutter analyze`. Tests: `flutter t
 
 Workflow file: `.github/workflows/android-apk.yml`
 
+## Keep current
+
+Always target the latest stable Flutter SDK and newest compatible packages (`flutter pub upgrade --major-versions`). Prefer Material 3 widgets. HTTP only via `SecureHttpClient`. Log with `AppLogger`. Do not invent old package versions from memory.
+
 ## Code rules
 
 - Feature-first Clean Architecture: `domain` (pure Dart) → `data` → `presentation`.
 - Riverpod for state. `Either<Failure, T>` at data/domain boundaries.
+- Prefer Material 3 widgets (`FilledButton`, `NavigationBar`, `MenuAnchor`, `SegmentedButton`).
 - Strings via `context.tr`. Theme via `AppTheme` / `design_colors.dart`.
+- HTTP only via `SecureHttpClient`. Log with `AppLogger`.
 - `HomePage` is the live navigator (IndexedStack). `app_router.dart` is a stub until wired.
 - Do not commit `build/`, secrets, or file-mode-only changes.

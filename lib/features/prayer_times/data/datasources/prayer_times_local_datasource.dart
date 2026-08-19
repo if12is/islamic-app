@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../models/prayer_times_model.dart';
 
 /// Local data source for Prayer Times caching.
@@ -54,9 +55,9 @@ class PrayerTimesLocalDataSource {
         'payload': jsonData,
       });
       
-      print('✅ Prayer times cached successfully');
+      AppLogger.debug('Prayer times cached successfully');
     } catch (e) {
-      print('❌ Error caching prayer times: $e');
+      AppLogger.warning('Error caching prayer times: $e');
       rethrow;
     }
   }
@@ -106,10 +107,10 @@ class PrayerTimesLocalDataSource {
       // Convert back to model
       final prayerTimes = PrayerTimesModel.fromJson(jsonData);
 
-      print('✅ Prayer times retrieved from cache');
+      AppLogger.debug('Prayer times retrieved from cache');
       return prayerTimes;
     } catch (e) {
-      print('❌ Error retrieving cached prayer times: $e');
+      AppLogger.warning('Error retrieving cached prayer times: $e');
       return null;
     }
   }
@@ -152,7 +153,7 @@ class PrayerTimesLocalDataSource {
 
       return PrayerTimesModel.fromJson(latestPayload);
     } catch (e) {
-      print('❌ Error retrieving latest cached prayer times: $e');
+      AppLogger.warning('Error retrieving latest cached prayer times: $e');
       return null;
     }
   }
@@ -172,9 +173,9 @@ class PrayerTimesLocalDataSource {
           .toList();
 
       await box.deleteAll(keysToDelete);
-      print('✅ Prayer times cache cleared');
+      AppLogger.debug('Prayer times cache cleared');
     } catch (e) {
-      print('❌ Error clearing cache: $e');
+      AppLogger.warning('Error clearing cache: $e');
       rethrow;
     }
   }
@@ -217,9 +218,9 @@ class PrayerTimesLocalDataSource {
     try {
       final box = await _getBox();
       await box.close();
-      print('✅ Prayer times box closed');
+      AppLogger.debug('Prayer times box closed');
     } catch (e) {
-      print('❌ Error closing box: $e');
+      AppLogger.warning('Error closing box: $e');
     }
   }
 }

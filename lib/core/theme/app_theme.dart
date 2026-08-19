@@ -66,6 +66,8 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       fontFamily: fontFamily,
+      splashFactory: InkSparkle.splashFactory,
+      visualDensity: VisualDensity.standard,
       
       colorScheme: ColorScheme.light(
         primary: primaryLight,
@@ -144,10 +146,34 @@ class AppTheme {
       
       cardTheme: CardThemeData(
         color: surfaceLight,
-        elevation: 2,
+        elevation: 0,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
         ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 72,
+        elevation: 0,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        minVerticalPadding: 12,
+        iconColor: primaryLight,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        year2023: false,
       ),
     );
   }
@@ -161,6 +187,8 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       fontFamily: fontFamily,
+      splashFactory: InkSparkle.splashFactory,
+      visualDensity: VisualDensity.standard,
       
       colorScheme: ColorScheme.dark(
         primary: primaryDark,
@@ -242,10 +270,34 @@ class AppTheme {
       
       cardTheme: CardThemeData(
         color: surfaceDark,
-        elevation: 2,
+        elevation: 0,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        height: 72,
+        elevation: 0,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        minVerticalPadding: 12,
+        iconColor: primaryDark,
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        year2023: false,
       ),
     );
   }

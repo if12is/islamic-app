@@ -51,9 +51,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              colorScheme.primary.withOpacity(isDark ? 0.36 : 0.18),
+              colorScheme.primary.withValues(alpha: isDark ? 0.36 : 0.18),
               Theme.of(context).scaffoldBackgroundColor,
-              colorScheme.surface.withOpacity(isDark ? 0.98 : 0.94),
+              colorScheme.surface.withValues(alpha: isDark ? 0.98 : 0.94),
             ],
           ),
         ),
@@ -64,7 +64,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               right: context.isAppRtl ? null : -48,
               left: context.isAppRtl ? -48 : null,
               child: _GlowOrb(
-                color: colorScheme.tertiary.withOpacity(isDark ? 0.24 : 0.16),
+                color: colorScheme.tertiary.withValues(alpha: isDark ? 0.24 : 0.16),
                 size: 180,
               ),
             ),
@@ -73,7 +73,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               left: context.isAppRtl ? null : -56,
               right: context.isAppRtl ? -56 : null,
               child: _GlowOrb(
-                color: colorScheme.primary.withOpacity(isDark ? 0.20 : 0.14),
+                color: colorScheme.primary.withValues(alpha: isDark ? 0.20 : 0.14),
                 size: 220,
               ),
             ),
@@ -141,6 +141,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     }
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!mounted) {
+      return;
+    }
     if (!serviceEnabled) {
       messenger.showSnackBar(
         SnackBar(content: Text(context.tr('location_services_disabled'))),
@@ -201,11 +204,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: colorScheme.surface.withOpacity(0.88),
+          color: colorScheme.surface.withValues(alpha: 0.88),
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withOpacity(0.08),
+              color: colorScheme.primary.withValues(alpha: 0.08),
               blurRadius: 30,
               offset: const Offset(0, 14),
             ),
@@ -225,7 +228,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      accent.withOpacity(0.88),
+                      accent.withValues(alpha: 0.88),
                       Theme.of(context).colorScheme.primary,
                     ],
                   ),
@@ -260,7 +263,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withOpacity(0.90),
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.90),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Padding(
@@ -284,7 +287,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                           : Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withOpacity(0.25),
+                              .withValues(alpha: 0.25),
                     ),
                   ),
                 ),

@@ -10,7 +10,7 @@ import 'all_azkar_categories_page.dart';
 import 'azkar_details_page.dart';
 
 class AzkarPage extends StatefulWidget {
-  const AzkarPage({Key? key}) : super(key: key);
+  const AzkarPage({super.key});
 
   @override
   State<AzkarPage> createState() => _AzkarPageState();
@@ -276,7 +276,7 @@ class _AzkarPageState extends State<AzkarPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -355,7 +355,7 @@ class _AzkarPageState extends State<AzkarPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
-            colors: [Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.3)],
+            colors: [Colors.black.withValues(alpha: 0.7), Colors.black.withValues(alpha: 0.3)],
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
           ),
@@ -390,7 +390,7 @@ class _AzkarPageState extends State<AzkarPage> {
 }
 
 class SmartTasbeehWidget extends StatefulWidget {
-  const SmartTasbeehWidget({Key? key}) : super(key: key);
+  const SmartTasbeehWidget({super.key});
 
   @override
   State<SmartTasbeehWidget> createState() => _SmartTasbeehWidgetState();
@@ -461,12 +461,12 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
           height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withOpacity(0.12),
-            border: Border.all(color: Colors.white.withOpacity(0.18)),
+            color: Colors.white.withValues(alpha: 0.12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
           ),
           child: Icon(
             icon,
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             size: 20,
           ),
         ),
@@ -494,10 +494,10 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
             Color(0xFF084236),
           ],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.20),
+            color: Colors.black.withValues(alpha: 0.20),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -520,9 +520,9 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: Colors.white.withOpacity(0.18)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                 ),
                 child: Text(
                   '${_tasbeehCount.toString()} / $_target',
@@ -554,11 +554,11 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          Colors.white.withOpacity(0.16),
-                          Colors.white.withOpacity(0.03),
+                          Colors.white.withValues(alpha: 0.16),
+                          Colors.white.withValues(alpha: 0.03),
                         ],
                       ),
-                      border: Border.all(color: Colors.white.withOpacity(0.14)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
                     ),
                     child: Center(
                       child: Container(
@@ -567,7 +567,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: const Color(0xFF0C4F41),
-                          border: Border.all(color: Colors.white.withOpacity(0.10)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
                         ),
                         child: Stack(
                           alignment: Alignment.center,
@@ -578,7 +578,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                               child: CircularProgressIndicator(
                                 value: progress,
                                 strokeWidth: 10,
-                                backgroundColor: Colors.white.withOpacity(0.12),
+                                backgroundColor: Colors.white.withValues(alpha: 0.12),
                                 valueColor: const AlwaysStoppedAnimation<Color>(DesignColors.gold),
                               ),
                             ),
@@ -598,7 +598,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                                 Text(
                                   '$remaining ${context.tr('count')}',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.70),
+                                    color: Colors.white.withValues(alpha: 0.70),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -626,8 +626,8 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
               padding: const EdgeInsets.all(11),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.12),
-                border: Border.all(color: Colors.white.withOpacity(0.24)),
+                color: Colors.white.withValues(alpha: 0.12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
               ),
               child: const Icon(
                 Icons.refresh_rounded,
@@ -641,9 +641,9 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.16),
+              color: Colors.black.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),

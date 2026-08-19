@@ -8,6 +8,7 @@ import 'app_services.dart';
 import 'azkar_data_service.dart';
 import 'prayer_method_resolver.dart';
 import 'quran_cache_service.dart';
+import '../utils/app_logger.dart';
 
 /// Warms offline-first caches at app startup.
 ///
@@ -29,9 +30,9 @@ class StartupSyncService {
   static Future<void> _warmAzkar() async {
     try {
       await AzkarDataService().loadAzkarData();
-      print('✅ Startup sync: Azkar cache is ready');
+      AppLogger.info('Startup sync: Azkar cache is ready');
     } catch (e) {
-      print('⚠️ Startup sync: Azkar warm-up failed: $e');
+      AppLogger.warning('Startup sync: Azkar warm-up failed: $e');
     }
   }
 
@@ -47,9 +48,9 @@ class StartupSyncService {
         await cache.getVerses(dio: dio, chapterId: firstChapterId);
       }
 
-      print('✅ Startup sync: Quran cache is ready');
+      AppLogger.info('Startup sync: Quran cache is ready');
     } catch (e) {
-      print('⚠️ Startup sync: Quran warm-up failed: $e');
+      AppLogger.warning('Startup sync: Quran warm-up failed: $e');
     }
   }
 
@@ -69,7 +70,10 @@ class StartupSyncService {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 8),
+        ),
       );
 
       await prefs.setDouble(AppConstants.userLatitudeKey, position.latitude);
@@ -108,9 +112,9 @@ class StartupSyncService {
         date: date,
       );
 
-      print('✅ Startup sync: Prayer cache is ready');
+      AppLogger.info('Startup sync: Prayer cache is ready');
     } catch (e) {
-      print('⚠️ Startup sync: Prayer warm-up failed: $e');
+      AppLogger.warning('Startup sync: Prayer warm-up failed: $e');
     }
   }
 }

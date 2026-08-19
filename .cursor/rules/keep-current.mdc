@@ -1,0 +1,14 @@
+---
+description: Always use latest Flutter, packages, Material 3 widgets, and security defaults
+alwaysApply: true
+---
+
+# Keep current + secure
+
+- Use the latest **stable** Flutter SDK and the newest compatible pub.dev versions. Do not pin stale versions from memory.
+- After SDK/package changes: `flutter pub upgrade --major-versions`, `flutter analyze`, `flutter test`.
+- Prefer current Material 3 widgets: `NavigationBar`, `FilledButton`, `SegmentedButton`, `MenuAnchor`, `SearchAnchor`, `Switch.adaptive`, `ListTile`, `Card`.
+- HTTP only via `SecureHttpClient`. No raw `Dio()`. No cleartext. Allowlisted hosts only.
+- Log with `AppLogger`. Validate lat/lng, IDs, search text, and audio URLs.
+- Theme tokens from `AppTheme` / `design_colors.dart`. Use `withValues(alpha:)`.
+- Touch targets 48px+. Respect reduced motion. Keep Arabic/English via `context.tr`.

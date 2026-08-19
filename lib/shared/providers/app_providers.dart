@@ -4,44 +4,35 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/startup_sync_service.dart';
+import '../../core/utils/app_logger.dart';
 
 /// State notifier for theme mode management.
 ///
 /// Manages switching between light and dark themes and persists the user's preference.
-class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  /// Reference to SharedPreferences for persistence
-  final SharedPreferences prefs;
-
-  /// Constructor - initializes with saved theme or defaults to system
-  ThemeModeNotifier({required this.prefs}) : super(ThemeMode.dark) {
-    _loadSavedTheme();
-  }
-
-  /// Load saved theme mode from storage.
-  Future<void> _loadSavedTheme() async {
-    final savedTheme = prefs.getString(AppConstants.themeModeKey);
-
-    if (savedTheme != null) {
-      final themeMode = ThemeMode.values.firstWhere(
-        (mode) => mode.toString() == savedTheme,
-        orElse: () => ThemeMode.dark,
-      );
-      state = themeMode;
+/// Manages switching between light and dark themes and persists the preference.
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
+    final savedTheme = _globalPrefs.getString(AppConstants.themeModeKey);
+    if (savedTheme == null) {
+      return ThemeMode.dark;
     }
+    return ThemeMode.values.firstWhere(
+      (mode) => mode.toString() == savedTheme,
+      orElse: () => ThemeMode.dark,
+    );
   }
 
-  /// Toggle between light and dark themes.
   Future<void> toggleTheme() async {
     final newTheme =
         state == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     await setTheme(newTheme);
   }
 
-  /// Set a specific theme mode.
   Future<void> setTheme(ThemeMode themeMode) async {
     state = themeMode;
-    await prefs.setString(AppConstants.themeModeKey, themeMode.toString());
-    print('✅ Theme changed to: $themeMode');
+    await _globalPrefs.setString(AppConstants.themeModeKey, themeMode.toString());
+    AppLogger.info('Theme changed to: $themeMode');
   }
 }
 
@@ -53,13 +44,8 @@ final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
 });
 
 /// Provider for theme mode state management.
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((
-  ref,
-) {
-  // Create a ThemeModeNotifier with default system theme
-  // In a real app, we'd wait for SharedPreferences, but for simplicity:
-  return ThemeModeNotifier(prefs: _globalPrefs);
-});
+final themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
 
 // Temporary global SharedPreferences instance for initialization
 late SharedPreferences _globalPrefs;
@@ -117,8 +103,10 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
     }
 
     final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-      timeLimit: const Duration(seconds: 8),
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 8),
+      ),
     );
 
     await _globalPrefs.setDouble(
@@ -158,79 +146,55 @@ Future<void> runStartupSync({bool force = false}) async {
     await StartupSyncService.warmCaches(prefs: _globalPrefs);
     _startupSyncCompleted = true;
   } catch (e) {
-    print('⚠️ Startup sync failed: $e');
+    AppLogger.warning('Startup sync failed: $e');
   } finally {
     _startupSyncInProgress = false;
   }
 }
 
 /// Notifier for prayer calculation method selection.
-class PrayerMethodNotifier extends StateNotifier<int> {
-  final SharedPreferences prefs;
-
-  PrayerMethodNotifier({required this.prefs}) : super(3) {
-    _loadSavedMethod();
-  }
-
-  Future<void> _loadSavedMethod() async {
-    final saved = prefs.getInt(AppConstants.prayerMethodKey);
-    if (saved != null) {
-      state = saved;
-    }
+class PrayerMethodNotifier extends Notifier<int> {
+  @override
+  int build() {
+    return _globalPrefs.getInt(AppConstants.prayerMethodKey) ?? 3;
   }
 
   Future<void> setMethod(int method) async {
     state = method;
-    await prefs.setInt(AppConstants.prayerMethodKey, method);
-    print('✅ Prayer method changed to: $method');
+    await _globalPrefs.setInt(AppConstants.prayerMethodKey, method);
+    AppLogger.info('Prayer method changed to: $method');
   }
 }
 
-/// Provider for prayer calculation method.
-final prayerMethodProvider = StateNotifierProvider<PrayerMethodNotifier, int>((
-  ref,
-) {
-  return PrayerMethodNotifier(prefs: _globalPrefs);
-});
+final prayerMethodProvider =
+    NotifierProvider<PrayerMethodNotifier, int>(PrayerMethodNotifier.new);
 
-/// Notifier for enabling/disabling notifications.
-class NotificationsEnabledNotifier extends StateNotifier<bool> {
-  final SharedPreferences prefs;
-
-  NotificationsEnabledNotifier({required this.prefs}) : super(false) {
-    _loadSavedState();
-  }
-
-  Future<void> _loadSavedState() async {
-    state = prefs.getBool(AppConstants.notificationsEnabledKey) ?? false;
+class NotificationsEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    return _globalPrefs.getBool(AppConstants.notificationsEnabledKey) ?? false;
   }
 
   Future<void> setEnabled(bool enabled) async {
     state = enabled;
-    await prefs.setBool(AppConstants.notificationsEnabledKey, enabled);
-    print('✅ Notifications enabled: $enabled');
+    await _globalPrefs.setBool(AppConstants.notificationsEnabledKey, enabled);
+    AppLogger.info('Notifications enabled: $enabled');
   }
 }
 
-/// Provider for notification enabled/disabled state.
 final notificationsEnabledProvider =
-    StateNotifierProvider<NotificationsEnabledNotifier, bool>((ref) {
-      return NotificationsEnabledNotifier(prefs: _globalPrefs);
-    });
+    NotifierProvider<NotificationsEnabledNotifier, bool>(
+      NotificationsEnabledNotifier.new,
+    );
 
-/// Notifier for application locale (Arabic/English).
-class LocaleNotifier extends StateNotifier<Locale> {
-  final SharedPreferences prefs;
-
-  LocaleNotifier({required this.prefs}) : super(const Locale('ar')) {
-    _loadSavedLocale();
-  }
-
-  Future<void> _loadSavedLocale() async {
-    final code = prefs.getString(AppConstants.localeKey);
+class LocaleNotifier extends Notifier<Locale> {
+  @override
+  Locale build() {
+    final code = _globalPrefs.getString(AppConstants.localeKey);
     if (code == 'ar' || code == 'en') {
-      state = Locale(code!);
+      return Locale(code!);
     }
+    return const Locale('ar');
   }
 
   Future<void> setLocale(String languageCode) async {
@@ -239,32 +203,25 @@ class LocaleNotifier extends StateNotifier<Locale> {
     }
 
     state = Locale(languageCode);
-    await prefs.setString(AppConstants.localeKey, languageCode);
-    print('✅ Locale changed to: $languageCode');
+    await _globalPrefs.setString(AppConstants.localeKey, languageCode);
+    AppLogger.info('Locale changed to: $languageCode');
   }
 }
 
-/// Provider for app locale state.
-final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
-  return LocaleNotifier(prefs: _globalPrefs);
-});
+final localeProvider =
+    NotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
 
-/// Notifier for onboarding visibility on first app launch.
-class FirstLaunchNotifier extends StateNotifier<bool> {
-  final SharedPreferences prefs;
-
-  FirstLaunchNotifier({required this.prefs})
-    : super(prefs.getBool(AppConstants.isFirstLaunchKey) ?? true);
+class FirstLaunchNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    return _globalPrefs.getBool(AppConstants.isFirstLaunchKey) ?? true;
+  }
 
   Future<void> completeOnboarding() async {
     state = false;
-    await prefs.setBool(AppConstants.isFirstLaunchKey, false);
+    await _globalPrefs.setBool(AppConstants.isFirstLaunchKey, false);
   }
 }
 
-/// Provider that determines whether onboarding should be displayed.
-final firstLaunchProvider = StateNotifierProvider<FirstLaunchNotifier, bool>((
-  ref,
-) {
-  return FirstLaunchNotifier(prefs: _globalPrefs);
-});
+final firstLaunchProvider =
+    NotifierProvider<FirstLaunchNotifier, bool>(FirstLaunchNotifier.new);

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/design_colors.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../data/services/quran_api_service.dart';
 import 'surah_reader_page.dart';
 import 'package:just_audio/just_audio.dart';
@@ -70,7 +70,7 @@ class AyahSearchResult {
 }
 
 class QuranPage extends StatefulWidget {
-  const QuranPage({Key? key}) : super(key: key);
+  const QuranPage({super.key});
 
   @override
   State<QuranPage> createState() => _QuranPageState();
@@ -405,12 +405,18 @@ class _QuranPageState extends State<QuranPage> {
         // Use the selected reciter
         final url =
             '$_selectedReciterUrl/${surahId.toString().padLeft(3, '0')}.mp3';
+        final uri = Uri.tryParse(url);
+        if (uri == null ||
+            uri.scheme != 'https' ||
+            !uri.host.endsWith('mp3quran.net')) {
+          throw StateError('Untrusted reciter URL');
+        }
 
         await _audioPlayer.setUrl(url);
         await _audioPlayer.play();
       }
     } catch (e) {
-      print("Error playing audio: $e");
+      AppLogger.warning('Error playing audio: $e');
     }
   }
 
@@ -545,7 +551,7 @@ class _QuranPageState extends State<QuranPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -636,7 +642,7 @@ class _QuranPageState extends State<QuranPage> {
                 Text(
                   '${context.tr('reached_verse')}: ${_formatNumber(context, _lastReadVerse)}',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                     fontSize: 14,
                   ),
                 ),
@@ -699,7 +705,7 @@ class _QuranPageState extends State<QuranPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -712,7 +718,7 @@ class _QuranPageState extends State<QuranPage> {
               Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _accentGold.withOpacity(0.2),
+                  color: _accentGold.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.star_border, color: _accentGold, size: 24),
@@ -785,7 +791,7 @@ class _QuranPageState extends State<QuranPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -924,7 +930,7 @@ class _QuranPageState extends State<QuranPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -1063,7 +1069,7 @@ class _QuranPageState extends State<QuranPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -1216,7 +1222,7 @@ class _QuranPageState extends State<QuranPage> {
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _primaryDarkGreen.withOpacity(0.08)),
+              border: Border.all(color: _primaryDarkGreen.withValues(alpha: 0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1263,7 +1269,7 @@ class _QuranPageState extends State<QuranPage> {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),

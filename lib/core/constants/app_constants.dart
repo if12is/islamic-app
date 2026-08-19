@@ -13,8 +13,11 @@ class AppConstants {
   /// Base URL for the Aladhan Prayer Times API
   static const String aladhanApiBaseUrl = 'https://api.aladhan.com/v1';
   
-  /// Base URL for the Quran.com API
+  /// Quran.com metadata API
   static const String quranApiBaseUrl = 'https://api.quran.com/api/v4';
+
+  /// AlQuran Cloud API used for Uthmani text, juz, and search
+  static const String alQuranCloudApiBaseUrl = 'https://api.alquran.cloud/v1';
 
   /// Free public Azkar JSON source (open GitHub dataset)
   static const String azkarJsonUrl =

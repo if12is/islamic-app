@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/failure.dart';
 import '../../domain/entities/prayer_times_entity.dart';
 import '../../domain/repositories/prayer_times_repository.dart';
@@ -61,13 +62,13 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
         );
       } catch (e) {
         // Log cache error but don't fail the operation
-        print('Warning: Failed to cache prayer times: $e');
+        AppLogger.warning('Failed to cache prayer times: $e');
       }
 
       return Right(remoteModel);
     } on RemoteException catch (e) {
       // API call failed, try to use cache
-      print('API call failed: ${e.message}, attempting to use cache...');
+      AppLogger.warning('API call failed: ${e.message}, attempting to use cache');
       
       try {
         final cachedData = await localDataSource.getCachedPrayerTimes(
@@ -78,7 +79,7 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
         );
         
         if (cachedData != null) {
-          print('Using cached prayer times');
+          AppLogger.info('Using cached prayer times');
           return Right(cachedData);
         }
       } catch (_) {
@@ -104,7 +105,7 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
     try {
       return await localDataSource.getLatestCachedPrayerTimes();
     } catch (e) {
-      print('Error retrieving cached prayer times: $e');
+      AppLogger.warning('Error retrieving cached prayer times: $e');
       return null;
     }
   }

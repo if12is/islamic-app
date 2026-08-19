@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../constants/app_constants.dart';
+import 'secure_http_client.dart';
 
 /// Offline-first Azkar data service.
 ///
@@ -13,7 +14,7 @@ import '../constants/app_constants.dart';
 /// 2) Otherwise fetch from free remote JSON source and cache it.
 /// 3) Fallback to bundled asset JSON.
 class AzkarDataService {
-  AzkarDataService({Dio? dio}) : _dio = dio ?? Dio();
+  AzkarDataService({Dio? dio}) : _dio = dio ?? SecureHttpClient.create();
 
   static const String _boxName = 'azkar_cache';
   static const String _cacheEntryKey = 'azkar_payload';

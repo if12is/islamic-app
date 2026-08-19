@@ -26,7 +26,7 @@ class NotificationService {
     const iOS = DarwinInitializationSettings();
     const settings = InitializationSettings(android: android, iOS: iOS);
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(settings: settings);
 
     final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
@@ -70,10 +70,10 @@ class NotificationService {
   }) async {
     await initialize();
     await _plugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title ?? 'Prayer Reminder',
-      body ?? 'This is a test notification from Islamic App.',
-      _notificationDetails(),
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title: title ?? 'Prayer Reminder',
+      body: body ?? 'This is a test notification from Islamic App.',
+      notificationDetails: _notificationDetails(),
     );
   }
 
@@ -85,10 +85,10 @@ class NotificationService {
   }) async {
     await initialize();
     await _plugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title ?? 'وقت الصلاة',
-      body ?? 'حان وقت صلاة $prayerName ($prayerTime)',
-      _notificationDetails(),
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title: title ?? 'وقت الصلاة',
+      body: body ?? 'حان وقت صلاة $prayerName ($prayerTime)',
+      notificationDetails: _notificationDetails(),
     );
   }
 
