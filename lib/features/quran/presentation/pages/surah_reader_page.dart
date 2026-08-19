@@ -330,12 +330,13 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage> {
     String quarterText = '';
     if (quarter == 0) {
       quarterText = context.tr('hizb_label');
-    } else if (quarter == 1)
+    } else if (quarter == 1) {
       quarterText = context.tr('quarter_hizb_label');
-    else if (quarter == 2)
+    } else if (quarter == 2) {
       quarterText = context.tr('half_hizb_label');
-    else if (quarter == 3)
+    } else if (quarter == 3) {
       quarterText = context.tr('three_quarters_hizb_label');
+    }
 
     return '$quarterText ${_formatLocalizedNumber(context, hizb)}';
   }

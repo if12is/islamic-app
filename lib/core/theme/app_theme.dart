@@ -172,9 +172,6 @@ class AppTheme {
         minVerticalPadding: 12,
         iconColor: primaryLight,
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        year2023: false,
-      ),
     );
   }
 
@@ -295,9 +292,6 @@ class AppTheme {
       listTileTheme: const ListTileThemeData(
         minVerticalPadding: 12,
         iconColor: primaryDark,
-      ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        year2023: false,
       ),
     );
   }
