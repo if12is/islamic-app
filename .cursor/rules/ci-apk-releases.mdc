@@ -1,0 +1,27 @@
+---
+description: Android APK CI and GitHub Release commands
+globs: .github/**/*.yml,scripts/**/*.sh,pubspec.yaml
+alwaysApply: false
+---
+
+# APK CI and releases
+
+Workflow: `.github/workflows/android-apk.yml` (debug-signed release APK for testers).
+
+| Trigger | Rolling `apk-latest` (deletes previous) | Kept `vX.Y.Z` release |
+|---|---|---|
+| push `master` | yes | no |
+| `[release]` in commit | yes | yes |
+| `./scripts/release.sh 1.1.0+2` | yes | yes |
+| tag `v*` | yes | yes |
+| `[skip apk]` in commit | skip job | skip job |
+
+Manual:
+
+```bash
+gh workflow run android-apk.yml -f update_latest=true -f create_versioned_release=false
+gh workflow run android-apk.yml -f update_latest=false -f create_versioned_release=false
+gh workflow run android-apk.yml -f create_versioned_release=true -f version=1.1.0+2
+```
+
+Bump version only in `pubspec.yaml` (`1.1.0+2`). Never delete versioned GitHub releases unless the user asks.

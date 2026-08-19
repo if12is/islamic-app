@@ -1,0 +1,39 @@
+---
+description: Islamic App project map, local run, and GitHub APK workflow for AI agents
+alwaysApply: true
+---
+
+# Islamic App (if12is)
+
+Flutter Islamic app. Repo: https://github.com/if12is/islamic-app (account **if12is**).
+Read `AGENTS.md` for the full map. Write code and agent docs in English.
+
+## Run during development
+
+```bash
+flutter pub get
+flutter devices
+flutter run
+```
+
+Hot reload `r`, hot restart `R`. Web preview: `flutter run -d chrome`.
+
+## Layout
+
+- `lib/main.dart` — entry, Hive/Dio, `ProviderScope`
+- `lib/core/` — constants, l10n, theme, services, failures
+- `lib/features/<name>/{domain,data,presentation}` — feature-first Clean Architecture
+- `lib/shared/providers/` — theme, locale, first launch, location
+- Live nav is `HomePage` IndexedStack (Home / Quran / Azkar / Settings). `app_router.dart` is a stub.
+
+## GitHub APK
+
+Push `master` builds a release APK and **deletes/recreates** rolling release `apk-latest`.
+Versioned (kept) release only when opted in:
+
+- `./scripts/release.sh 1.1.0+2`
+- `git tag v1.1.0 && git push origin v1.1.0`
+- commit body/title contains `[release]`
+- Actions dispatch: `create_versioned_release=true`
+
+Skip CI APK with `[skip apk]`. Do not delete `v*` releases. Do not switch remotes away from if12is.

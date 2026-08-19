@@ -97,31 +97,49 @@ For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md)
 ## Getting Started
 
 ### Prerequisites
-- Flutter SDK: `>=3.19.0`
+- Flutter SDK: `>=3.19.0` (`brew install --cask flutter` on macOS, then `flutter doctor`)
 - Dart SDK: `>=3.7.0`
-- Android SDK or Xcode (for native development)
+- A device: Android emulator, iOS Simulator, Chrome, macOS, or a USB phone
 
-### Installation
+### Run while developing
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/if12is/islamic-app.git
-   cd islamic-app
-   ```
+```bash
+git clone https://github.com/if12is/islamic-app.git
+cd islamic-app
+flutter pub get
+flutter devices
+flutter run
+```
 
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
+- Hot reload: press `r` in the terminal where `flutter run` is active
+- Hot restart: press `R`
+- Web preview: `flutter run -d chrome`
+- Cursor: Run and Debug → **Islamic App** (see `.vscode/launch.json`)
 
-3. **Run the app**
-   ```bash
-   flutter run
-   ```
+See [QUICKSTART.md](QUICKSTART.md) for extra commands. Agent/project map: [AGENTS.md](AGENTS.md).
 
-### Development
+## GitHub APK workflow
 
-See [QUICKSTART.md](QUICKSTART.md) for common commands and troubleshooting.
+Every push to `master` builds a release APK and **replaces** the rolling GitHub Release [`apk-latest`](https://github.com/if12is/islamic-app/releases/tag/apk-latest) (the previous preview APK is deleted).
+
+| How you trigger it | Rolling `apk-latest` | Kept versioned release |
+|---|---|---|
+| `git push origin master` | replace previous | no |
+| commit message includes `[release]` | replace previous | yes |
+| `./scripts/release.sh 1.1.0+2` | replace previous | yes (`v1.1.0`) |
+| `git tag v1.1.0 && git push origin v1.1.0` | replace previous | yes |
+| Actions → Run workflow | `update_latest` checkbox | `create_versioned_release` checkbox |
+| commit message includes `[skip apk]` | skip | skip |
+
+```bash
+# Versioned release from the CLI (opt-in)
+./scripts/release.sh 1.1.0+2
+
+# Manual workflow (GitHub CLI)
+gh workflow run android-apk.yml -f update_latest=true -f create_versioned_release=false
+```
+
+The CI APK is debug-signed for testing, not Play Store. Workflow: `.github/workflows/android-apk.yml`.
 
 ## Project Structure
 
@@ -131,7 +149,8 @@ islamic_app/
 │   ├── main.dart                    # App entry point
 │   ├── core/                        # Shared functionality
 │   │   ├── constants/               # App constants
-│   │   ├── routing/                 # Navigation
+│   │   ├── localization/            # ar/en strings
+│   │   ├── routing/                 # go_router stub (HomePage is live nav)
 │   │   ├── services/                # Core services
 │   │   ├── theme/                   # Theme configuration
 │   │   └── utils/                   # Utilities & helpers

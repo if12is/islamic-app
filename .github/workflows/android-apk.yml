@@ -1,0 +1,171 @@
+name: Android APK
+
+# Always builds an installable APK on push to master.
+# Replacing the rolling GitHub Release is the default for master pushes.
+# Creating a kept versioned release is opt-in (tag, dispatch, or [release]).
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      update_latest:
+        description: 'Replace the rolling "apk-latest" GitHub Release (deletes the previous APK)'
+        type: boolean
+        default: true
+      create_versioned_release:
+        description: 'Create a kept versioned GitHub Release (vX.Y.Z). Does not delete old versioned releases.'
+        type: boolean
+        default: false
+      version:
+        description: 'Optional version override (e.g. 1.1.0+2). Empty = pubspec.yaml'
+        type: string
+        required: false
+        default: ''
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name != 'push' ||
+      !contains(github.event.head_commit.message, '[skip apk]')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Prepare APK artifacts
+        id: meta
+        run: |
+          set -euo pipefail
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "${VERSION}" ]; then
+            VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          fi
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/islamic-app-${VERSION}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk dist/islamic-app-latest.apk
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "apk_versioned=dist/islamic-app-${VERSION}.apk" >> "$GITHUB_OUTPUT"
+          echo "apk_latest=dist/islamic-app-latest.apk" >> "$GITHUB_OUTPUT"
+          echo "Prepared islamic-app-${VERSION}.apk"
+
+      - name: Upload APK (Actions artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: islamic-app-${{ steps.meta.outputs.version }}
+          path: |
+            dist/islamic-app-${{ steps.meta.outputs.version }}.apk
+            dist/islamic-app-latest.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Decide GitHub Release mode
+        id: mode
+        run: |
+          set -euo pipefail
+          UPDATE_LATEST=false
+          CREATE_VERSIONED=false
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            [ "${{ github.event.inputs.update_latest }}" = "true" ] && UPDATE_LATEST=true
+            [ "${{ github.event.inputs.create_versioned_release }}" = "true" ] && CREATE_VERSIONED=true
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            UPDATE_LATEST=true
+            CREATE_VERSIONED=true
+          else
+            # Push to master: replace rolling APK. Versioned only with [release].
+            UPDATE_LATEST=true
+            if echo "${{ github.event.head_commit.message }}" | grep -q '\[release\]'; then
+              CREATE_VERSIONED=true
+            fi
+          fi
+
+          echo "update_latest=${UPDATE_LATEST}" >> "$GITHUB_OUTPUT"
+          echo "create_versioned=${CREATE_VERSIONED}" >> "$GITHUB_OUTPUT"
+
+      - name: Replace rolling apk-latest release
+        if: steps.mode.outputs.update_latest == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Delete the previous rolling release + tag so only one preview APK exists.
+          gh release delete apk-latest --cleanup-tag --yes || true
+          git push origin :refs/tags/apk-latest || true
+
+          gh release create apk-latest \
+            "${{ steps.meta.outputs.apk_latest }}" \
+            "${{ steps.meta.outputs.apk_versioned }}" \
+            --title "Latest development APK (${{ steps.meta.outputs.version }})" \
+            --notes "$(cat <<EOF
+          Rolling development APK. This release is replaced on every push to \`master\`.
+
+          - Version: \`${{ steps.meta.outputs.version }}\`
+          - Commit: \`${{ github.sha }}\`
+          - Branch: \`${{ github.ref_name }}\`
+
+          Install: download \`islamic-app-latest.apk\` on an Android device (debug-signed for testing).
+
+          To keep a version forever, create a versioned release (see AGENTS.md).
+          EOF
+          )" \
+            --prerelease \
+            --latest=false
+
+      - name: Create versioned GitHub Release
+        if: steps.mode.outputs.create_versioned == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.meta.outputs.version }}"
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            TAG="v${VERSION%%+*}"
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; uploading APK onto it."
+            gh release upload "$TAG" "${{ steps.meta.outputs.apk_versioned }}" --clobber
+            exit 0
+          fi
+
+          gh release create "$TAG" \
+            "${{ steps.meta.outputs.apk_versioned }}" \
+            --title "Islamic App ${VERSION}" \
+            --notes "$(cat <<EOF
+          Versioned release \`${VERSION}\`. This release is kept; it is not deleted by later pushes.
+
+          - Commit: \`${{ github.sha }}\`
+          EOF
+          )" \
+            --latest=true
