@@ -145,14 +145,15 @@ class _NotificationCenterPageState
 
   Widget _card({required String title, IconData? icon, String? subtitle, required List<Widget> children}) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+    return Material(
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant),
+        side: BorderSide(color: colorScheme.outlineVariant),
       ),
-      child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -181,6 +182,7 @@ class _NotificationCenterPageState
           const SizedBox(height: 16),
           ...children,
         ],
+      ),
       ),
     );
   }

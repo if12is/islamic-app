@@ -400,6 +400,34 @@ class _QuranPageState extends State<QuranPage> {
         .join('');
   }
 
+  AudioSource? _surahAudioSource(int surahId) {
+    final url =
+        '$_selectedReciterUrl/${surahId.toString().padLeft(3, '0')}.mp3';
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        !uri.host.endsWith('mp3quran.net')) {
+      return null;
+    }
+
+    final surahName =
+        _allSurahs
+            .cast<Surah?>()
+            .firstWhere((item) => item?.id == surahId, orElse: () => null)
+            ?.nameAr ??
+        '';
+
+    return AudioSource.uri(
+      uri,
+      tag: MediaItem(
+        id: 'surah_$surahId',
+        album: 'القرآن الكريم',
+        title: 'سورة $surahName',
+        artist: _reciters[_selectedReciterUrl] ?? '',
+      ),
+    );
+  }
+
   void _setMode(QuranIndexMode mode) {
     if (_mode == mode) return;
 
@@ -428,34 +456,12 @@ class _QuranPageState extends State<QuranPage> {
           _currentlyPlayingSurahId = surahId;
         });
 
-        // Use the selected reciter
-        final url =
-            '$_selectedReciterUrl/${surahId.toString().padLeft(3, '0')}.mp3';
-        final uri = Uri.tryParse(url);
-        if (uri == null ||
-            uri.scheme != 'https' ||
-            !uri.host.endsWith('mp3quran.net')) {
+        final source = _surahAudioSource(surahId);
+        if (source == null) {
           throw StateError('Untrusted reciter URL');
         }
 
-        final surahName =
-            _allSurahs
-                .cast<Surah?>()
-                .firstWhere((item) => item?.id == surahId, orElse: () => null)
-                ?.nameAr ??
-            '';
-
-        await _audioPlayer.setAudioSource(
-          AudioSource.uri(
-            Uri.parse(url),
-            tag: MediaItem(
-              id: 'surah_$surahId',
-              album: 'القرآن الكريم',
-              title: 'سورة $surahName',
-              artist: _reciters[_selectedReciterUrl] ?? '',
-            ),
-          ),
-        );
+        await _audioPlayer.setAudioSource(source);
         await _audioPlayer.play();
       }
     } catch (e) {
@@ -1801,9 +1807,11 @@ class _QuranPageState extends State<QuranPage> {
                               _selectedReciterUrl = val;
                             });
                             final wasPlaying = _audioPlayer.playing;
-                            final url =
-                                '$_selectedReciterUrl/${surah.id.toString().padLeft(3, '0')}.mp3';
-                            _audioPlayer.setUrl(url).then((_) {
+                            final source = _surahAudioSource(surah.id);
+                            if (source == null) {
+                              return;
+                            }
+                            _audioPlayer.setAudioSource(source).then((_) {
                               if (wasPlaying) {
                                 _audioPlayer.play();
                               }

@@ -322,16 +322,7 @@ class SettingsPage extends ConsumerWidget {
                                     .read(prayerMethodProvider.notifier)
                                     .setMethod(entry.key);
                               },
-                              child: ListTile(
-                                dense: true,
-                                title: Text(entry.value),
-                                trailing: prayerMethod == entry.key
-                                    ? Icon(
-                                        Icons.check,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      )
-                                    : null,
-                              ),
+                              child: Text(entry.value),
                             ),
                           )
                           .toList(),
@@ -342,15 +333,14 @@ class SettingsPage extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Tools: everything with its own screen.
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(32),
-                ),
+              Material(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(32),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 child: Column(
                   children: [
                     _buildToolTile(
@@ -390,6 +380,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ],
+                ),
                 ),
               ),
               const SizedBox(height: 16),

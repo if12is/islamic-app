@@ -150,11 +150,11 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
             .read(bookmarksProvider.notifier)
             .remove(bookmark.surahNumber, bookmark.verseNumber);
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+      child: Material(
+        color: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colorScheme.outlineVariant),
+          side: BorderSide(color: colorScheme.outlineVariant),
         ),
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(
