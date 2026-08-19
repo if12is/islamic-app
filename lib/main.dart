@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,40 +12,48 @@ import 'core/services/notification_router.dart';
 import 'core/services/notification_scheduler.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/app_logger.dart';
 import 'features/onboarding/presentation/pages/splash_screen.dart';
 import 'shared/providers/app_providers.dart';
 
 void main() async {
-  // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize all app services (Hive, notifications, time zones, etc.)
-  await AppServices.initialize();
-
-  // Lock-screen and background controls for Quran recitation.
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.islamicapp.islamic_app.audio',
-    androidNotificationChannelName: 'Quran playback',
-    androidNotificationOngoing: true,
-    androidStopForegroundOnPause: true,
-  );
-
-  // Initialize SharedPreferences and theme provider
-  await initializeThemeProvider();
-
-  // Warm offline-first caches in the background.
-  unawaited(runStartupSync());
-
-  // Re-arm prayer reminders for the week ahead. Cheap when nothing changed,
-  // and it repairs the schedule after a reboot, a time-zone change, or an
-  // Android process kill.
-  unawaited(NotificationScheduler.refresh());
-
-  // If a notification started the app, remember where it wanted to go.
-  unawaited(NotificationService.handleLaunchPayload());
-
-  // Run the app
+  await _bootstrap();
   runApp(const ProviderScope(child: IslamicApp()));
+}
+
+/// Start the UI even if a plugin hangs. A native splash freeze is worse than
+/// a missing notification channel on first launch.
+Future<void> _bootstrap() async {
+  try {
+    await AppServices.initialize();
+  } catch (e, stack) {
+    AppLogger.error('App services failed to initialize', e, stack);
+  }
+
+  if (!kIsWeb) {
+    try {
+      await JustAudioBackground.init(
+        androidNotificationChannelId: 'com.islamicapp.islamic_app.audio',
+        androidNotificationChannelName: 'Quran playback',
+        androidNotificationOngoing: true,
+        androidStopForegroundOnPause: true,
+        androidNotificationIcon: 'mipmap/launcher_icon',
+      ).timeout(const Duration(seconds: 5));
+    } catch (e, stack) {
+      AppLogger.error('Background audio init failed', e, stack);
+    }
+  }
+
+  try {
+    await initializeThemeProvider();
+  } catch (e, stack) {
+    AppLogger.error('Preferences init failed', e, stack);
+  }
+
+  unawaited(runStartupSync());
+  unawaited(NotificationScheduler.refresh());
+  unawaited(NotificationService.handleLaunchPayload());
 }
 
 /// Main application widget.

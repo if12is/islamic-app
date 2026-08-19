@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -10,7 +12,12 @@ class AppServices {
   /// Initialize all app services before runApp().
   static Future<void> initialize() async {
     await Hive.initFlutter();
-    await NotificationService.initialize();
+    try {
+      await NotificationService.initialize()
+          .timeout(const Duration(seconds: 5));
+    } catch (e, stack) {
+      AppLogger.error('Notification service failed to initialize', e, stack);
+    }
     AppLogger.info('App services initialized');
   }
 

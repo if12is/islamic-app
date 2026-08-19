@@ -37,18 +37,31 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  final Set<int> _openedTabs = {0};
+
   void _onTabTapped(int index) {
+    setState(() {
+      _openedTabs.add(index);
+    });
     ref.read(mainTabIndexProvider.notifier).setIndex(index);
+  }
+
+  Widget _tabAt(int index, Widget child) {
+    if (!_openedTabs.contains(index)) {
+      return const SizedBox.shrink();
+    }
+    return child;
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedNavIndex = ref.watch(mainTabIndexProvider);
+    _openedTabs.add(selectedNavIndex);
     final tabs = <Widget>[
-      _HomeDashboard(onOpenTab: _onTabTapped),
-      const QuranPage(),
-      const AzkarPage(),
-      SettingsPage(onBackHome: () => _onTabTapped(0)),
+      _tabAt(0, _HomeDashboard(onOpenTab: _onTabTapped)),
+      _tabAt(1, const QuranPage()),
+      _tabAt(2, const AzkarPage()),
+      _tabAt(3, SettingsPage(onBackHome: () => _onTabTapped(0))),
     ];
 
     final theme = Theme.of(context);

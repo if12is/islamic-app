@@ -171,7 +171,7 @@ class NotificationService {
 
     await _ensureTimeZone();
 
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('@mipmap/launcher_icon');
     const iOS = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
