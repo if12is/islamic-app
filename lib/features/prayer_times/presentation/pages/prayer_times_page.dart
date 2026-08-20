@@ -120,12 +120,13 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
 
   IconData _getIconForPrayer(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('fajr')) return Icons.wb_twilight;
-    if (lower.contains('dhuhr')) return Icons.wb_sunny_outlined;
-    if (lower.contains('asr')) return Icons.light_mode_outlined;
-    if (lower.contains('maghrib')) return Icons.nightlight_round;
-    if (lower.contains('isha')) return Icons.nightlight_outlined;
-    return Icons.access_time;
+    if (lower.contains('fajr') || lower.contains('sunrise')) {
+      return Icons.wb_twilight_rounded;
+    }
+    if (lower.contains('maghrib')) return Icons.nights_stay_outlined;
+    if (lower.contains('isha')) return Icons.bedtime_rounded;
+    if (lower.contains('asr')) return Icons.wb_cloudy_outlined;
+    return Icons.light_mode_rounded;
   }
 
   /// "٤٢ د" or "٢:١٥" — what is left before the next prayer.
@@ -135,9 +136,10 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     }
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
-    final text = hours > 0
-        ? '$hours:${minutes.toString().padLeft(2, '0')}'
-        : '$minutes ${context.tr('minute_short')}';
+    final text =
+        hours > 0
+            ? '$hours:${minutes.toString().padLeft(2, '0')}'
+            : '$minutes ${context.tr('minute_short')}';
     return _localizeDigits(context, text);
   }
 
@@ -332,12 +334,13 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                               nextSlot.prayer.name,
                             ),
                     footnote: locationText,
-                    remaining: nextSlot == null
-                        ? null
-                        : _remainingLabel(
-                            context,
-                            nextSlot.time.difference(_currentTime),
-                          ),
+                    remaining:
+                        nextSlot == null
+                            ? null
+                            : _remainingLabel(
+                              context,
+                              nextSlot.time.difference(_currentTime),
+                            ),
                     startLabel:
                         currentSlot == null
                             ? null
@@ -351,7 +354,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                             : _formatTime12H(context, currentSlot.time),
                     startIcon:
                         currentSlot == null
-                            ? Icons.wb_twilight
+                            ? Icons.wb_twilight_rounded
                             : _getIconForPrayer(currentSlot.prayer.name),
                     endLabel:
                         nextSlot == null
@@ -366,7 +369,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                             : _formatTime12H(context, nextSlot.time),
                     endIcon:
                         nextSlot == null
-                            ? Icons.nights_stay_outlined
+                            ? Icons.bedtime_rounded
                             : _getIconForPrayer(nextSlot.prayer.name),
                   ),
                 ),

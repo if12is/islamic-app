@@ -18,6 +18,7 @@ class SeasonalIntroService {
   static const Map<SeasonalEvent, String> assets = {
     SeasonalEvent.ramadan: 'assets/video/ramadan_intro.mp4',
     SeasonalEvent.lastTenNights: 'assets/video/ramadan_intro.mp4',
+    SeasonalEvent.eidAdha: 'assets/video/eid_adha_intro.mp4',
   };
 
   static String? assetFor(SeasonalEvent event) => assets[event];

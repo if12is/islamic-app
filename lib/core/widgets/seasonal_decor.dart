@@ -110,27 +110,6 @@ class _SeasonalDecorState extends State<SeasonalDecor>
             ),
           ),
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 168,
-          child: IgnorePointer(
-            child: RepaintBoundary(
-              child: AnimatedBuilder(
-                animation: phase,
-                builder:
-                    (context, _) => CustomPaint(
-                      painter: _BottomDecorPainter(
-                        event: widget.event,
-                        colour: palette.ornament,
-                        phase: phase.value,
-                      ),
-                    ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -345,9 +324,86 @@ class _TopDecorPainter extends CustomPainter {
       old.phase != phase || old.event != event || old.colour != colour;
 }
 
-/// The band along the bottom: a skyline, a garland, dunes.
-class _BottomDecorPainter extends CustomPainter {
-  const _BottomDecorPainter({
+/// The season, worn by the floating nav bar itself.
+///
+/// Dangling objects over the bar looked like something had fallen on it. What
+/// works is treating the bar's own top edge: a light that travels along it in
+/// Ramadan, stars that breathe in the last ten nights, confetti crossing it for
+/// Fitr, a woven border for Adha. It moves, so the bar feels alive, and it
+/// never leaves the edge, so it always belongs to the bar.
+class SeasonalNavFlourish extends StatefulWidget {
+  const SeasonalNavFlourish({super.key, required this.event});
+
+  final SeasonalEvent event;
+
+  @override
+  State<SeasonalNavFlourish> createState() => _SeasonalNavFlourishState();
+}
+
+class _SeasonalNavFlourishState extends State<SeasonalNavFlourish>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 7),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.event != SeasonalEvent.none) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(SeasonalNavFlourish oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.event == SeasonalEvent.none) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = SeasonalTheme.paletteFor(widget.event);
+    if (palette == null) {
+      return const SizedBox(height: 6);
+    }
+
+    final still = MediaQuery.disableAnimationsOf(context);
+    final phase =
+        still ? const AlwaysStoppedAnimation<double>(0.3) : _controller;
+
+    return SizedBox(
+      height: 12,
+      width: double.infinity,
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: phase,
+          builder:
+              (context, _) => CustomPaint(
+                painter: _NavFlourishPainter(
+                  event: widget.event,
+                  colour: palette.ornament,
+                  phase: phase.value,
+                ),
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavFlourishPainter extends CustomPainter {
+  const _NavFlourishPainter({
     required this.event,
     required this.colour,
     required this.phase,
@@ -359,217 +415,109 @@ class _BottomDecorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    switch (event) {
-      case SeasonalEvent.none:
-        return;
-      case SeasonalEvent.ramadan:
-      case SeasonalEvent.lastTenNights:
-        _skyline(canvas, size);
-      case SeasonalEvent.eidFitr:
-        _skyline(canvas, size);
-      case SeasonalEvent.eidAdha:
-        _dunes(canvas, size);
-    }
-  }
+    final inset = size.width * 0.07;
+    final line = Rect.fromLTWH(inset, 3, size.width - inset * 2, 2);
 
-  /// Domes and minarets, drifting very slowly sideways like a parallax layer.
-  void _skyline(Canvas canvas, Size size) {
-    final drift = math.sin(phase * 2 * math.pi) * 6;
-    final base = size.height;
-    final path = Path()..moveTo(-20, base);
-
-    var x = -20.0 + drift;
-    var index = 0;
-    while (x < size.width + 40) {
-      final width = 46.0 + (index % 3) * 16;
-      final domeRadius = width * 0.34;
-      final domeTop = base - 34 - (index % 2) * 12;
-
-      path
-        ..lineTo(x, domeTop + domeRadius)
-        ..arcToPoint(
-          Offset(x + domeRadius * 2, domeTop + domeRadius),
-          radius: Radius.circular(domeRadius),
-        )
-        ..lineTo(x + domeRadius * 2, base);
-
-      if (index.isEven) {
-        final minaret = x + width - 6;
-        path
-          ..moveTo(minaret, base)
-          ..lineTo(minaret, domeTop - 22)
-          ..lineTo(minaret + 5, domeTop - 22)
-          ..lineTo(minaret + 5, base)
-          ..close()
-          ..moveTo(x + domeRadius * 2, base);
-      }
-
-      x += width;
-      index++;
-    }
-
-    path
-      ..lineTo(size.width + 40, base)
-      ..close();
-
-    canvas.drawPath(path, Paint()..color = colour.withValues(alpha: 0.12));
-  }
-
-  /// Two soft dunes for the days of Adha.
-  void _dunes(Canvas canvas, Size size) {
-    final drift = math.sin(phase * 2 * math.pi) * 8;
-
-    for (var layer = 0; layer < 2; layer++) {
-      final height = 34.0 + layer * 22;
-      final path =
-          Path()
-            ..moveTo(-40, size.height)
-            ..quadraticBezierTo(
-              size.width * 0.25 + drift * (layer + 1),
-              size.height - height,
-              size.width * 0.55,
-              size.height - height * 0.55,
-            )
-            ..quadraticBezierTo(
-              size.width * 0.85 - drift * (layer + 1),
-              size.height - height * 1.2,
-              size.width + 40,
-              size.height - height * 0.3,
-            )
-            ..lineTo(size.width + 40, size.height)
-            ..close();
-
-      canvas.drawPath(
-        path,
-        Paint()..color = colour.withValues(alpha: layer == 0 ? 0.16 : 0.10),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BottomDecorPainter old) =>
-      old.phase != phase || old.event != event || old.colour != colour;
-}
-
-/// A thin seasonal flourish drawn over the top edge of the floating nav bar.
-///
-/// The bar is the one surface on screen at all times, so giving it the
-/// season's character is what makes the whole app feel dressed rather than one
-/// screen wearing a banner.
-class SeasonalNavFlourish extends StatelessWidget {
-  const SeasonalNavFlourish({super.key, required this.event});
-
-  final SeasonalEvent event;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = SeasonalTheme.paletteFor(event);
-    if (palette == null) {
-      return const SizedBox(height: 6);
-    }
-
-    return SizedBox(
-      height: 16,
-      width: double.infinity,
-      child: CustomPaint(
-        painter: _NavFlourishPainter(event: event, colour: palette.ornament),
-      ),
-    );
-  }
-}
-
-class _NavFlourishPainter extends CustomPainter {
-  const _NavFlourishPainter({required this.event, required this.colour});
-
-  final SeasonalEvent event;
-  final Color colour;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // A hairline along the very top, shared by every season, so the ribbon is
-    // always anchored to the bar rather than hovering over it.
-    canvas.drawLine(
-      Offset(size.width * 0.08, 1),
-      Offset(size.width * 0.92, 1),
+    // The hairline every season shares, fading out at both ends so it reads as
+    // part of the bar's edge rather than a rule drawn across it.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(line, const Radius.circular(1)),
       Paint()
         ..shader = LinearGradient(
           colors: [
             colour.withValues(alpha: 0),
-            colour.withValues(alpha: 0.75),
+            colour.withValues(alpha: 0.45),
             colour.withValues(alpha: 0),
           ],
-        ).createShader(Rect.fromLTWH(0, 0, size.width, 2))
-        ..strokeWidth = 1.2,
+        ).createShader(line),
     );
-
-    final fill = Paint()..color = colour.withValues(alpha: 0.55);
 
     switch (event) {
       case SeasonalEvent.none:
         return;
 
-      // Little lanterns hanging down into the bar.
+      // A lantern's light travelling along the edge.
       case SeasonalEvent.ramadan:
+        final x = line.left + line.width * ((phase * 1.0) % 1);
+        canvas.drawCircle(
+          Offset(x, line.center.dy),
+          9,
+          Paint()
+            ..color = colour.withValues(alpha: 0.5)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+        );
+        canvas.drawCircle(
+          Offset(x, line.center.dy),
+          2.2,
+          Paint()..color = colour,
+        );
+
+      // Stars along the edge, breathing out of step with each other.
       case SeasonalEvent.lastTenNights:
-        const count = 7;
+        const count = 13;
         for (var i = 0; i < count; i++) {
-          final x = size.width * ((i + 0.5) / count);
-          final drop = i.isEven ? 5.0 : 8.0;
+          final x = line.left + line.width * ((i + 0.5) / count);
+          final beat = 0.5 + 0.5 * math.sin(phase * 2 * math.pi * 1.6 + i);
+          canvas.drawCircle(
+            Offset(x, line.center.dy),
+            0.8 + beat * 1.6,
+            Paint()..color = colour.withValues(alpha: 0.2 + beat * 0.55),
+          );
+        }
+
+      // Confetti crossing the edge, each piece on its own loop.
+      case SeasonalEvent.eidFitr:
+        const count = 10;
+        for (var i = 0; i < count; i++) {
+          final offset = (phase * (0.6 + i % 3 * 0.25) + i / count) % 1;
+          final x = line.left + line.width * offset;
+          final tilt = phase * 2 * math.pi + i;
+
           canvas
-            ..drawLine(
-              Offset(x, 1),
-              Offset(x, drop),
-              Paint()
-                ..color = colour.withValues(alpha: 0.45)
-                ..strokeWidth = 0.9,
+            ..save()
+            ..translate(x, line.center.dy)
+            ..rotate(tilt)
+            ..drawRRect(
+              RRect.fromRectAndRadius(
+                Rect.fromCenter(center: Offset.zero, width: 5, height: 2.4),
+                const Radius.circular(1.2),
+              ),
+              Paint()..color = colour.withValues(alpha: i.isEven ? 0.7 : 0.4),
             )
-            ..drawPath(
-              Path()
-                ..moveTo(x - 2.6, drop)
-                ..lineTo(x + 2.6, drop)
-                ..lineTo(x + 3.6, drop + 4)
-                ..lineTo(x + 2, drop + 7)
-                ..lineTo(x - 2, drop + 7)
-                ..lineTo(x - 3.6, drop + 4)
-                ..close(),
-              i.isEven
-                  ? fill
-                  : (Paint()..color = colour.withValues(alpha: 0.3)),
+            ..restore();
+        }
+
+      // A woven border, like the edge of a rug, shifting slowly along.
+      case SeasonalEvent.eidAdha:
+        final path = Path();
+        const step = 14.0;
+        final shift = (phase * step * 2) % (step * 2);
+        for (var x = line.left - step * 2; x < line.right + step; x += step) {
+          final start = x + shift;
+          path
+            ..moveTo(start, line.center.dy - 3)
+            ..quadraticBezierTo(
+              start + step / 2,
+              line.center.dy + 3,
+              start + step,
+              line.center.dy - 3,
             );
         }
-
-      // Pennants, alternating weight.
-      case SeasonalEvent.eidFitr:
-        const count = 11;
-        for (var i = 0; i < count; i++) {
-          final x = size.width * ((i + 0.5) / count);
-          canvas.drawPath(
-            Path()
-              ..moveTo(x - 4, 1)
-              ..lineTo(x + 4, 1)
-              ..lineTo(x, 9)
-              ..close(),
-            Paint()..color = colour.withValues(alpha: i.isEven ? 0.5 : 0.26),
-          );
-        }
-
-      // A scalloped valance, like the edge of a tent.
-      case SeasonalEvent.eidAdha:
-        const scallops = 14;
-        final width = size.width / scallops;
-        final path = Path()..moveTo(0, 1);
-        for (var i = 0; i < scallops; i++) {
-          path.arcToPoint(
-            Offset(width * (i + 1), 1),
-            radius: Radius.circular(width * 0.55),
-            clockwise: false,
-          );
-        }
-        canvas.drawPath(path, Paint()..color = colour.withValues(alpha: 0.28));
+        canvas
+          ..save()
+          ..clipRect(line.inflate(4))
+          ..drawPath(
+            path,
+            Paint()
+              ..color = colour.withValues(alpha: 0.5)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.3,
+          )
+          ..restore();
     }
   }
 
   @override
   bool shouldRepaint(covariant _NavFlourishPainter old) =>
-      old.event != event || old.colour != colour;
+      old.event != event || old.colour != colour || old.phase != phase;
 }

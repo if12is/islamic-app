@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/motif_icon.dart';
+import '../../../../core/widgets/seasonal_art.dart';
+import '../../../../core/services/seasonal_theme.dart';
 import '../../../../core/widgets/islamic_icon.dart';
 import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -49,6 +51,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final season = ref.watch(seasonalEventProvider);
 
     return Directionality(
       textDirection: context.appTextDirection,
@@ -81,6 +84,20 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               ),
             ),
 
+            // Arriving for the first time during Ramadan or an Eid should look
+            // like arriving during Ramadan: the skyline and the lanterns take
+            // the top of the screen, and the greeting is the season's own.
+            if (season != SeasonalEvent.none)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SeasonalHeroArt(
+                  event: season,
+                  height: MediaQuery.sizeOf(context).height * 0.42,
+                ),
+              ),
+
             SafeArea(
               child: Column(
                 children: [
@@ -94,10 +111,12 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                         0,
                       ),
                       child: TextButton(
-                        onPressed: _isFinishing
-                            ? null
-                            : () =>
-                                  _finishOnboarding(requestNotifications: false),
+                        onPressed:
+                            _isFinishing
+                                ? null
+                                : () => _finishOnboarding(
+                                  requestNotifications: false,
+                                ),
                         style: TextButton.styleFrom(
                           foregroundColor: Colors.white.withValues(alpha: 0.7),
                         ),
@@ -105,29 +124,58 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       ),
                     ),
                   ),
+                  if (season != SeasonalEvent.none)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
+                      child: Column(
+                        children: [
+                          Text(
+                            context.tr(SeasonalTheme.greetingKey(season)),
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.display(
+                              context,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: tokens.goldBright,
+                            ),
+                          ),
+                          Text(
+                            context.tr(SeasonalTheme.subtitleKey(season)),
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.caption(
+                              context,
+                              color: Colors.white.withValues(alpha: 0.66),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   Expanded(
                     child: PageView(
                       controller: _pageController,
-                      onPageChanged: (page) =>
-                          setState(() => _currentPage = page),
+                      onPageChanged:
+                          (page) => setState(() => _currentPage = page),
                       children: [
                         _buildFeaturePage(
                           context,
                           icon: IslamicIcon.crescentStars,
                           titleKey: 'onboarding_welcome_title',
                           bodyKey: 'onboarding_welcome_body',
+                          showMedallion: season == SeasonalEvent.none,
                         ),
                         _buildFeaturePage(
                           context,
                           icon: IslamicIcon.compass,
                           titleKey: 'onboarding_location_title',
                           bodyKey: 'onboarding_location_body',
+                          showMedallion: season == SeasonalEvent.none,
                         ),
                         _buildFeaturePage(
                           context,
                           icon: IslamicIcon.bell,
                           titleKey: 'onboarding_notifications_title',
                           bodyKey: 'onboarding_notifications_body',
+                          showMedallion: season == SeasonalEvent.none,
                         ),
                       ],
                     ),
@@ -227,6 +275,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     required IslamicIcon icon,
     required String titleKey,
     required String bodyKey,
+    bool showMedallion = true,
   }) {
     final tokens = context.tokens;
 
@@ -236,37 +285,39 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         children: [
           const Spacer(flex: 3),
           // The motif behind the icon, big and faint: decoration that does not
-          // compete with the sentence it sits above.
-          SizedBox(
-            width: 190,
-            height: 190,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CustomPaint(
-                  size: const Size.square(190),
-                  painter: MotifPainter(
-                    motif: Motif.star8,
-                    color: tokens.goldBright.withValues(alpha: 0.14),
-                  ),
-                ),
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.07),
-                    border: Border.all(
-                      color: tokens.goldBright.withValues(alpha: 0.35),
+          // compete with the sentence it sits above. In a season the artwork
+          // overhead already does this job, so it steps aside.
+          if (showMedallion)
+            SizedBox(
+              width: 190,
+              height: 190,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size.square(190),
+                    painter: MotifPainter(
+                      motif: Motif.star8,
+                      color: tokens.goldBright.withValues(alpha: 0.14),
                     ),
                   ),
-                  child: Center(
-                    child: AppIcon(icon, size: 44, color: tokens.goldBright),
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.07),
+                      border: Border.all(
+                        color: tokens.goldBright.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Center(
+                      child: AppIcon(icon, size: 44, color: tokens.goldBright),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           const Spacer(flex: 2),
           Text(
             context.tr(titleKey),
@@ -432,10 +483,7 @@ class _PanelPainter extends CustomPainter {
           ..shader = LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Colors.white.withValues(alpha: 0),
-            ],
+            colors: [Colors.white, Colors.white.withValues(alpha: 0)],
           ).createShader(band),
       )
       ..restore();

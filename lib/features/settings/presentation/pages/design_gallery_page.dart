@@ -9,8 +9,11 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/arc_gauge.dart';
+import '../../../../core/widgets/seasonal_art.dart';
+import '../../../../core/widgets/seasonal_banner.dart';
 import '../../../../core/widgets/ayah_block.dart';
 import '../../../../core/widgets/glass_container.dart';
+import '../../../../core/widgets/islamic_icon.dart';
 import '../../../../core/widgets/motif_icon.dart';
 import '../../../../core/widgets/story_rail.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -166,6 +169,43 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
           ),
 
           const SizedBox(height: AppSpacing.lg),
+          _label(context, 'SeasonalBanner — one design per season'),
+          for (final event in SeasonalEvent.values)
+            if (event != SeasonalEvent.none)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: SeasonalBanner(
+                  event: event,
+                  hijriDay: event == SeasonalEvent.ramadan ? 21 : null,
+                ),
+              ),
+
+          const SizedBox(height: AppSpacing.lg),
+          _label(context, 'SeasonalHeroArt — onboarding only'),
+          ClipRRect(
+            borderRadius: AppRadii.lgAll,
+            child: ColoredBox(
+              color: tokens.brandDeep,
+              child: SeasonalHeroArt(
+                event: override ?? SeasonalEvent.ramadan,
+                height: 220,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+          _label(context, 'AppCard + corners'),
+          AppCard(
+            corners: true,
+            child: Text(
+              'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ',
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
+              style: AppTextStyles.quran(context, fontSize: 24),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
           _label(context, 'HeroCard'),
           HeroCard(
             label: context.tr('last_read'),
@@ -290,7 +330,33 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
           ),
 
           const SizedBox(height: AppSpacing.lg),
-          _label(context, 'Motifs'),
+          _label(context, 'Icons — Tabler, MIT, bundled'),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            children: [
+              for (final icon in IslamicIcon.values)
+                Column(
+                  children: [
+                    AppIconBadge(icon, size: 46),
+                    const SizedBox(height: 3),
+                    SizedBox(
+                      width: 58,
+                      child: Text(
+                        icon.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.caption(context, fontSize: 9.5),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.lg),
+          _label(context, 'Motifs — drawn, for large decoration'),
           Wrap(
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.md,

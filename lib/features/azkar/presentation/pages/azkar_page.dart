@@ -1,4 +1,7 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../data/tasbeeh_store.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -369,6 +372,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     }
 
     return AppCard(
+      corners: true,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
@@ -423,9 +427,39 @@ class SmartTasbeehWidget extends StatefulWidget {
 }
 
 class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
+  static const int _target = 33;
+
+  TasbeehMode _mode = TasbeehMode.rounds;
   int _tasbeehCount = 0;
-  final int _target = 33;
   int _currentZekrIndex = 0;
+
+  /// The lifetime total, in endless mode.
+  int _total = 0;
+  int _today = 0;
+
+  SharedPreferences? _prefs;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _prefs = prefs;
+      _mode = TasbeehStore.mode(prefs);
+      _total = TasbeehStore.total(prefs);
+      _today = TasbeehStore.today(prefs);
+      if (_mode == TasbeehMode.endless) {
+        _currentZekrIndex = TasbeehStore.phraseIndex(prefs);
+      }
+    });
+  }
 
   List<String> _azkarList(BuildContext context) {
     return [
@@ -438,12 +472,53 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     ];
   }
 
-  void _increment(int phrasesLength) {
+  bool get _isEndless => _mode == TasbeehMode.endless;
+
+  Future<void> _setMode(TasbeehMode mode) async {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _mode = mode;
+      _tasbeehCount = 0;
+    });
+    final prefs = _prefs;
+    if (prefs != null) {
+      await TasbeehStore.setMode(prefs, mode);
+      if (mode == TasbeehMode.endless) {
+        setState(() {
+          _currentZekrIndex = TasbeehStore.phraseIndex(prefs);
+          _total = TasbeehStore.total(prefs);
+          _today = TasbeehStore.today(prefs);
+        });
+      }
+    }
+  }
+
+  Future<void> _increment(int phrasesLength) async {
     HapticFeedback.lightImpact();
+
+    if (_isEndless) {
+      final prefs = _prefs;
+      // Written on every tap: a lifetime count lost to a force-quit is a
+      // count nobody trusts again.
+      final next =
+          prefs == null ? _total + 1 : await TasbeehStore.increment(prefs);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _total = next;
+        _today++;
+      });
+      if (next % 100 == 0) {
+        HapticFeedback.heavyImpact();
+      }
+      return;
+    }
+
     setState(() {
       _tasbeehCount++;
       if (_tasbeehCount > _target) {
-        _tasbeehCount = 1; // Rollover and move to next
+        _tasbeehCount = 1;
         _currentZekrIndex = (_currentZekrIndex + 1) % phrasesLength;
         HapticFeedback.heavyImpact();
       }
@@ -451,29 +526,70 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   }
 
   void _reset() {
+    if (_isEndless) {
+      _confirmClearTotal();
+      return;
+    }
     HapticFeedback.mediumImpact();
+    setState(() => _tasbeehCount = 0);
+  }
+
+  /// The lifetime total only goes away on purpose, and only after saying so.
+  Future<void> _confirmClearTotal() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text(dialogContext.tr('tasbeeh_endless_reset_title')),
+            content: Text(dialogContext.tr('tasbeeh_endless_reset_body')),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(dialogContext.tr('cancel')),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: dialogContext.tokens.danger,
+                ),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(dialogContext.tr('reset')),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+    final prefs = _prefs;
+    if (prefs != null) {
+      await TasbeehStore.clearTotal(prefs);
+    }
+    if (!mounted) {
+      return;
+    }
+    HapticFeedback.heavyImpact();
     setState(() {
-      _tasbeehCount = 0;
+      _total = 0;
+      _today = 0;
     });
   }
 
-  void _previousZekr(int phrasesLength) {
+  Future<void> _changePhrase(int phrasesLength, int step) async {
     HapticFeedback.lightImpact();
+    final next = (_currentZekrIndex + step + phrasesLength) % phrasesLength;
     setState(() {
-      _currentZekrIndex =
-          (_currentZekrIndex - 1) < 0
-              ? phrasesLength - 1
-              : _currentZekrIndex - 1;
-      _tasbeehCount = 0;
+      _currentZekrIndex = next;
+      if (!_isEndless) {
+        _tasbeehCount = 0;
+      }
     });
-  }
-
-  void _nextZekr(int phrasesLength) {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _currentZekrIndex = (_currentZekrIndex + 1) % phrasesLength;
-      _tasbeehCount = 0;
-    });
+    final prefs = _prefs;
+    if (prefs != null && _isEndless) {
+      // The endless counter keeps its total across phrases; only the phrase
+      // itself is remembered.
+      await TasbeehStore.setPhraseIndex(prefs, next);
+    }
   }
 
   Widget _buildControlButton({
@@ -501,9 +617,11 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final azkarList = _azkarList(context);
-    final progress = (_tasbeehCount / _target).clamp(0.0, 1.0);
-    final remaining = (_target - _tasbeehCount).clamp(0, _target);
     final currentZekr = azkarList[_currentZekrIndex];
+    final progress =
+        _isEndless
+            ? ((_total % 100) / 100)
+            : (_tasbeehCount / _target).clamp(0.0, 1.0);
 
     return AppCard(
       padding: const EdgeInsets.fromLTRB(
@@ -522,29 +640,26 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                   style: AppTextStyles.display(context, fontSize: 16),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: 3,
-                ),
-                decoration: BoxDecoration(
-                  color: tokens.groundAlt,
-                  borderRadius: AppRadii.pillAll,
-                ),
-                child: Text(
-                  '$_tasbeehCount / $_target',
-                  style: AppTextStyles.caption(
-                    context,
-                    fontSize: 12,
-                    color: tokens.inkMuted,
+              PillSelector<TasbeehMode>(
+                compact: true,
+                scrollable: false,
+                value: _mode,
+                onChanged: _setMode,
+                options: [
+                  PillOption(
+                    value: TasbeehMode.rounds,
+                    label: context.tr('tasbeeh_mode_rounds'),
                   ),
-                ),
+                  PillOption(
+                    value: TasbeehMode.endless,
+                    label: context.tr('tasbeeh_mode_endless'),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // The dhikr being counted, above the thing that counts it.
           AnimatedSwitcher(
             duration: AppMotion.base,
             child: Text(
@@ -566,93 +681,231 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
             children: [
               _buildControlButton(
                 icon: Icons.chevron_right,
-                onTap: () => _previousZekr(azkarList.length),
+                onTap: () => _changePhrase(azkarList.length, -1),
               ),
               const SizedBox(width: AppSpacing.lg),
-              // One big target, because counting happens without looking.
               GestureDetector(
                 onTap: () => _increment(azkarList.length),
-                child: SizedBox(
-                  width: 190,
-                  height: 190,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: progress.toDouble()),
-                        duration: AppMotion.base,
-                        builder:
-                            (context, value, _) => SizedBox(
-                              width: 190,
-                              height: 190,
-                              child: CircularProgressIndicator(
-                                value: value,
-                                strokeWidth: 9,
-                                strokeCap: StrokeCap.round,
-                                backgroundColor: tokens.groundAlt,
-                                valueColor: AlwaysStoppedAnimation(
-                                  tokens.goldBright,
-                                ),
-                              ),
-                            ),
-                      ),
-                      Container(
-                        width: 154,
-                        height: 154,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: AlignmentDirectional.topStart,
-                            end: AlignmentDirectional.bottomEnd,
-                            colors: [tokens.brand, tokens.brandDeep],
-                          ),
-                          boxShadow: AppShadows.glow(tokens.brand, alpha: 0.28),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '$_tasbeehCount',
-                              style: const TextStyle(
-                                fontFamily: AppTextStyles.displayFamily,
-                                fontSize: 48,
-                                height: 1,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              '$remaining ${context.tr('count')}',
-                              style: TextStyle(
-                                fontFamily: AppTextStyles.bodyFamily,
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withValues(alpha: 0.75),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                child:
+                    _isEndless
+                        ? _endlessDial(context, progress)
+                        : _roundsDial(context, progress),
               ),
               const SizedBox(width: AppSpacing.lg),
               _buildControlButton(
                 icon: Icons.chevron_left,
-                onTap: () => _nextZekr(azkarList.length),
+                onTap: () => _changePhrase(azkarList.length, 1),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
+
+          if (_isEndless)
+            Text(
+              '${context.tr('tasbeeh_today')}: $_today',
+              style: AppTextStyles.caption(context, color: tokens.inkFaint),
+            ),
           GhostIconButton(
-            icon: Icons.refresh_rounded,
+            icon: _isEndless ? Icons.restart_alt : Icons.refresh_rounded,
             onTap: _reset,
-            tooltip: context.tr('reset'),
+            tooltip:
+                _isEndless
+                    ? context.tr('tasbeeh_endless_reset_title')
+                    : context.tr('reset'),
           ),
         ],
       ),
     );
   }
+
+  /// Rounds of 33: a ring that fills and a solid green disc.
+  Widget _roundsDial(BuildContext context, double progress) {
+    final tokens = context.tokens;
+    final remaining = (_target - _tasbeehCount).clamp(0, _target);
+
+    return SizedBox(
+      width: 190,
+      height: 190,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: progress),
+            duration: AppMotion.base,
+            builder:
+                (context, value, _) => SizedBox(
+                  width: 190,
+                  height: 190,
+                  child: CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 9,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: tokens.groundAlt,
+                    valueColor: AlwaysStoppedAnimation(tokens.goldBright),
+                  ),
+                ),
+          ),
+          Container(
+            width: 154,
+            height: 154,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
+                colors: [tokens.brand, tokens.brandDeep],
+              ),
+              boxShadow: AppShadows.glow(tokens.brand, alpha: 0.28),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$_tasbeehCount',
+                  style: const TextStyle(
+                    fontFamily: AppTextStyles.displayFamily,
+                    fontSize: 48,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  '$remaining ${context.tr('count')}',
+                  style: TextStyle(
+                    fontFamily: AppTextStyles.bodyFamily,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Endless: the number is the whole design, on a string of beads. There is
+  /// no ring to fill because there is nothing to finish.
+  Widget _endlessDial(BuildContext context, double progress) {
+    final tokens = context.tokens;
+
+    return SizedBox(
+      width: 210,
+      height: 190,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _BeadStringPainter(
+                colour: tokens.gold,
+                highlight: tokens.goldBright,
+                progress: progress,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 34),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  context.tr('tasbeeh_lifetime'),
+                  style: AppTextStyles.caption(
+                    context,
+                    color: tokens.inkFaint,
+                    fontSize: 11,
+                  ),
+                ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$_total',
+                    style: TextStyle(
+                      fontFamily: AppTextStyles.displayFamily,
+                      fontSize: 54,
+                      height: 1.1,
+                      fontWeight: FontWeight.w700,
+                      color: tokens.brand,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A string of beads arcing under the number; the next hundred lights up as it
+/// is counted.
+class _BeadStringPainter extends CustomPainter {
+  const _BeadStringPainter({
+    required this.colour,
+    required this.highlight,
+    required this.progress,
+  });
+
+  final Color colour;
+  final Color highlight;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const beads = 9;
+    final centre = Offset(size.width / 2, size.height * 0.18);
+    final radius = size.width * 0.46;
+
+    final path = Path();
+    for (var i = 0; i <= 40; i++) {
+      final t = i / 40;
+      final angle = math.pi * 0.16 + t * math.pi * 0.68;
+      final point = centre + Offset(math.cos(angle), math.sin(angle)) * radius;
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = colour.withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
+
+    final lit = (progress * beads).floor();
+    for (var i = 0; i < beads; i++) {
+      final t = i / (beads - 1);
+      final angle = math.pi * 0.16 + t * math.pi * 0.68;
+      final point = centre + Offset(math.cos(angle), math.sin(angle)) * radius;
+      final isLit = i < lit;
+
+      canvas.drawCircle(
+        point,
+        isLit ? 9 : 7.5,
+        Paint()..color = isLit ? highlight : colour.withValues(alpha: 0.35),
+      );
+      if (isLit) {
+        canvas.drawCircle(
+          point,
+          13,
+          Paint()
+            ..color = highlight.withValues(alpha: 0.22)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BeadStringPainter old) =>
+      old.progress != progress || old.colour != colour;
 }

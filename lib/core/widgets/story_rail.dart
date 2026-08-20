@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
 import '../theme/design_tokens.dart';
+import 'islamic_icon.dart';
 import 'motif_icon.dart';
 
 /// One circle in a [StoryRail].
@@ -11,6 +12,7 @@ class StoryItem {
     required this.label,
     required this.onTap,
     this.motif,
+    this.svg,
     this.badge,
     this.highlighted = false,
   });
@@ -19,6 +21,9 @@ class StoryItem {
 
   /// A drawn Islamic symbol, used instead of [icon] when given.
   final Motif? motif;
+
+  /// A bundled vector icon; takes priority over both of the above.
+  final IslamicIcon? svg;
   final String label;
   final VoidCallback onTap;
 
@@ -115,7 +120,14 @@ class _Story extends StatelessWidget {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    if (item.motif != null)
+                    if (item.svg != null)
+                      AppIcon(
+                        item.svg!,
+                        size: 24,
+                        color:
+                            item.highlighted ? tokens.brand : tokens.inkMuted,
+                      )
+                    else if (item.motif != null)
                       SizedBox(
                         width: 26,
                         height: 26,

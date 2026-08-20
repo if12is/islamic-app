@@ -134,15 +134,42 @@ Separate with space and elevation, not with borders.
 ### Seasonal decoration
 
 `SeasonalDecorScope` (set once in `main.dart`) carries the current `SeasonalEvent` down the tree.
-`MeshBackground` reads it and paints `SeasonalDecor` behind every page: swaying lanterns and a
-domed skyline in Ramadan, twinkling stars in the last ten nights, drifting confetti and a garland
-for Eid al-Fitr, palms and dunes for Eid al-Adha. `SeasonalNavFlourish` gives the floating bar the
-same character. All of it is `IgnorePointer`, sits *behind* the page content, and stops dead when
+`MeshBackground` reads it and paints `SeasonalDecor` along the **top** of every page — lanterns,
+stars, confetti or palms depending on the season. There is deliberately no bottom band: a silhouette
+strip across the foot of the screen fought the floating nav bar for the same space and read as a row
+of blobs. The bottom is the bar's own job, via `SeasonalNavFlourish`, which treats the bar's top
+edge — a travelling light in Ramadan, breathing stars in the last ten nights, confetti crossing for
+Fitr, a woven border for Adha.
+
+**Each season gets its own drawing, never one drawing recoloured.** `SeasonalBanner` holds four
+separate painters (crescent night / shaft of light / pennants and confetti / dune at dusk) precisely
+because a shared composition with a swapped palette is what makes seasonal theming feel like a
+checkbox. `SeasonalHeroArt` is the exception and is used only for onboarding.
+
+All decoration is `IgnorePointer`, sits *behind* the page content, and stops dead when
 `MediaQuery.disableAnimationsOf` is true.
 
-Islamic symbols come from `Motif` / `MotifIcon` / `MotifPainter` (`core/widgets/motif_icon.dart`) —
-Kaaba, mosque, open book, misbaha, lantern, crescent-and-star, eight-point star, prayer rug. They
-are paths, not images: an app that promises to work offline must not fetch its own icons.
+Icons come from two places, and mixing them at the same size is what makes a screen look
+assembled from parts:
+
+- **UI icons** — `IslamicIcon` / `AppIcon` / `AppIconBadge` (`core/widgets/islamic_icon.dart`),
+  backed by bundled Tabler SVGs in `assets/icons/` (MIT, licence file alongside). One stroke
+  weight, one grid. Use these anywhere an icon labels a control.
+- **Decorative motifs** — `Motif` / `MotifPainter` (`core/widgets/motif_icon.dart`): Kaaba, mosque,
+  misbaha, rub' el hizb and the rest, drawn as paths for hero cards, the onboarding backdrop and
+  seasonal decoration. Use them large; never as a 20px control icon.
+
+Neither fetches anything at run time — an app that promises to work offline must not download its
+own icons.
+
+### Seasonal artwork
+
+`SeasonalHeroArt` (`core/widgets/seasonal_art.dart`) is the big illustration: an arabesque rosette,
+a mosque skyline with lit windows and crescent finials, and lanterns swinging on cords. It is drawn
+rather than photographed — a photo is somebody's mosque, a silhouette is everyone's, and it
+recolours itself per season. It carries the onboarding when a season is on, and fills
+`SeasonalBanner`. `CardCorners` adds the four quarter-rosettes to a card (`AppCard(corners: true)`),
+used where a card holds revelation.
 
 ### Layout safety
 
@@ -223,8 +250,8 @@ whenever the location or calculation method changes. Never call `zonedSchedule` 
 
 Notification taps and action buttons are resolved by `NotificationRouter` through
 `appNavigatorKey`, using payloads like `quran:verse:2:255:play`. Adhan sounds are declared in
-`NotificationService.adhanSounds` and shipped in `android/app/src/main/res/raw/` (see the README
-there before adding one). Users can also import any audio file: `MainActivity` copies it into the
+`NotificationService.adhanSounds` and shipped in `android/app/src/main/res/raw/` (see
+`android/adhan_sounds.md` before adding one). Users can also import any audio file: `MainActivity` copies it into the
 MediaStore notifications collection and returns a `content://` URI, because Android only plays a
 sound the system itself can read. Android freezes a channel's sound at creation, so every sound —
 bundled or imported — gets its own channel via `adhanChannelFor`.

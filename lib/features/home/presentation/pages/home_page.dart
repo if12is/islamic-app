@@ -15,7 +15,6 @@ import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/arc_gauge.dart';
 import '../../../../core/widgets/ayah_block.dart';
 import '../../../../core/widgets/custom_loader.dart';
-import '../../../../core/widgets/motif_icon.dart';
 import '../../../../core/widgets/seasonal_banner.dart';
 import '../../../../core/widgets/story_rail.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -229,13 +228,13 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
 
   IconData _prayerIcon(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('fajr')) return Icons.wb_twilight;
+    if (lower.contains('fajr')) return Icons.wb_twilight_rounded;
     if (lower.contains('sunrise')) return Icons.wb_sunny_outlined;
-    if (lower.contains('dhuhr')) return Icons.light_mode;
+    if (lower.contains('dhuhr')) return Icons.light_mode_rounded;
     if (lower.contains('asr')) return Icons.wb_cloudy_outlined;
     if (lower.contains('maghrib')) return Icons.nights_stay_outlined;
-    if (lower.contains('isha')) return Icons.bedtime_outlined;
-    return Icons.access_time;
+    if (lower.contains('isha')) return Icons.bedtime_rounded;
+    return Icons.access_time_rounded;
   }
 
   /// The clock split from its marker, so the arc can set "٤:٣٨" large and
@@ -391,12 +390,11 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                       next == null ? '—' : _clockParts(context, next.time).$1,
                   headlineSuffix:
                       next == null ? null : _clockParts(context, next.time).$2,
-                  caption: next == null
-                      ? null
-                      : _prayerName(context, next.prayer.name),
-                  remaining: next == null
-                      ? null
-                      : _remaining(context, until),
+                  caption:
+                      next == null
+                          ? null
+                          : _prayerName(context, next.prayer.name),
+                  remaining: next == null ? null : _remaining(context, until),
                   footnote: locationLabel.isEmpty ? null : locationLabel,
                   startLabel:
                       current == null
@@ -406,7 +404,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                       current == null ? null : _clock(context, current.time),
                   startIcon:
                       current == null
-                          ? Icons.wb_twilight
+                          ? Icons.wb_twilight_rounded
                           : _prayerIcon(current.prayer.name),
                   endLabel:
                       next == null
@@ -415,7 +413,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                   endTime: next == null ? null : _clock(context, next.time),
                   endIcon:
                       next == null
-                          ? Icons.nights_stay_outlined
+                          ? Icons.bedtime_rounded
                           : _prayerIcon(next.prayer.name),
                 ),
               ),
@@ -508,7 +506,6 @@ class _DashboardRail extends ConsumerWidget {
       items: [
         StoryItem(
           icon: Icons.auto_stories_outlined,
-          motif: Motif.openBook,
           label: context.tr('last_read'),
           highlighted: lastRead != null,
           onTap: () {
@@ -529,7 +526,6 @@ class _DashboardRail extends ConsumerWidget {
         ),
         StoryItem(
           icon: Icons.checklist_rtl,
-          motif: Motif.prayerRug,
           label: context.tr('daily_wird'),
           badge: left > 0 ? '$left' : null,
           highlighted: left > 0,
@@ -537,7 +533,6 @@ class _DashboardRail extends ConsumerWidget {
         ),
         StoryItem(
           icon: Icons.explore_outlined,
-          motif: Motif.kaaba,
           label: context.tr('qibla_direction'),
           onTap:
               () => Navigator.of(context).push(
@@ -546,13 +541,11 @@ class _DashboardRail extends ConsumerWidget {
         ),
         StoryItem(
           icon: Icons.radio_button_checked,
-          motif: Motif.beads,
           label: context.tr('tasbeeh_counter'),
           onTap: () => onOpenTab(2),
         ),
         StoryItem(
           icon: Icons.calendar_month_outlined,
-          motif: Motif.crescentStar,
           label: context.tr('hijri_calendar'),
           onTap:
               () => Navigator.of(context).push(
@@ -728,6 +721,7 @@ class _AyahCard extends ConsumerWidget {
     final ayahAsync = ref.watch(dailyAyahProvider);
 
     return AppCard(
+      corners: true,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,

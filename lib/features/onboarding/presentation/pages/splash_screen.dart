@@ -71,7 +71,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         return;
       }
 
-      await SeasonalIntroService.markShown(appPreferences);
       if (!mounted) {
         return;
       }
@@ -90,6 +89,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               ),
         ),
       );
+
+      // Marked only after it has actually played. Marking first meant a file
+      // that failed to open burned the day's one showing.
+      await SeasonalIntroService.markShown(appPreferences);
     } catch (e, stack) {
       AppLogger.warning('Seasonal intro failed: $e');
       AppLogger.debug(stack.toString());

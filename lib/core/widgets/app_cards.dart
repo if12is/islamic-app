@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/design_tokens.dart';
 import 'islamic_ornaments.dart';
+import 'seasonal_art.dart';
 
 /// The plain card everything else is built on: a surface, a big radius, and a
 /// soft shadow. No border — space and elevation separate, not rules.
@@ -15,6 +16,7 @@ class AppCard extends StatelessWidget {
     this.raised = false,
     this.radius = AppRadii.lg,
     this.accent,
+    this.corners = false,
   });
 
   final Widget child;
@@ -27,6 +29,9 @@ class AppCard extends StatelessWidget {
 
   /// Tints the surface, for "this one is live".
   final Color? accent;
+
+  /// Draws the four quarter-rosettes that mark a card as one to dwell on.
+  final bool corners;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +50,15 @@ class AppCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Padding(padding: padding, child: child),
+          child: Stack(
+            children: [
+              if (corners)
+                Positioned.fill(
+                  child: CardCorners(color: tokens.gold, size: 22),
+                ),
+              Padding(padding: padding, child: child),
+            ],
+          ),
         ),
       ),
     );
