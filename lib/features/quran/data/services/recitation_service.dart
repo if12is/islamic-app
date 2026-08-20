@@ -3,9 +3,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../../core/utils/app_logger.dart';
+import 'offline_recitation_engine.dart';
+import 'offline_recogniser.dart';
+import 'stt_model_catalogue.dart';
+import 'stt_model_store.dart';
 
 /// Why a recitation session could not start.
 enum RecitationFailure { unavailable, permissionDenied, noArabicLocale, error }
+
+/// Who is doing the listening.
+enum RecitationEngine {
+  /// The phone's own recogniser, using one of its installed voice packs.
+  device,
+
+  /// A model the user downloaded, running on the phone with no network.
+  offline,
+}
 
 /// One voice pack the device has installed.
 class RecitationLocale {
@@ -24,10 +37,14 @@ class RecitationLocale {
 
 /// Listens to a recitation and returns what it heard.
 ///
-/// The engine is the device's own recogniser, so nothing is recorded, nothing
-/// is uploaded by the app, and there is no model for us to download. It is
-/// also not built for classical recitation: it returns modern spelling and
-/// stumbles on elongation. That is why the app treats its output as a hint to
+/// There are two engines, and the user picks. By default it is the device's
+/// own recogniser: nothing is recorded, nothing is uploaded by the app, and
+/// there is nothing to download. If the user downloaded a model instead, that
+/// one wins — it needs no Arabic pack and no network at all, which is the whole
+/// reason it exists.
+///
+/// Neither is built for classical recitation: both return modern spelling and
+/// stumble on elongation. That is why the app treats their output as a hint to
 /// be aligned against the text, never as a verdict.
 ///
 /// Which pack it uses is the user's choice, not ours. A phone may carry several
@@ -43,6 +60,13 @@ class RecitationService {
 
   bool _initialized = false;
   String? _localeId;
+
+  /// Built only when a downloaded model is actually chosen — the microphone
+  /// plugin should not be touched by people using the device recogniser.
+  OfflineRecitationEngine? _offline;
+
+  RecitationEngine _engine = RecitationEngine.device;
+  SttModel? _activeModel;
 
   static const MethodChannel _channel = MethodChannel(
     'islamic_app/adhan_sound',
@@ -61,10 +85,39 @@ class RecitationService {
     'ar',
   ];
 
-  bool get isListening => _speech.isListening;
+  bool get isListening => _offline?.isListening == true || _speech.isListening;
 
   /// The pack in use, once known.
   String? get localeId => _localeId;
+
+  /// Which engine the last [prepare] settled on.
+  RecitationEngine get engine => _engine;
+
+  /// The downloaded model doing the listening, when one is.
+  SttModel? get activeModel => _activeModel;
+
+  /// The downloaded model the user picked, if it is still on disk.
+  ///
+  /// Returns null when nothing was chosen, when the choice names a model that
+  /// is no longer in the catalogue, or when its files were deleted — in every
+  /// one of those cases the device recogniser is the honest fallback.
+  static Future<SttModel?> preferredOfflineModel() async {
+    try {
+      final id = await SttModelStore.selectedId();
+      if (id == null) {
+        return null;
+      }
+      final model = SttModelCatalogue.byId(id);
+      if (model == null) {
+        return null;
+      }
+      return await SttModelStore.isInstalled(model) ? model : null;
+    } catch (e, stack) {
+      // Storage that will not answer is not a reason to refuse to listen.
+      AppLogger.error('Could not read the offline model choice', e, stack);
+      return null;
+    }
+  }
 
   /// Bring the recogniser up without starting to listen.
   Future<bool> ensureInitialized() async {
@@ -141,8 +194,32 @@ class RecitationService {
   }
 
   /// Prepare the recogniser and settle on a pack.
+  ///
+  /// A downloaded model wins when there is one: the user went and fetched it,
+  /// and it is the only engine that works on a phone with no Arabic pack. If
+  /// loading it fails, this falls through to the device recogniser rather than
+  /// dead-ending on a model the user cannot fix from here.
   Future<RecitationFailure?> prepare() async {
     try {
+      final model = await preferredOfflineModel();
+      if (model != null) {
+        final engine = _offline ??= OfflineRecitationEngine();
+        if (!await engine.hasPermission()) {
+          return RecitationFailure.permissionDenied;
+        }
+        if (await OfflineRecogniser.load(model)) {
+          _engine = RecitationEngine.offline;
+          _activeModel = model;
+          return null;
+        }
+        AppLogger.warning(
+          'Offline model ${model.id} would not load; using the device engine',
+        );
+      }
+
+      _engine = RecitationEngine.device;
+      _activeModel = null;
+
       if (!await ensureInitialized()) {
         return RecitationFailure.unavailable;
       }
@@ -161,8 +238,12 @@ class RecitationService {
     }
   }
 
-  /// Forget the resolved pack, so the next session re-reads the choice.
-  void invalidateLocale() => _localeId = null;
+  /// Forget the resolved pack and engine, so the next session re-reads both.
+  void invalidateLocale() {
+    _localeId = null;
+    _activeModel = null;
+    _engine = RecitationEngine.device;
+  }
 
   /// Start listening. [onResult] fires for partial results too, so the page
   /// can colour words while the reciter is still going.
@@ -174,6 +255,11 @@ class RecitationService {
     final failure = await prepare();
     if (failure != null) {
       return failure;
+    }
+
+    if (_engine == RecitationEngine.offline) {
+      final started = await _offline!.start(onResult: onResult);
+      return started ? null : RecitationFailure.error;
     }
 
     try {
@@ -197,15 +283,25 @@ class RecitationService {
   }
 
   Future<void> stop() async {
+    if (_offline?.isListening == true) {
+      await _offline!.stop();
+    }
     if (_speech.isListening) {
       await _speech.stop();
     }
   }
 
   Future<void> cancel() async {
+    await _offline?.cancel();
     if (_speech.isListening) {
       await _speech.cancel();
     }
+  }
+
+  /// Release the microphone for good. Called when the screen goes away.
+  void dispose() {
+    _offline?.dispose();
+    _offline = null;
   }
 
   /// The user's choice if they made one and it is still installed, otherwise

@@ -92,6 +92,7 @@ class AppLocalizations {
       'recite_settings_unavailable':
           'This device has no screen for downloading voice packs.',
       'recite_show_other_packs': 'Show other languages',
+      'recite_show_other_packs_count': 'Show {count} other languages',
       'recite_hide_other_packs': 'Hide other languages',
       'done': 'Done',
       'stt_offline_engines': 'Offline engines',
@@ -104,6 +105,8 @@ class AppLocalizations {
           'Downloads {download} and uses about {installed} on your device once unpacked. It works fully offline afterwards, and you can delete it at any time.',
       'stt_download_failed': 'The download did not finish. Nothing was kept.',
       'stt_extracting': 'Unpacking…',
+      'stt_engine_in_use':
+          '{name} is listening — on this phone, with no network. Pick a device pack below to go back to the built-in recogniser.',
       'downloading': 'Downloading',
       'delete': 'Delete',
       'recite_mode_check': 'Check my memory',
@@ -156,7 +159,9 @@ class AppLocalizations {
       'recite_no_permission':
           'Microphone permission is needed to check your recitation.',
       'recite_no_arabic':
-          'No Arabic speech pack on this device. Install one from the system settings.',
+          'No Arabic speech pack on this device. Install one from the system settings, or download an offline engine that needs none.',
+      'recite_engine_device': 'Device recogniser',
+      'recite_engine_offline': 'Offline',
       'recite_unavailable':
           'Speech recognition is not available on this device.',
       'recite_failed': 'Listening could not start. Try again.',
@@ -813,6 +818,7 @@ class AppLocalizations {
       'recite_settings_unavailable':
           'لا توجد شاشة لتنزيل حزم الصوت على هذا الجهاز.',
       'recite_show_other_packs': 'إظهار اللغات الأخرى',
+      'recite_show_other_packs_count': 'إظهار {count} لغة أخرى',
       'recite_hide_other_packs': 'إخفاء اللغات الأخرى',
       'done': 'تم',
       'stt_offline_engines': 'محركات تعمل دون إنترنت',
@@ -825,6 +831,8 @@ class AppLocalizations {
           'التنزيل {download}، ويشغل نحو {installed} على جهازك بعد فكّ الضغط. يعمل بعدها دون إنترنت تماماً، ويمكنك حذفه في أي وقت.',
       'stt_download_failed': 'لم يكتمل التنزيل، ولم يُحفظ شيء.',
       'stt_extracting': 'جارٍ فكّ الضغط…',
+      'stt_engine_in_use':
+          '{name} هو الذي يستمع — على هاتفك، دون شبكة. اختر حزمة من حزم الجهاز بالأسفل للعودة إلى تعرّف النظام.',
       'downloading': 'جارٍ التنزيل',
       'delete': 'حذف',
       'recite_mode_check': 'سمِّع محفوظك',
@@ -874,7 +882,9 @@ class AppLocalizations {
       'recite_legend_wrong': 'راجعها',
       'recite_no_permission': 'نحتاج إذن الميكروفون لمتابعة تسميعك.',
       'recite_no_arabic':
-          'لا توجد حزمة تعرّف عربية على الجهاز، ثبّتها من إعدادات النظام.',
+          'لا توجد حزمة تعرّف عربية على الجهاز. ثبّتها من إعدادات النظام، أو نزّل محركاً يعمل دون إنترنت لا يحتاج إليها.',
+      'recite_engine_device': 'تعرّف الجهاز',
+      'recite_engine_offline': 'دون إنترنت',
       'recite_unavailable': 'خدمة التعرّف على الكلام غير متاحة على هذا الجهاز.',
       'recite_failed': 'تعذّر بدء الاستماع، حاول مرة أخرى.',
       'intro_skip': 'تخطٍّ',

@@ -83,7 +83,10 @@ class AdhanPreviewPlayer {
     });
   }
 
-  static AudioSource _audioSource(AdhanSoundSelection selection, String source) {
+  static AudioSource _audioSource(
+    AdhanSoundSelection selection,
+    String source,
+  ) {
     final tag = MediaItem(
       id: 'adhan_preview_${selection.id}',
       album: 'Adhan',

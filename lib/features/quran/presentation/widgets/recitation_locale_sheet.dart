@@ -159,6 +159,9 @@ class _RecitationLocaleSheetState extends State<RecitationLocaleSheet> {
 
   Future<void> _chooseModel(String? id) async {
     await SttModelStore.select(id);
+    // The next session has to re-resolve which engine listens, or the choice
+    // made here would not take effect until the screen is reopened.
+    widget.service.invalidateLocale();
     if (!mounted) {
       return;
     }
@@ -285,12 +288,16 @@ class _RecitationLocaleSheetState extends State<RecitationLocaleSheet> {
 
   Future<void> _choose(String? id) async {
     await RecitationService.setPreferredLocale(id);
+    // Picking a device pack means picking the device engine. Leaving a model
+    // selected would keep it listening and make this row look inert.
+    await SttModelStore.select(null);
     widget.service.invalidateLocale();
     if (!mounted) {
       return;
     }
     setState(() {
       _selected = id;
+      _selectedModel = null;
       _changed = true;
     });
   }
@@ -314,153 +321,217 @@ class _RecitationLocaleSheetState extends State<RecitationLocaleSheet> {
     final others = _locales.where((locale) => !locale.isArabic).toList();
     final visible = _showAll ? [...arabic, ...others] : arabic;
 
+    // A downloaded model needs no Arabic pack, so the warning above the list
+    // would be false while one is in use.
+    final offlineActive =
+        _selectedModel != null && (_installed[_selectedModel] ?? false);
+
     return Directionality(
       textDirection: context.appTextDirection,
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.page,
-            0,
-            AppSpacing.page,
-            AppSpacing.lg,
+        child: ConstrainedBox(
+          // The sheet took whatever height its content asked for, which left
+          // the pack list a few pixels tall and made expanding it look broken.
+          // Give it most of the screen and let one scroll view do the work.
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.86,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SectionHeader(
-                title: context.tr('recite_voice_pack'),
-                subtitle: context.tr('recite_voice_pack_desc'),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              0,
+              AppSpacing.page,
+              AppSpacing.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(
+                  title: context.tr('recite_voice_pack'),
+                  subtitle: context.tr('recite_voice_pack_desc'),
+                ),
 
-              if (_loading)
-                const Padding(
-                  padding: EdgeInsets.all(AppSpacing.xl),
-                  child: Center(child: CircularProgressIndicator.adaptive()),
-                )
-              else ...[
-                if (arabic.isEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: tokens.gold.withValues(alpha: 0.12),
-                      borderRadius: AppRadii.mdAll,
-                    ),
-                    child: Text(
-                      context.tr('recite_no_arabic_pack'),
-                      style: AppTextStyles.caption(context, color: tokens.ink),
-                    ),
-                  ),
+                if (_loading)
+                  const Padding(
+                    padding: EdgeInsets.all(AppSpacing.xl),
+                    child: Center(child: CircularProgressIndicator.adaptive()),
+                  )
+                else
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      children: [
+                        if (offlineActive)
+                          _notice(
+                            context,
+                            icon: Icons.offline_bolt_rounded,
+                            tint: tokens.brand,
+                            text: AppLocalizations.translate(
+                              Localizations.localeOf(context).languageCode,
+                              'stt_engine_in_use',
+                              replacements: {
+                                'name': context.tr(
+                                  SttModelCatalogue.byId(
+                                    _selectedModel!,
+                                  )!.nameKey,
+                                ),
+                              },
+                            ),
+                          )
+                        else if (arabic.isEmpty)
+                          _notice(
+                            context,
+                            icon: Icons.info_outline_rounded,
+                            tint: tokens.gold,
+                            text: context.tr('recite_no_arabic_pack'),
+                          ),
 
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      AppListRow(
-                        dense: true,
-                        selected: _selected == null,
-                        leading: Icon(
-                          Icons.auto_mode,
-                          size: 20,
-                          color:
-                              _selected == null
-                                  ? tokens.brand
-                                  : tokens.inkFaint,
-                        ),
-                        title: context.tr('recite_pack_automatic'),
-                        meta: context.tr('recite_pack_automatic_desc'),
-                        trailing:
-                            _selected == null
-                                ? Icon(
-                                  Icons.check,
-                                  color: tokens.brand,
-                                  size: 18,
-                                )
-                                : null,
-                        onTap: () => _choose(null),
-                      ),
-                      for (final locale in visible)
                         AppListRow(
                           dense: true,
-                          selected: _selected == locale.id,
+                          selected: _selected == null && !offlineActive,
                           leading: Icon(
-                            locale.isArabic
-                                ? Icons.record_voice_over_outlined
-                                : Icons.language,
+                            Icons.auto_mode,
                             size: 20,
                             color:
-                                _selected == locale.id
+                                _selected == null && !offlineActive
                                     ? tokens.brand
                                     : tokens.inkFaint,
                           ),
-                          title: locale.name,
-                          meta: locale.id,
+                          title: context.tr('recite_pack_automatic'),
+                          meta: context.tr('recite_pack_automatic_desc'),
                           trailing:
-                              _selected == locale.id
+                              _selected == null && !offlineActive
                                   ? Icon(
                                     Icons.check,
                                     color: tokens.brand,
                                     size: 18,
                                   )
                                   : null,
-                          onTap: () => _choose(locale.id),
+                          onTap: () => _choose(null),
                         ),
-                    ],
+                        for (final locale in visible)
+                          AppListRow(
+                            dense: true,
+                            selected: _selected == locale.id && !offlineActive,
+                            leading: Icon(
+                              locale.isArabic
+                                  ? Icons.record_voice_over_outlined
+                                  : Icons.language,
+                              size: 20,
+                              color:
+                                  _selected == locale.id
+                                      ? tokens.brand
+                                      : tokens.inkFaint,
+                            ),
+                            title: locale.name,
+                            meta: locale.id,
+                            trailing:
+                                _selected == locale.id && !offlineActive
+                                    ? Icon(
+                                      Icons.check,
+                                      color: tokens.brand,
+                                      size: 18,
+                                    )
+                                    : null,
+                            onTap: () => _choose(locale.id),
+                          ),
+
+                        if (others.isNotEmpty)
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: TextButton.icon(
+                              onPressed:
+                                  () => setState(() => _showAll = !_showAll),
+                              icon: Icon(
+                                _showAll
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                                size: 18,
+                              ),
+                              label: Text(
+                                _showAll
+                                    ? context.tr('recite_hide_other_packs')
+                                    : AppLocalizations.translate(
+                                      Localizations.localeOf(
+                                        context,
+                                      ).languageCode,
+                                      'recite_show_other_packs_count',
+                                      replacements: {
+                                        'count': '${others.length}',
+                                      },
+                                    ),
+                              ),
+                            ),
+                          ),
+
+                        _offlineModels(context),
+                      ],
+                    ),
                   ),
+
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _openSettings,
+                        icon: const Icon(Icons.download_rounded, size: 18),
+                        label: Text(context.tr('recite_download_pack')),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    OutlinedButton(
+                      onPressed: _load,
+                      child: const Icon(Icons.refresh, size: 18),
+                    ),
+                  ],
                 ),
-
-                if (others.isNotEmpty)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TextButton.icon(
-                      onPressed: () => setState(() => _showAll = !_showAll),
-                      icon: Icon(
-                        _showAll ? Icons.expand_less : Icons.expand_more,
-                        size: 18,
-                      ),
-                      label: Text(
-                        _showAll
-                            ? context.tr('recite_hide_other_packs')
-                            : context.tr('recite_show_other_packs'),
-                      ),
-                    ),
-                  ),
-
-                _offlineModels(context),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  context.tr('recite_download_hint'),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.caption(context, color: tokens.inkFaint),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(_changed),
+                  child: Text(context.tr('done')),
+                ),
               ],
-
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _openSettings,
-                      icon: const Icon(Icons.download_rounded, size: 18),
-                      label: Text(context.tr('recite_download_pack')),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  OutlinedButton(
-                    onPressed: _load,
-                    child: const Icon(Icons.refresh, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                context.tr('recite_download_hint'),
-                textAlign: TextAlign.center,
-                style: AppTextStyles.caption(context, color: tokens.inkFaint),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(_changed),
-                child: Text(context.tr('done')),
-              ),
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// A tinted line of explanation above the list.
+  Widget _notice(
+    BuildContext context, {
+    required IconData icon,
+    required Color tint,
+    required String text,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.12),
+        borderRadius: AppRadii.mdAll,
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: tint),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.caption(context, color: context.tokens.ink),
+            ),
+          ),
+        ],
       ),
     );
   }

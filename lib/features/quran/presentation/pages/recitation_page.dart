@@ -6,6 +6,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/recitation_service.dart';
+import '../../data/services/stt_model_catalogue.dart';
 import '../../domain/entities/recitation_match.dart';
 import 'surah_reader_page.dart';
 import '../../domain/entities/verse_match.dart';
@@ -59,6 +60,9 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   bool _identify = false;
   List<VerseMatch> _matches = const [];
 
+  /// The downloaded model that will listen, if the user chose one.
+  SttModel? _offlineModel;
+
   List<QuranVerse> get _verses => [
     for (var ayah = widget.fromAyah; ayah <= widget.toAyah; ayah++)
       QuranLocalService.verse(widget.surahNumber, ayah),
@@ -71,12 +75,23 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
     super.initState();
     _identify = widget.startInIdentifyMode;
     _result = RecitationMatcher.compare(expected: _expected, heard: '');
+    _loadEngine();
   }
 
   @override
   void dispose() {
     _service.cancel();
+    _service.dispose();
     super.dispose();
+  }
+
+  /// Find out which engine will listen, so the screen can say so up front
+  /// instead of leaving the user to guess after a download.
+  Future<void> _loadEngine() async {
+    final model = await RecitationService.preferredOfflineModel();
+    if (mounted) {
+      setState(() => _offlineModel = model);
+    }
   }
 
   Future<void> _toggleListening() async {
@@ -89,6 +104,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
     setState(() {
       _errorKey = null;
       _heard = '';
+      _matches = const [];
       _result = RecitationMatcher.compare(expected: _expected, heard: '');
     });
 
@@ -99,7 +115,16 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
         }
         setState(() {
           _heard = text;
-          _result = RecitationMatcher.compare(expected: _expected, heard: text);
+          if (_identify) {
+            // Search on every partial: the answer usually arrives long before
+            // the reciter stops, and waiting to show it helps nobody.
+            _matches = VerseFinder.search(text);
+          } else {
+            _result = RecitationMatcher.compare(
+              expected: _expected,
+              heard: text,
+            );
+          }
           if (isFinal) {
             _listening = false;
           }
@@ -137,7 +162,10 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
 
     final changed = await RecitationLocaleSheet.show(context, _service);
     if (changed == true && mounted) {
+      // The choice moved; the engine resolved last time no longer applies.
+      _service.invalidateLocale();
       setState(() => _errorKey = null);
+      await _loadEngine();
     }
   }
 
@@ -184,6 +212,8 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
             textAlign: TextAlign.center,
             style: AppTextStyles.caption(context),
           ),
+          const SizedBox(height: AppSpacing.md),
+          Center(child: _engineChip(context)),
           const SizedBox(height: 16),
           if (!widget.startInIdentifyMode)
             Center(
@@ -336,6 +366,64 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
             ),
           ),
       ],
+    );
+  }
+
+  /// Which engine is listening, stated before anyone presses the microphone.
+  ///
+  /// Someone who has just downloaded a model has no way to tell whether it is
+  /// being used. This is that way: tap it to change the choice.
+  Widget _engineChip(BuildContext context) {
+    final tokens = context.tokens;
+    final model = _offlineModel;
+    final offline = model != null;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _openLocalePicker,
+        borderRadius: AppRadii.pillAll,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color:
+                offline
+                    ? tokens.brand.withValues(alpha: 0.12)
+                    : tokens.groundAlt,
+            borderRadius: AppRadii.pillAll,
+            border: Border.all(color: tokens.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                offline ? Icons.offline_bolt_rounded : Icons.record_voice_over,
+                size: 15,
+                color: offline ? tokens.brand : tokens.inkMuted,
+              ),
+              const SizedBox(width: AppSpacing.xs + 2),
+              Flexible(
+                child: Text(
+                  offline
+                      ? '${context.tr('recite_engine_offline')} · '
+                          '${context.tr(model.nameKey)}'
+                      : context.tr('recite_engine_device'),
+                  style: AppTextStyles.caption(
+                    context,
+                    fontSize: 11,
+                    color: offline ? tokens.brand : tokens.inkMuted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(Icons.tune_rounded, size: 13, color: tokens.inkFaint),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

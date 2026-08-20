@@ -606,7 +606,9 @@ class _NotificationCenterPageState
       AdhanPreviewResult.started || AdhanPreviewResult.stopped => null,
     };
     if (message != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
