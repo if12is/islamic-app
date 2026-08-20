@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../services/seasonal_theme.dart';
-import '../theme/design_tokens.dart';
 
 /// Carries the current season down the tree so any surface can dress for it.
 ///
@@ -255,12 +254,7 @@ class _TopDecorPainter extends CustomPainter {
     final path =
         Path()
           ..moveTo(0, base)
-          ..quadraticBezierTo(
-            size.width / 2,
-            base + sag,
-            size.width,
-            base,
-          );
+          ..quadraticBezierTo(size.width / 2, base + sag, size.width, base);
 
     canvas.drawPath(
       path,
@@ -538,7 +532,9 @@ class _NavFlourishPainter extends CustomPainter {
                 ..lineTo(x - 2, drop + 7)
                 ..lineTo(x - 3.6, drop + 4)
                 ..close(),
-              i.isEven ? fill : (Paint()..color = colour.withValues(alpha: 0.3)),
+              i.isEven
+                  ? fill
+                  : (Paint()..color = colour.withValues(alpha: 0.3)),
             );
         }
 
