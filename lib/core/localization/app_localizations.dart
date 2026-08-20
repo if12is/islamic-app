@@ -79,16 +79,38 @@ class AppLocalizations {
       'preview_unavailable':
           'This sound belongs to the system and cannot be played here — it will still sound at prayer time.',
       'recite_voice_pack': 'Voice pack',
-      'recite_voice_pack_desc': 'Which installed pack listens to your recitation. Any Arabic pack works — pick whichever hears you best.',
+      'recite_voice_pack_desc':
+          'Which installed pack listens to your recitation. Any Arabic pack works — pick whichever hears you best.',
       'recite_pack_automatic': 'Automatic',
       'recite_pack_automatic_desc': 'Use the best Arabic pack on this device',
-      'recite_no_arabic_pack': 'No Arabic voice pack is installed on this device yet. The rest of the app works without one — download a pack only if you want the recitation check.',
+      'recite_no_arabic_pack':
+          'No Arabic voice pack is installed on this device yet. The rest of the app works without one — download a pack only if you want the recitation check.',
       'recite_download_pack': 'Download a pack',
-      'recite_download_hint': 'Opens your device settings. Look for offline speech or voice input, then add Arabic — you can install several and switch between them here.',
-      'recite_settings_unavailable': 'This device has no screen for downloading voice packs.',
+      'recite_download_hint':
+          'Opens your device settings. Look for offline speech or voice input, then add Arabic — you can install several and switch between them here.',
+      'recite_settings_unavailable':
+          'This device has no screen for downloading voice packs.',
       'recite_show_other_packs': 'Show other languages',
       'recite_hide_other_packs': 'Hide other languages',
       'done': 'Done',
+      'stt_offline_engines': 'Offline engines',
+      'stt_offline_engines_desc':
+          'Recognition that runs on your phone with no Google and no network. Optional — download one only if you want it, and delete it whenever you like.',
+      'stt_model_tiny': 'Whisper Tiny — multilingual',
+      'stt_model_base': 'Whisper Base — multilingual',
+      'stt_model_small': 'Whisper Small — multilingual',
+      'stt_download_confirm':
+          'Downloads {download} and uses about {installed} on your device once unpacked. It works fully offline afterwards, and you can delete it at any time.',
+      'stt_download_failed': 'The download did not finish. Nothing was kept.',
+      'stt_extracting': 'Unpacking…',
+      'downloading': 'Downloading',
+      'delete': 'Delete',
+      'recite_mode_check': 'Check my memory',
+      'recite_mode_identify': 'Which verse is this?',
+      'recite_identify_hint':
+          'Recite anything and the app will find it in the Mushaf — offline, from the bundled text.',
+      'recite_identify_none':
+          'That does not match anything in the Mushaf. Try a few more words.',
       'category_word': 'categories',
       'zekr_word': 'dhikr',
       'greeting_morning': 'Good morning',
@@ -777,16 +799,37 @@ class AppLocalizations {
       'preview_unavailable':
           'هذا الصوت مملوك للنظام ولا يمكن تشغيله هنا — لكنه سيُؤذَّن به في وقته.',
       'recite_voice_pack': 'حزمة التعرّف',
-      'recite_voice_pack_desc': 'أي حزمة مثبَّتة تستمع لتلاوتك. أي حزمة عربية تعمل — اختر التي تسمعك أفضل.',
+      'recite_voice_pack_desc':
+          'أي حزمة مثبَّتة تستمع لتلاوتك. أي حزمة عربية تعمل — اختر التي تسمعك أفضل.',
       'recite_pack_automatic': 'تلقائي',
       'recite_pack_automatic_desc': 'استخدم أفضل حزمة عربية على هذا الجهاز',
-      'recite_no_arabic_pack': 'لا توجد حزمة تعرّف عربية على الجهاز بعد. بقية التطبيق تعمل بدونها — نزّل حزمة فقط إن أردت التسميع.',
+      'recite_no_arabic_pack':
+          'لا توجد حزمة تعرّف عربية على الجهاز بعد. بقية التطبيق تعمل بدونها — نزّل حزمة فقط إن أردت التسميع.',
       'recite_download_pack': 'تنزيل حزمة',
-      'recite_download_hint': 'يفتح إعدادات جهازك. ابحث عن التعرّف على الكلام دون إنترنت أو الإدخال الصوتي ثم أضف العربية — يمكنك تثبيت أكثر من حزمة والتبديل بينها من هنا.',
-      'recite_settings_unavailable': 'لا توجد شاشة لتنزيل حزم الصوت على هذا الجهاز.',
+      'recite_download_hint':
+          'يفتح إعدادات جهازك. ابحث عن التعرّف على الكلام دون إنترنت أو الإدخال الصوتي ثم أضف العربية — يمكنك تثبيت أكثر من حزمة والتبديل بينها من هنا.',
+      'recite_settings_unavailable':
+          'لا توجد شاشة لتنزيل حزم الصوت على هذا الجهاز.',
       'recite_show_other_packs': 'إظهار اللغات الأخرى',
       'recite_hide_other_packs': 'إخفاء اللغات الأخرى',
       'done': 'تم',
+      'stt_offline_engines': 'محركات تعمل دون إنترنت',
+      'stt_offline_engines_desc':
+          'تعرّف يعمل على هاتفك بلا جوجل وبلا شبكة. اختياري — نزّل واحداً إن أردت، واحذفه متى شئت.',
+      'stt_model_tiny': 'Whisper Tiny — متعدد اللغات',
+      'stt_model_base': 'Whisper Base — متعدد اللغات',
+      'stt_model_small': 'Whisper Small — متعدد اللغات',
+      'stt_download_confirm':
+          'التنزيل {download}، ويشغل نحو {installed} على جهازك بعد فكّ الضغط. يعمل بعدها دون إنترنت تماماً، ويمكنك حذفه في أي وقت.',
+      'stt_download_failed': 'لم يكتمل التنزيل، ولم يُحفظ شيء.',
+      'stt_extracting': 'جارٍ فكّ الضغط…',
+      'downloading': 'جارٍ التنزيل',
+      'delete': 'حذف',
+      'recite_mode_check': 'سمِّع محفوظك',
+      'recite_mode_identify': 'أي آية هذه؟',
+      'recite_identify_hint':
+          'اتلُ ما شئت وسيجدها التطبيق في المصحف — دون إنترنت، من النص المرفق.',
+      'recite_identify_none': 'لا يطابق شيئاً في المصحف. جرّب كلمات أكثر.',
       'category_word': 'قسماً',
       'zekr_word': 'ذكراً',
       'greeting_morning': 'صباح الخير',

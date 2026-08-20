@@ -217,7 +217,11 @@ known place) fall back to the geocoder, then to the stored label.
 ### Recitation check (experimental)
 
 `RecitationService` wraps `speech_to_text` and uses the device's own recognizer: nothing is recorded,
-nothing is uploaded, no model is downloaded. That recognizer is not built for classical recitation, so
+nothing is uploaded, no model is downloaded by us. Which voice pack listens is the user's choice —
+`RecitationLocaleSheet` lists what is installed, remembers the pick (`recitation_locale_id`), lets
+several packs be switched between, and opens the system screen for adding more via the
+`openSpeechSettings` method channel. A missing Arabic pack must never block anything else: the
+feature is one screen behind a mic button, and the message says so. That recognizer is not built for classical recitation, so
 `RecitationMatcher` (pure Dart, unit-tested) aligns what it heard against the text on the alef-stripped
 skeleton, tolerating a dropped or inserted word, and grades each word correct / near / wrong. Treat its
 output as a reading aid, never as a ruling — the screen says as much, and so should any feature built on it.

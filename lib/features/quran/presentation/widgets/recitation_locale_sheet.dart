@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/app_localizations.dart';
@@ -6,6 +8,8 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../data/services/recitation_service.dart';
+import '../../data/services/stt_model_store.dart';
+import '../../data/services/stt_model_catalogue.dart';
 
 /// Choose which voice pack listens to the recitation.
 ///
@@ -40,24 +44,243 @@ class _RecitationLocaleSheetState extends State<RecitationLocaleSheet> {
   bool _showAll = false;
   bool _changed = false;
 
+  /// Offline models: which are on disk, which one is in use, and the one
+  /// currently downloading.
+  final Map<String, bool> _installed = {};
+  String? _selectedModel;
+  String? _busyModel;
+  SttDownloadProgress? _progress;
+  StreamSubscription<SttDownloadProgress>? _download;
+
   @override
   void initState() {
     super.initState();
     _load();
   }
 
+  @override
+  void dispose() {
+    _download?.cancel();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     final locales = await widget.service.installedLocales();
     final saved = await RecitationService.savedLocale();
+    final selectedModel = await SttModelStore.selectedId();
+
+    final installed = <String, bool>{};
+    for (final model in SttModelCatalogue.models) {
+      installed[model.id] = await SttModelStore.isInstalled(model);
+    }
+
     if (!mounted) {
       return;
     }
     setState(() {
       _locales = locales;
       _selected = saved;
+      _selectedModel = selectedModel;
+      _installed
+        ..clear()
+        ..addAll(installed);
       _loading = false;
     });
+  }
+
+  /// Download a model, with the size stated first.
+  Future<void> _startDownload(SttModel model) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text(dialogContext.tr(model.nameKey)),
+            content: Text(
+              AppLocalizations.translate(
+                Localizations.localeOf(dialogContext).languageCode,
+                'stt_download_confirm',
+                replacements: {
+                  'download': SttModelCatalogue.formatBytes(
+                    model.downloadBytes,
+                  ),
+                  'installed': SttModelCatalogue.formatBytes(
+                    model.installedBytes,
+                  ),
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(dialogContext.tr('cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(dialogContext.tr('download')),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _busyModel = model.id;
+      _progress = const SttDownloadProgress(state: SttModelState.downloading);
+    });
+
+    _download = SttModelStore.download(model).listen((progress) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _progress = progress);
+
+      if (progress.state == SttModelState.installed) {
+        setState(() {
+          _installed[model.id] = true;
+          _busyModel = null;
+          _progress = null;
+        });
+        _chooseModel(model.id);
+      } else if (progress.state == SttModelState.failed) {
+        setState(() {
+          _busyModel = null;
+          _progress = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('stt_download_failed'))),
+        );
+      }
+    });
+  }
+
+  Future<void> _chooseModel(String? id) async {
+    await SttModelStore.select(id);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedModel = id;
+      _changed = true;
+    });
+  }
+
+  Future<void> _removeModel(SttModel model) async {
+    await SttModelStore.remove(model);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _installed[model.id] = false;
+      if (_selectedModel == model.id) {
+        _selectedModel = null;
+      }
+      _changed = true;
+    });
+  }
+
+  /// Every offline model, with its size, licence and state.
+  Widget _offlineModels(BuildContext context) {
+    final tokens = context.tokens;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.lg),
+        SectionHeader(
+          title: context.tr('stt_offline_engines'),
+          subtitle: context.tr('stt_offline_engines_desc'),
+        ),
+        for (final model in SttModelCatalogue.models)
+          Builder(
+            builder: (context) {
+              final installed = _installed[model.id] ?? false;
+              final busy = _busyModel == model.id;
+              final chosen = _selectedModel == model.id;
+
+              return AppListRow(
+                dense: true,
+                selected: chosen,
+                leading: Icon(
+                  installed
+                      ? Icons.offline_bolt
+                      : Icons.cloud_download_outlined,
+                  size: 20,
+                  color: chosen ? tokens.brand : tokens.inkFaint,
+                ),
+                title: context.tr(model.nameKey),
+                meta:
+                    busy
+                        ? _progressLabel(context)
+                        : '${SttModelCatalogue.formatBytes(model.downloadBytes)}'
+                            ' · ${model.licence}',
+                trailing:
+                    busy
+                        ? IconButton(
+                          tooltip: context.tr('cancel'),
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () {
+                            SttModelStore.cancel();
+                            setState(() {
+                              _busyModel = null;
+                              _progress = null;
+                            });
+                          },
+                        )
+                        : installed
+                        ? IconButton(
+                          tooltip: context.tr('delete'),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: tokens.danger,
+                          ),
+                          onPressed: () => _removeModel(model),
+                        )
+                        : IconButton(
+                          tooltip: context.tr('download'),
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          onPressed:
+                              _busyModel == null
+                                  ? () => _startDownload(model)
+                                  : null,
+                        ),
+                onTap:
+                    installed && !busy
+                        ? () => _chooseModel(chosen ? null : model.id)
+                        : null,
+              );
+            },
+          ),
+        if (_progress != null && _progress!.state == SttModelState.downloading)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              child: LinearProgressIndicator(
+                value: _progress!.ratio == 0 ? null : _progress!.ratio,
+                minHeight: 5,
+                backgroundColor: tokens.groundAlt,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _progressLabel(BuildContext context) {
+    final progress = _progress;
+    if (progress == null) {
+      return '';
+    }
+    if (progress.state == SttModelState.extracting) {
+      return context.tr('stt_extracting');
+    }
+    final percent = (progress.ratio * 100).round();
+    return '${context.tr('downloading')} $percent%';
   }
 
   Future<void> _choose(String? id) async {
@@ -140,15 +363,21 @@ class _RecitationLocaleSheetState extends State<RecitationLocaleSheet> {
                         leading: Icon(
                           Icons.auto_mode,
                           size: 20,
-                          color: _selected == null
-                              ? tokens.brand
-                              : tokens.inkFaint,
+                          color:
+                              _selected == null
+                                  ? tokens.brand
+                                  : tokens.inkFaint,
                         ),
                         title: context.tr('recite_pack_automatic'),
                         meta: context.tr('recite_pack_automatic_desc'),
-                        trailing: _selected == null
-                            ? Icon(Icons.check, color: tokens.brand, size: 18)
-                            : null,
+                        trailing:
+                            _selected == null
+                                ? Icon(
+                                  Icons.check,
+                                  color: tokens.brand,
+                                  size: 18,
+                                )
+                                : null,
                         onTap: () => _choose(null),
                       ),
                       for (final locale in visible)
@@ -160,15 +389,21 @@ class _RecitationLocaleSheetState extends State<RecitationLocaleSheet> {
                                 ? Icons.record_voice_over_outlined
                                 : Icons.language,
                             size: 20,
-                            color: _selected == locale.id
-                                ? tokens.brand
-                                : tokens.inkFaint,
+                            color:
+                                _selected == locale.id
+                                    ? tokens.brand
+                                    : tokens.inkFaint,
                           ),
                           title: locale.name,
                           meta: locale.id,
-                          trailing: _selected == locale.id
-                              ? Icon(Icons.check, color: tokens.brand, size: 18)
-                              : null,
+                          trailing:
+                              _selected == locale.id
+                                  ? Icon(
+                                    Icons.check,
+                                    color: tokens.brand,
+                                    size: 18,
+                                  )
+                                  : null,
                           onTap: () => _choose(locale.id),
                         ),
                     ],
@@ -191,6 +426,8 @@ class _RecitationLocaleSheetState extends State<RecitationLocaleSheet> {
                       ),
                     ),
                   ),
+
+                _offlineModels(context),
               ],
 
               const SizedBox(height: AppSpacing.sm),

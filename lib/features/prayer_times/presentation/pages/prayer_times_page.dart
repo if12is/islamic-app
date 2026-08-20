@@ -405,47 +405,53 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                 }),
 
                 const SizedBox(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ShortcutCard(
-                        icon: Icons.explore_outlined,
-                        label: context.tr('qibla_direction'),
-                        onTap:
-                            () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const QiblaPage(),
+                // IntrinsicHeight, then stretch: a bare `stretch` inside a
+                // ListView asks for infinite height and crashes. This measures
+                // the tallest card first, so all three match.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _ShortcutCard(
+                          icon: Icons.explore_outlined,
+                          label: context.tr('qibla_direction'),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const QiblaPage(),
+                                ),
                               ),
-                            ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _ShortcutCard(
-                        icon: Icons.calendar_month_outlined,
-                        label: context.tr('hijri_calendar'),
-                        onTap:
-                            () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const HijriCalendarPage(),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ShortcutCard(
+                          icon: Icons.calendar_month_outlined,
+                          label: context.tr('hijri_calendar'),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const HijriCalendarPage(),
+                                ),
                               ),
-                            ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _ShortcutCard(
-                        icon: Icons.tune,
-                        label: context.tr('prayer_settings'),
-                        onTap:
-                            () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const PrayerSettingsPage(),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ShortcutCard(
+                          icon: Icons.tune,
+                          label: context.tr('prayer_settings'),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const PrayerSettingsPage(),
+                                ),
                               ),
-                            ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -587,16 +593,29 @@ class _ShortcutCard extends StatelessWidget {
 
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.lg,
+      ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(icon, size: 22, color: tokens.brand),
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            label,
-            maxLines: 2,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.caption(context, fontSize: 11.5),
+          // A fixed two-line box keeps every icon on the same line, whether
+          // the label wraps or not.
+          SizedBox(
+            height: 32,
+            child: Center(
+              child: Text(
+                label,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption(context, fontSize: 11.5),
+              ),
+            ),
           ),
         ],
       ),

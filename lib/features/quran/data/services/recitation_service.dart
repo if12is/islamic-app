@@ -73,8 +73,8 @@ class RecitationService {
     }
     try {
       _initialized = await _speech.initialize(
-        onError: (error) =>
-            AppLogger.warning('Speech error: ${error.errorMsg}'),
+        onError:
+            (error) => AppLogger.warning('Speech error: ${error.errorMsg}'),
         onStatus: (status) => AppLogger.debug('Speech status: $status'),
       );
     } catch (e, stack) {
@@ -178,8 +178,8 @@ class RecitationService {
 
     try {
       await _speech.listen(
-        onResult: (result) =>
-            onResult(result.recognizedWords, result.finalResult),
+        onResult:
+            (result) => onResult(result.recognizedWords, result.finalResult),
         listenOptions: SpeechListenOptions(
           localeId: _localeId,
           partialResults: true,

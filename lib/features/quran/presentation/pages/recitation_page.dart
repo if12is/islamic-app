@@ -7,6 +7,11 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/recitation_service.dart';
 import '../../domain/entities/recitation_match.dart';
+import 'surah_reader_page.dart';
+import '../../domain/entities/verse_match.dart';
+import '../../../../core/widgets/app_section.dart';
+import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/theme/design_tokens.dart';
 import '../widgets/recitation_locale_sheet.dart';
 
 /// Recite out loud and see, word by word, what came out.
@@ -37,6 +42,10 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   String _heard = '';
   bool _listening = false;
   String? _errorKey;
+
+  /// Identify mode: recite anything and be told where it is in the Mushaf.
+  bool _identify = false;
+  List<VerseMatch> _matches = const [];
 
   List<QuranVerse> get _verses => [
     for (var ayah = widget.fromAyah; ayah <= widget.toAyah; ayah++)
@@ -162,20 +171,48 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
             style: AppTextStyles.caption(context),
           ),
           const SizedBox(height: 16),
-          if (_errorKey != null) _error(context, colorScheme),
-          _scoreBar(context, colorScheme),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: colorScheme.outlineVariant),
+          Center(
+            child: PillSelector<bool>(
+              compact: true,
+              scrollable: false,
+              value: _identify,
+              onChanged:
+                  (value) => setState(() {
+                    _identify = value;
+                    _matches = const [];
+                    _heard = '';
+                  }),
+              options: [
+                PillOption(
+                  value: false,
+                  label: context.tr('recite_mode_check'),
+                ),
+                PillOption(
+                  value: true,
+                  label: context.tr('recite_mode_identify'),
+                ),
+              ],
             ),
-            child: _colouredText(context, colorScheme),
           ),
           const SizedBox(height: 16),
-          _legend(context, colorScheme),
+          if (_errorKey != null) _error(context, colorScheme),
+          if (_identify) ...[
+            _identifyResults(context),
+          ] else ...[
+            _scoreBar(context, colorScheme),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: _colouredText(context, colorScheme),
+            ),
+            const SizedBox(height: 16),
+            _legend(context, colorScheme),
+          ],
           if (_heard.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
@@ -187,6 +224,103 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
           ],
         ],
       ),
+    );
+  }
+
+  /// What was recited, and where it sits in the Mushaf.
+  Widget _identifyResults(BuildContext context) {
+    final tokens = context.tokens;
+
+    if (_matches.isEmpty) {
+      return AppCard(
+        child: Column(
+          children: [
+            Icon(
+              _listening ? Icons.graphic_eq : Icons.search,
+              size: 28,
+              color: tokens.inkFaint,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              _heard.isEmpty
+                  ? context.tr('recite_identify_hint')
+                  : context.tr('recite_identify_none'),
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption(context),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final match in _matches)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: AppCard(
+              // Tapping opens the reader exactly there.
+              onTap:
+                  () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder:
+                          (_) => SurahReaderPage(
+                            surahNumber: match.surahNumber,
+                            initialVerse: match.verseNumber,
+                          ),
+                    ),
+                  ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${QuranLocalService.surahInfo(match.surahNumber).nameAr}'
+                          ' · ${match.verseNumber}',
+                          style: AppTextStyles.display(context, fontSize: 15),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm + 2,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              match.isConfident
+                                  ? tokens.brand.withValues(alpha: 0.16)
+                                  : tokens.groundAlt,
+                          borderRadius: AppRadii.pillAll,
+                        ),
+                        child: Text(
+                          '${(match.score * 100).round()}%',
+                          style: AppTextStyles.caption(
+                            context,
+                            fontSize: 11,
+                            color:
+                                match.isConfident
+                                    ? tokens.brand
+                                    : tokens.inkFaint,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    match.text,
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    style: AppTextStyles.quran(context, fontSize: 20),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 

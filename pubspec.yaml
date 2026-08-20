@@ -48,6 +48,8 @@ dependencies:
   path_provider: ^2.1.6
   video_player: ^2.14.0
   speech_to_text: ^7.4.0
+  sherpa_onnx: ^1.13.6
+  archive: ^4.1.0
 
 dev_dependencies:
   flutter_test:

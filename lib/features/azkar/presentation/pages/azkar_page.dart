@@ -238,56 +238,70 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     // Two big ones for the two that anchor the day, two smaller for the rest.
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildAdhkarCard(
-                title: _displayCategoryName(context, morning, 'morning_azkar'),
-                subtitle: context.tr('morning_azkar_subtitle'),
-                count: morning.azkar.length.toString(),
-                icon: Icons.wb_twilight,
-                onTap: () => _navigateToDetails(morning),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildAdhkarCard(
+                  title: _displayCategoryName(
+                    context,
+                    morning,
+                    'morning_azkar',
+                  ),
+                  subtitle: context.tr('morning_azkar_subtitle'),
+                  count: morning.azkar.length.toString(),
+                  icon: Icons.wb_twilight,
+                  onTap: () => _navigateToDetails(morning),
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildAdhkarCard(
-                title: _displayCategoryName(context, evening, 'evening_azkar'),
-                subtitle: context.tr('evening_azkar_subtitle'),
-                count: evening.azkar.length.toString(),
-                icon: Icons.nights_stay_outlined,
-                onTap: () => _navigateToDetails(evening),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _buildAdhkarCard(
+                  title: _displayCategoryName(
+                    context,
+                    evening,
+                    'evening_azkar',
+                  ),
+                  subtitle: context.tr('evening_azkar_subtitle'),
+                  count: evening.azkar.length.toString(),
+                  icon: Icons.nights_stay_outlined,
+                  onTap: () => _navigateToDetails(evening),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: _buildAdhkarCard(
-                title: _displayCategoryName(
-                  context,
-                  prayer,
-                  'after_prayer_azkar',
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildAdhkarCard(
+                  title: _displayCategoryName(
+                    context,
+                    prayer,
+                    'after_prayer_azkar',
+                  ),
+                  subtitle: context.tr('after_prayer_azkar_subtitle'),
+                  count: prayer.azkar.length.toString(),
+                  icon: Icons.mosque_outlined,
+                  onTap: () => _navigateToDetails(prayer),
                 ),
-                subtitle: context.tr('after_prayer_azkar_subtitle'),
-                count: prayer.azkar.length.toString(),
-                icon: Icons.mosque_outlined,
-                onTap: () => _navigateToDetails(prayer),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildAdhkarCard(
-                title: _displayCategoryName(context, sleep, 'sleep_azkar'),
-                subtitle: context.tr('sleep_azkar_subtitle'),
-                count: sleep.azkar.length.toString(),
-                icon: Icons.bedtime_outlined,
-                onTap: () => _navigateToDetails(sleep),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _buildAdhkarCard(
+                  title: _displayCategoryName(context, sleep, 'sleep_azkar'),
+                  subtitle: context.tr('sleep_azkar_subtitle'),
+                  count: sleep.azkar.length.toString(),
+                  icon: Icons.bedtime_outlined,
+                  onTap: () => _navigateToDetails(sleep),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );

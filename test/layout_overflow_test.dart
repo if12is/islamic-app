@@ -207,6 +207,61 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('cards in a row share one height', (tester) async {
+      await pumpTight(
+        tester,
+        host(
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final label in [
+                  'القبلة',
+                  'التقويم الهجري',
+                  'إعدادات الصلاة',
+                ])
+                  Expanded(
+                    child: AppCard(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.lg,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.star, size: 22),
+                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(
+                            height: 32,
+                            child: Center(
+                              child: Text(
+                                label,
+                                maxLines: 2,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+
+      // A row of shortcuts where one card is taller than its neighbours reads
+      // as a mistake, so the heights have to match exactly.
+      final heights =
+          tester
+              .widgetList<AppCard>(find.byType(AppCard))
+              .map((card) => tester.getSize(find.byWidget(card)).height)
+              .toSet();
+      expect(heights.length, 1, reason: 'cards ended up ragged: $heights');
+    });
+
     testWidgets('a hint pill with a long instruction', (tester) async {
       await pumpTight(
         tester,
