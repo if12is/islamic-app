@@ -10,11 +10,7 @@ class RemoteException implements Exception {
   final int? statusCode;
   final dynamic originalError;
 
-  RemoteException({
-    required this.message,
-    this.statusCode,
-    this.originalError,
-  });
+  RemoteException({required this.message, this.statusCode, this.originalError});
 
   @override
   String toString() => 'RemoteException: $message (Status: $statusCode)';
@@ -29,11 +25,11 @@ class PrayerTimesRemoteDataSource {
   final Dio _dio;
 
   /// Constructor
-  /// 
+  ///
   /// Creates a new instance with the provided Dio client.
   /// If no Dio instance is provided, a default one will be created.
   PrayerTimesRemoteDataSource({Dio? dio})
-      : _dio = dio ?? SecureHttpClient.forAladhan() {
+    : _dio = dio ?? SecureHttpClient.forAladhan() {
     if (_dio.options.baseUrl.isEmpty) {
       _dio.options.baseUrl = AppConstants.aladhanApiBaseUrl;
     }
@@ -62,7 +58,9 @@ class PrayerTimesRemoteDataSource {
       if (!InputValidators.isLatitude(latitude) ||
           !InputValidators.isLongitude(longitude) ||
           !InputValidators.isSupportedPrayerMethod(method)) {
-        throw RemoteException(message: 'Invalid prayer times request parameters');
+        throw RemoteException(
+          message: 'Invalid prayer times request parameters',
+        );
       }
 
       final dateKey = _resolveDatePath(date);
@@ -100,8 +98,8 @@ class PrayerTimesRemoteDataSource {
       final code = data['code'] as int?;
       if (code != 200) {
         throw RemoteException(
-          message: data['status'] as String? ??
-              'API returned non-200 code: $code',
+          message:
+              data['status'] as String? ?? 'API returned non-200 code: $code',
           statusCode: code,
         );
       }
@@ -162,10 +160,7 @@ class PrayerTimesRemoteDataSource {
         originalError: e,
       );
     } catch (e) {
-      throw RemoteException(
-        message: 'Unexpected error: $e',
-        originalError: e,
-      );
+      throw RemoteException(message: 'Unexpected error: $e', originalError: e);
     }
   }
 

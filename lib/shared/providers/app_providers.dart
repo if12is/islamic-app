@@ -8,7 +8,10 @@ import '../../core/constants/app_constants.dart';
 import '../../core/models/notification_preferences.dart';
 import '../../core/services/notification_scheduler.dart';
 import '../../core/services/prayer_calculation_service.dart';
+import '../../core/services/location_service.dart';
 import '../../core/services/prayer_settings_store.dart';
+import '../../core/services/seasonal_intro_service.dart';
+import '../../core/services/seasonal_theme.dart';
 import '../../core/services/startup_sync_service.dart';
 import '../../core/utils/app_logger.dart';
 import '../../core/utils/input_validators.dart';
@@ -38,7 +41,10 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
 
   Future<void> setTheme(ThemeMode themeMode) async {
     state = themeMode;
-    await _globalPrefs.setString(AppConstants.themeModeKey, themeMode.toString());
+    await _globalPrefs.setString(
+      AppConstants.themeModeKey,
+      themeMode.toString(),
+    );
     AppLogger.info('Theme changed to: $themeMode');
   }
 }
@@ -51,8 +57,9 @@ final sharedPreferencesProvider = FutureProvider<SharedPreferences>((
 });
 
 /// Provider for theme mode state management.
-final themeModeProvider =
-    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
+);
 
 // Temporary global SharedPreferences instance for initialization
 late SharedPreferences _globalPrefs;
@@ -98,6 +105,12 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
       hasSaved
           ? UserCoordinates(latitude: savedLatitude, longitude: savedLongitude)
           : null;
+
+  // A pinned place wins over GPS until the user switches back to automatic.
+  if (_globalPrefs.getBool(LocationService.manualKey) == true &&
+      savedCoordinates != null) {
+    return savedCoordinates;
+  }
 
   try {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -150,6 +163,48 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
   }
 });
 
+/// The place name for the current coordinates, resolved once and cached.
+final locationLabelProvider = FutureProvider<String>((ref) async {
+  final coordinates = await ref.watch(
+    currentLocationCoordinatesProvider.future,
+  );
+
+  final saved = await LocationService.savedLabel(_globalPrefs);
+  if (await LocationService.isManual(_globalPrefs) && saved.isNotEmpty) {
+    return saved;
+  }
+
+  return LocationService.describe(
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
+    languageCode: ref.watch(localeProvider).languageCode,
+    preferences: _globalPrefs,
+  );
+});
+
+/// True when the user pinned a place instead of following GPS.
+final locationIsManualProvider = Provider<bool>((ref) {
+  ref.watch(locationLabelProvider);
+  return _globalPrefs.getBool(LocationService.manualKey) ?? false;
+});
+
+/// Pin a place, or go back to automatic, and refresh everything that depends
+/// on where the user is.
+Future<void> applyLocationChoice(
+  WidgetRef ref, {
+  PlaceSuggestion? place,
+}) async {
+  if (place == null) {
+    await LocationService.useAutomatic(_globalPrefs);
+  } else {
+    await LocationService.saveManual(place, preferences: _globalPrefs);
+  }
+
+  ref.invalidate(currentLocationCoordinatesProvider);
+  ref.invalidate(locationLabelProvider);
+  await NotificationScheduler.refresh(preferences: _globalPrefs);
+}
+
 bool _startupSyncCompleted = false;
 bool _startupSyncInProgress = false;
 
@@ -192,8 +247,9 @@ class PrayerMethodNotifier extends Notifier<int> {
   }
 }
 
-final prayerMethodProvider =
-    NotifierProvider<PrayerMethodNotifier, int>(PrayerMethodNotifier.new);
+final prayerMethodProvider = NotifierProvider<PrayerMethodNotifier, int>(
+  PrayerMethodNotifier.new,
+);
 
 /// Madhab, manual per-prayer offsets, high-latitude rule, and the Hijri
 /// correction. Any change re-arms the notification schedule, because the
@@ -233,18 +289,66 @@ class PrayerCalculationSettingsNotifier
       update(state.copyWith(minuteAdjustments: const {}));
 }
 
-final prayerCalculationSettingsProvider =
-    NotifierProvider<
-      PrayerCalculationSettingsNotifier,
-      PrayerCalculationSettings
-    >(PrayerCalculationSettingsNotifier.new);
+/// A season pinned by hand for previewing, or null when the calendar decides.
+///
+/// Seasonal dressing only shows up a few days a year, which makes it the
+/// hardest part of the app to check before release. This lets it be worn on
+/// any day — and the home screen says loudly whenever it is on, so nobody
+/// ships with a forced season by accident.
+class SeasonalOverrideNotifier extends Notifier<SeasonalEvent?> {
+  static const String key = 'seasonal_preview_event';
+
+  @override
+  SeasonalEvent? build() {
+    final stored = _globalPrefs.getString(key);
+    if (stored == null) {
+      return null;
+    }
+    for (final event in SeasonalEvent.values) {
+      if (event.name == stored) {
+        return event;
+      }
+    }
+    return null;
+  }
+
+  Future<void> set(SeasonalEvent? event) async {
+    state = event;
+    if (event == null) {
+      await _globalPrefs.remove(key);
+    } else {
+      await _globalPrefs.setString(key, event.name);
+    }
+  }
+}
+
+final seasonalOverrideProvider =
+    NotifierProvider<SeasonalOverrideNotifier, SeasonalEvent?>(
+      SeasonalOverrideNotifier.new,
+    );
+
+/// Which season the app should dress for, from the Hijri date.
+final seasonalEventProvider = Provider<SeasonalEvent>((ref) {
+  final override = ref.watch(seasonalOverrideProvider);
+  if (override != null) {
+    return override;
+  }
+  final settings = ref.watch(prayerCalculationSettingsProvider);
+  return SeasonalTheme.detect(hijriOffsetDays: settings.hijriOffsetDays);
+});
+
+final prayerCalculationSettingsProvider = NotifierProvider<
+  PrayerCalculationSettingsNotifier,
+  PrayerCalculationSettings
+>(PrayerCalculationSettingsNotifier.new);
 
 /// Single source of truth for every reminder the app schedules.
 ///
 /// Any change persists immediately and reschedules the next seven days, so
 /// what the user sees in the notification centre is always what the platform
 /// will actually deliver.
-class NotificationPreferencesNotifier extends Notifier<NotificationPreferences> {
+class NotificationPreferencesNotifier
+    extends Notifier<NotificationPreferences> {
   @override
   NotificationPreferences build() {
     return NotificationScheduler.readPreferences(_globalPrefs);
@@ -306,6 +410,20 @@ final notificationsEnabledProvider = Provider<bool>((ref) {
   return ref.watch(notificationPreferencesProvider).masterEnabled;
 });
 
+/// The seasonal opening switch, so a greeting can be turned off for good.
+class SeasonalIntroNotifier extends Notifier<bool> {
+  @override
+  bool build() => SeasonalIntroService.isEnabled(_globalPrefs);
+
+  Future<void> setEnabled(bool enabled) async {
+    state = enabled;
+    await SeasonalIntroService.setEnabled(_globalPrefs, enabled);
+  }
+}
+
+final seasonalIntroEnabledProvider =
+    NotifierProvider<SeasonalIntroNotifier, bool>(SeasonalIntroNotifier.new);
+
 class LocaleNotifier extends Notifier<Locale> {
   @override
   Locale build() {
@@ -327,8 +445,9 @@ class LocaleNotifier extends Notifier<Locale> {
   }
 }
 
-final localeProvider =
-    NotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
+final localeProvider = NotifierProvider<LocaleNotifier, Locale>(
+  LocaleNotifier.new,
+);
 
 class FirstLaunchNotifier extends Notifier<bool> {
   @override
@@ -350,15 +469,17 @@ class FirstLaunchNotifier extends Notifier<bool> {
   }
 }
 
-final firstLaunchProvider =
-    NotifierProvider<FirstLaunchNotifier, bool>(FirstLaunchNotifier.new);
+final firstLaunchProvider = NotifierProvider<FirstLaunchNotifier, bool>(
+  FirstLaunchNotifier.new,
+);
 
 class MainTabNotifier extends Notifier<int> {
   @override
   int build() => 0;
 
+  /// Tabs: 0 home · 1 Quran · 2 azkar · 3 settings · 4 prayer times.
   void setIndex(int index) {
-    if (index < 0 || index > 3) {
+    if (index < 0 || index > 4) {
       return;
     }
     state = index;
@@ -369,8 +490,9 @@ class MainTabNotifier extends Notifier<int> {
   void openSettings() => setIndex(3);
 }
 
-final mainTabIndexProvider =
-    NotifierProvider<MainTabNotifier, int>(MainTabNotifier.new);
+final mainTabIndexProvider = NotifierProvider<MainTabNotifier, int>(
+  MainTabNotifier.new,
+);
 
 class UserProfile {
   final String name;
@@ -404,6 +526,6 @@ class UserProfileNotifier extends Notifier<UserProfile> {
   }
 }
 
-final userProfileProvider =
-    NotifierProvider<UserProfileNotifier, UserProfile>(UserProfileNotifier.new);
-
+final userProfileProvider = NotifierProvider<UserProfileNotifier, UserProfile>(
+  UserProfileNotifier.new,
+);

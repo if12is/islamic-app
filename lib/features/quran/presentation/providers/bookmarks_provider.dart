@@ -135,5 +135,6 @@ class LastReadNotifier extends Notifier<LastReadPosition?> {
   }
 }
 
-final lastReadProvider =
-    NotifierProvider<LastReadNotifier, LastReadPosition?>(LastReadNotifier.new);
+final lastReadProvider = NotifierProvider<LastReadNotifier, LastReadPosition?>(
+  LastReadNotifier.new,
+);

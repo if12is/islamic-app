@@ -86,9 +86,10 @@ class TafsirSheet extends ConsumerWidget {
                     final edition = TafsirService.editions[index];
                     return ChoiceChip(
                       selected: edition.id == editionId,
-                      onSelected: (_) => ref
-                          .read(tafsirEditionProvider.notifier)
-                          .select(edition.id),
+                      onSelected:
+                          (_) => ref
+                              .read(tafsirEditionProvider.notifier)
+                              .select(edition.id),
                       label: Text(
                         context.isAppRtl ? edition.nameAr : edition.nameEn,
                       ),
@@ -98,10 +99,13 @@ class TafsirSheet extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
               tafsir.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(child: CircularProgressIndicator.adaptive()),
-                ),
+                loading:
+                    () => const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: CircularProgressIndicator.adaptive(),
+                      ),
+                    ),
                 error: (_, _) => _message(context, 'tafsir_unavailable'),
                 data: (text) {
                   if (text == null || text.isEmpty) {
@@ -110,10 +114,9 @@ class TafsirSheet extends ConsumerWidget {
                   return Text(
                     text,
                     textAlign: TextAlign.justify,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      height: 1.9,
-                      fontSize: 16,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(height: 1.9, fontSize: 16),
                   );
                 },
               ),

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/models/adhan_sound.dart';
 import '../../../../core/models/notification_preferences.dart';
+import '../../../../core/services/adhan_sound_service.dart';
 import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/prayer_calculation_service.dart';
@@ -108,42 +111,41 @@ class _NotificationCenterPageState
   @override
   Widget build(BuildContext context) {
     final prefs = ref.watch(notificationPreferencesProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return Directionality(
-      textDirection: context.appTextDirection,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.tr('notification_center')),
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          foregroundColor: colorScheme.onSurface,
-          elevation: 0,
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-          children: [
-            _statusCard(prefs),
-            const SizedBox(height: 16),
-            _prayerModesCard(prefs),
-            const SizedBox(height: 16),
-            _adhanSoundCard(prefs),
-            const SizedBox(height: 16),
-            _timingCard(prefs),
-            const SizedBox(height: 16),
-            _azkarCard(prefs),
-            const SizedBox(height: 16),
-            _dailyCard(prefs),
-            const SizedBox(height: 16),
-            _quietHoursCard(prefs),
-            const SizedBox(height: 16),
-            _upcomingCard(),
-          ],
-        ),
+    return AppScaffold(
+      showBack: true,
+      titleWidget: Text(context.tr('notification_center')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        children: [
+          _statusCard(prefs),
+          const SizedBox(height: 16),
+          _prayerModesCard(prefs),
+          const SizedBox(height: 16),
+          _adhanSoundCard(prefs),
+          const SizedBox(height: 16),
+          _timingCard(prefs),
+          const SizedBox(height: 16),
+          _azkarCard(prefs),
+          const SizedBox(height: 16),
+          _dailyCard(prefs),
+          const SizedBox(height: 16),
+          _occasionsCard(prefs),
+          const SizedBox(height: 16),
+          _quietHoursCard(prefs),
+          const SizedBox(height: 16),
+          _upcomingCard(),
+        ],
       ),
     );
   }
 
-  Widget _card({required String title, IconData? icon, String? subtitle, required List<Widget> children}) {
+  Widget _card({
+    required String title,
+    IconData? icon,
+    String? subtitle,
+    required List<Widget> children,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
       color: Theme.of(context).cardColor,
@@ -154,35 +156,35 @@ class _NotificationCenterPageState
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, color: colorScheme.secondary, size: 22),
-                const SizedBox(width: 8),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: colorScheme.secondary, size: 22),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
               ],
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
+            const SizedBox(height: 16),
+            ...children,
           ],
-          const SizedBox(height: 16),
-          ...children,
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -205,12 +207,14 @@ class _NotificationCenterPageState
         ),
         const Divider(height: 24),
         _statusRow(
-          icon: prefs.masterEnabled && _pending > 0
-              ? Icons.check_circle
-              : Icons.schedule,
-          color: prefs.masterEnabled && _pending > 0
-              ? colorScheme.primary
-              : colorScheme.onSurfaceVariant,
+          icon:
+              prefs.masterEnabled && _pending > 0
+                  ? Icons.check_circle
+                  : Icons.schedule,
+          color:
+              prefs.masterEnabled && _pending > 0
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
           text: AppLocalizations.translate(
             Localizations.localeOf(context).languageCode,
             'notif_scheduled_count',
@@ -220,9 +224,10 @@ class _NotificationCenterPageState
         _statusRow(
           icon: next != null ? Icons.notifications : Icons.notifications_off,
           color: colorScheme.onSurfaceVariant,
-          text: next == null
-              ? context.tr('notif_none_scheduled')
-              : '${next.title} · ${_formatWhen(next.time)}',
+          text:
+              next == null
+                  ? context.tr('notif_none_scheduled')
+                  : '${next.title} · ${_formatWhen(next.time)}',
         ),
         if (!_exactAlarms)
           _statusRow(
@@ -242,39 +247,43 @@ class _NotificationCenterPageState
           runSpacing: 8,
           children: [
             FilledButton.tonalIcon(
-              onPressed: _busy
-                  ? null
-                  : () => _apply(
-                      () => ref
-                          .read(notificationPreferencesProvider.notifier)
-                          .reschedule(),
-                    ),
+              onPressed:
+                  _busy
+                      ? null
+                      : () => _apply(
+                        () =>
+                            ref
+                                .read(notificationPreferencesProvider.notifier)
+                                .reschedule(),
+                      ),
               icon: const Icon(Icons.refresh, size: 18),
               label: Text(context.tr('notif_reschedule')),
             ),
             if (!_exactAlarms)
               FilledButton.tonalIcon(
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        await NotificationService.requestExactAlarmPermission();
-                        await _refreshStatus();
-                      },
+                onPressed:
+                    _busy
+                        ? null
+                        : () async {
+                          await NotificationService.requestExactAlarmPermission();
+                          await _refreshStatus();
+                        },
                 icon: const Icon(Icons.alarm_on, size: 18),
                 label: Text(context.tr('notif_allow_exact_alarms')),
               ),
             OutlinedButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () async {
-                      await NotificationService.showNow(
-                        title: context.tr('adhan_notifications'),
-                        body: context.tr('test_notification_sent'),
-                      );
-                      if (mounted) {
-                        _toast(context.tr('test_notification_sent'));
-                      }
-                    },
+              onPressed:
+                  _busy
+                      ? null
+                      : () async {
+                        await NotificationService.showNow(
+                          title: context.tr('adhan_notifications'),
+                          body: context.tr('test_notification_sent'),
+                        );
+                        if (mounted) {
+                          _toast(context.tr('test_notification_sent'));
+                        }
+                      },
               icon: const Icon(Icons.send, size: 18),
               label: Text(context.tr('send_test')),
             ),
@@ -332,13 +341,14 @@ class _NotificationCenterPageState
           children: [
             for (final mode in [PrayerAlertMode.adhan, PrayerAlertMode.off])
               OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () => _apply(
-                        () => ref
-                            .read(notificationPreferencesProvider.notifier)
-                            .setAllPrayers(mode),
-                      ),
+                onPressed:
+                    _busy
+                        ? null
+                        : () => _apply(
+                          () => ref
+                              .read(notificationPreferencesProvider.notifier)
+                              .setAllPrayers(mode),
+                        ),
                 child: Text(
                   '${context.tr('apply_to_all')}: ${_modeLabel(mode)}',
                 ),
@@ -354,10 +364,13 @@ class _NotificationCenterPageState
     return MenuAnchor(
       builder: (context, controller, child) {
         return FilledButton.tonalIcon(
-          onPressed: _busy
-              ? null
-              : () =>
-                  controller.isOpen ? controller.close() : controller.open(),
+          onPressed:
+              _busy
+                  ? null
+                  : () =>
+                      controller.isOpen
+                          ? controller.close()
+                          : controller.open(),
           icon: Icon(_modeIcon(current), size: 18),
           label: Text(_modeLabel(current)),
         );
@@ -366,40 +379,81 @@ class _NotificationCenterPageState
         for (final mode in PrayerAlertMode.values)
           MenuItemButton(
             leadingIcon: Icon(_modeIcon(mode), size: 18),
-            onPressed: () => _apply(
-              () => ref
-                  .read(notificationPreferencesProvider.notifier)
-                  .setPrayerMode(prayerId, mode),
-            ),
+            onPressed:
+                () => _apply(
+                  () => ref
+                      .read(notificationPreferencesProvider.notifier)
+                      .setPrayerMode(prayerId, mode),
+                ),
             child: Text(_modeLabel(mode)),
           ),
       ],
     );
   }
 
-  /// Which adhan plays. Sounds without a bundled audio file are listed but
-  /// disabled, so it is obvious what is missing rather than silently absent.
+  /// Which adhan plays: one of the bundled recordings, a file the user
+  /// imports, or a sound already on the device. Fajr can differ from the rest.
   Widget _adhanSoundCard(NotificationPreferences prefs) {
-    final missing = NotificationService.adhanSounds
-        .where((sound) => !NotificationService.isAdhanSoundAvailable(sound.id))
-        .toList();
-
     return _card(
       title: context.tr('adhan_sound'),
       icon: Icons.campaign,
       subtitle: context.tr('adhan_sound_desc'),
       children: [
+        _soundPicker(
+          selection: prefs.adhanSound,
+          onSelected:
+              (selection) => _apply(
+                () => ref
+                    .read(notificationPreferencesProvider.notifier)
+                    .update(prefs.copyWith(adhanSound: selection)),
+              ),
+        ),
+        const Divider(height: 28),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.fajrAdhanSound != null,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(
+                          value
+                              ? prefs.copyWith(fajrAdhanSound: prefs.adhanSound)
+                              : prefs.copyWith(clearFajrAdhanSound: true),
+                        ),
+                  ),
+          title: Text(context.tr('fajr_adhan_sound')),
+          subtitle: Text(context.tr('fajr_adhan_sound_desc')),
+        ),
+        if (prefs.fajrAdhanSound != null)
+          _soundPicker(
+            selection: prefs.fajrAdhanSound!,
+            onSelected:
+                (selection) => _apply(
+                  () => ref
+                      .read(notificationPreferencesProvider.notifier)
+                      .update(prefs.copyWith(fajrAdhanSound: selection)),
+                ),
+          ),
+      ],
+    );
+  }
+
+  Widget _soundPicker({
+    required AdhanSoundSelection selection,
+    required void Function(AdhanSoundSelection selection) onSelected,
+  }) {
+    return Column(
+      children: [
         RadioGroup<String>(
-          groupValue: prefs.adhanSoundId,
+          groupValue: selection.id,
           onChanged: (value) {
-            if (value == null) {
+            if (value == null || value == AdhanSoundSelection.customId) {
               return;
             }
-            _apply(
-              () => ref
-                  .read(notificationPreferencesProvider.notifier)
-                  .update(prefs.copyWith(adhanSoundId: value)),
-            );
+            onSelected(AdhanSoundSelection(id: value));
           },
           child: Column(
             children: [
@@ -407,27 +461,108 @@ class _NotificationCenterPageState
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero,
                   value: sound.id,
-                  enabled: NotificationService.isAdhanSoundAvailable(sound.id),
                   title: Text(context.tr(sound.nameKey)),
-                  subtitle:
-                      NotificationService.isAdhanSoundAvailable(sound.id)
+                  subtitle: sound.credit == null ? null : Text(sound.credit!),
+                  secondary:
+                      sound.rawResource == null
                           ? null
-                          : Text(context.tr('adhan_sound_missing')),
+                          : IconButton(
+                            tooltip: context.tr('preview_sound'),
+                            icon: const Icon(Icons.play_circle_outline),
+                            onPressed:
+                                () => _previewSound(
+                                  AdhanSoundSelection(id: sound.id),
+                                ),
+                          ),
+                ),
+              if (selection.isCustom)
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  value: AdhanSoundSelection.customId,
+                  title: Text(
+                    selection.title?.isNotEmpty == true
+                        ? selection.title!
+                        : context.tr('adhan_sound_custom'),
+                  ),
+                  subtitle: Text(context.tr('adhan_sound_custom_desc')),
+                  secondary: IconButton(
+                    tooltip: context.tr('preview_sound'),
+                    icon: const Icon(Icons.play_circle_outline),
+                    onPressed: () => _previewSound(selection),
+                  ),
                 ),
             ],
           ),
         ),
-        if (missing.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              context.tr('adhan_sound_hint'),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed:
+                  _busy
+                      ? null
+                      : () => _chooseCustomSound(
+                        onSelected,
+                        AdhanSoundService.importFile,
+                      ),
+              icon: const Icon(Icons.upload_file, size: 18),
+              label: Text(context.tr('import_adhan')),
             ),
-          ),
+            OutlinedButton.icon(
+              onPressed:
+                  _busy
+                      ? null
+                      : () => _chooseCustomSound(
+                        onSelected,
+                        AdhanSoundService.pickSystemSound,
+                      ),
+              icon: const Icon(Icons.library_music_outlined, size: 18),
+              label: Text(context.tr('pick_device_sound')),
+            ),
+          ],
+        ),
       ],
+    );
+  }
+
+  /// Run a picker and store whatever the user chose.
+  Future<void> _chooseCustomSound(
+    void Function(AdhanSoundSelection selection) onSelected,
+    Future<AdhanSoundSelection?> Function() picker,
+  ) async {
+    try {
+      final choice = await picker();
+      if (choice == null) {
+        return;
+      }
+      await NotificationService.ensureAdhanChannel(choice);
+      onSelected(choice);
+      if (mounted) {
+        _toast(context.tr('adhan_sound_saved'));
+      }
+    } on AdhanImportException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _toast(
+        error.isUnsupported
+            ? context.tr('adhan_import_unsupported')
+            : context.tr('adhan_import_failed'),
+      );
+    }
+  }
+
+  /// Fire a one-off notification on that sound's channel — the only honest
+  /// preview, because it is exactly what the adhan will sound like.
+  Future<void> _previewSound(AdhanSoundSelection selection) async {
+    await NotificationService.showNow(
+      title: context.tr('adhan_notifications'),
+      body: context.tr('preview_sound'),
+      kind: NotificationKind.prayer,
+      mode: PrayerAlertMode.adhan,
+      adhanSound: selection,
     );
   }
 
@@ -440,11 +575,12 @@ class _NotificationCenterPageState
         _minuteChips(
           value: prefs.preAdhanMinutes,
           choices: _minuteChoices,
-          onSelected: (value) => _apply(
-            () => ref
-                .read(notificationPreferencesProvider.notifier)
-                .update(prefs.copyWith(preAdhanMinutes: value)),
-          ),
+          onSelected:
+              (value) => _apply(
+                () => ref
+                    .read(notificationPreferencesProvider.notifier)
+                    .update(prefs.copyWith(preAdhanMinutes: value)),
+              ),
         ),
         const Divider(height: 28),
         Text(
@@ -462,11 +598,12 @@ class _NotificationCenterPageState
         _minuteChips(
           value: prefs.iqamaMinutes,
           choices: _minuteChoices,
-          onSelected: (value) => _apply(
-            () => ref
-                .read(notificationPreferencesProvider.notifier)
-                .update(prefs.copyWith(iqamaMinutes: value)),
-          ),
+          onSelected:
+              (value) => _apply(
+                () => ref
+                    .read(notificationPreferencesProvider.notifier)
+                    .update(prefs.copyWith(iqamaMinutes: value)),
+              ),
         ),
       ],
     );
@@ -481,13 +618,14 @@ class _NotificationCenterPageState
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: prefs.morningAzkarEnabled,
-          onChanged: _busy
-              ? null
-              : (value) => _apply(
-                  () => ref
-                      .read(notificationPreferencesProvider.notifier)
-                      .update(prefs.copyWith(morningAzkarEnabled: value)),
-                ),
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(morningAzkarEnabled: value)),
+                  ),
           title: Text(context.tr('morning_azkar_reminder')),
           subtitle: Text(context.tr('offset_after_fajr')),
         ),
@@ -495,23 +633,25 @@ class _NotificationCenterPageState
           _minuteChips(
             value: prefs.morningAzkarOffsetMinutes,
             choices: _azkarOffsets,
-            onSelected: (value) => _apply(
-              () => ref
-                  .read(notificationPreferencesProvider.notifier)
-                  .update(prefs.copyWith(morningAzkarOffsetMinutes: value)),
-            ),
+            onSelected:
+                (value) => _apply(
+                  () => ref
+                      .read(notificationPreferencesProvider.notifier)
+                      .update(prefs.copyWith(morningAzkarOffsetMinutes: value)),
+                ),
           ),
         const Divider(height: 24),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: prefs.eveningAzkarEnabled,
-          onChanged: _busy
-              ? null
-              : (value) => _apply(
-                  () => ref
-                      .read(notificationPreferencesProvider.notifier)
-                      .update(prefs.copyWith(eveningAzkarEnabled: value)),
-                ),
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(eveningAzkarEnabled: value)),
+                  ),
           title: Text(context.tr('evening_azkar_reminder')),
           subtitle: Text(context.tr('offset_after_asr')),
         ),
@@ -519,11 +659,12 @@ class _NotificationCenterPageState
           _minuteChips(
             value: prefs.eveningAzkarOffsetMinutes,
             choices: _azkarOffsets,
-            onSelected: (value) => _apply(
-              () => ref
-                  .read(notificationPreferencesProvider.notifier)
-                  .update(prefs.copyWith(eveningAzkarOffsetMinutes: value)),
-            ),
+            onSelected:
+                (value) => _apply(
+                  () => ref
+                      .read(notificationPreferencesProvider.notifier)
+                      .update(prefs.copyWith(eveningAzkarOffsetMinutes: value)),
+                ),
           ),
       ],
     );
@@ -537,13 +678,14 @@ class _NotificationCenterPageState
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: prefs.dailyAyahEnabled,
-          onChanged: _busy
-              ? null
-              : (value) => _apply(
-                  () => ref
-                      .read(notificationPreferencesProvider.notifier)
-                      .update(prefs.copyWith(dailyAyahEnabled: value)),
-                ),
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(dailyAyahEnabled: value)),
+                  ),
           title: Text(context.tr('daily_ayah_reminder')),
           subtitle: Text(
             _formatHourMinute(prefs.dailyAyahHour, prefs.dailyAyahMinute),
@@ -553,22 +695,26 @@ class _NotificationCenterPageState
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => _pickTime(
-                      hour: prefs.dailyAyahHour,
-                      minute: prefs.dailyAyahMinute,
-                      onPicked: (hour, minute) => _apply(
-                        () => ref
-                            .read(notificationPreferencesProvider.notifier)
-                            .update(
-                              prefs.copyWith(
-                                dailyAyahHour: hour,
-                                dailyAyahMinute: minute,
-                              ),
+              onPressed:
+                  _busy
+                      ? null
+                      : () => _pickTime(
+                        hour: prefs.dailyAyahHour,
+                        minute: prefs.dailyAyahMinute,
+                        onPicked:
+                            (hour, minute) => _apply(
+                              () => ref
+                                  .read(
+                                    notificationPreferencesProvider.notifier,
+                                  )
+                                  .update(
+                                    prefs.copyWith(
+                                      dailyAyahHour: hour,
+                                      dailyAyahMinute: minute,
+                                    ),
+                                  ),
                             ),
                       ),
-                    ),
               icon: const Icon(Icons.schedule, size: 18),
               label: Text(context.tr('change_time')),
             ),
@@ -577,13 +723,14 @@ class _NotificationCenterPageState
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: prefs.wirdEnabled,
-          onChanged: _busy
-              ? null
-              : (value) => _apply(
-                  () => ref
-                      .read(notificationPreferencesProvider.notifier)
-                      .update(prefs.copyWith(wirdEnabled: value)),
-                ),
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(wirdEnabled: value)),
+                  ),
           title: Text(context.tr('wird_reminder')),
           subtitle: Text(_formatHourMinute(prefs.wirdHour, prefs.wirdMinute)),
         ),
@@ -591,26 +738,83 @@ class _NotificationCenterPageState
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => _pickTime(
-                      hour: prefs.wirdHour,
-                      minute: prefs.wirdMinute,
-                      onPicked: (hour, minute) => _apply(
-                        () => ref
-                            .read(notificationPreferencesProvider.notifier)
-                            .update(
-                              prefs.copyWith(
-                                wirdHour: hour,
-                                wirdMinute: minute,
-                              ),
+              onPressed:
+                  _busy
+                      ? null
+                      : () => _pickTime(
+                        hour: prefs.wirdHour,
+                        minute: prefs.wirdMinute,
+                        onPicked:
+                            (hour, minute) => _apply(
+                              () => ref
+                                  .read(
+                                    notificationPreferencesProvider.notifier,
+                                  )
+                                  .update(
+                                    prefs.copyWith(
+                                      wirdHour: hour,
+                                      wirdMinute: minute,
+                                    ),
+                                  ),
                             ),
                       ),
-                    ),
               icon: const Icon(Icons.schedule, size: 18),
               label: Text(context.tr('change_time')),
             ),
           ),
+      ],
+    );
+  }
+
+  /// Friday, fasting days, and the Hijri occasions.
+  Widget _occasionsCard(NotificationPreferences prefs) {
+    return _card(
+      title: context.tr('occasion_reminders'),
+      icon: Icons.event_available,
+      subtitle: context.tr('occasion_reminders_desc'),
+      children: [
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.fridayRemindersEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(fridayRemindersEnabled: value)),
+                  ),
+          title: Text(context.tr('friday_reminder')),
+          subtitle: Text(context.tr('friday_reminder_desc')),
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.fastingRemindersEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(fastingRemindersEnabled: value)),
+                  ),
+          title: Text(context.tr('fasting_reminder')),
+          subtitle: Text(context.tr('fasting_reminder_desc')),
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.islamicEventsEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(islamicEventsEnabled: value)),
+                  ),
+          title: Text(context.tr('islamic_events')),
+          subtitle: Text(context.tr('islamic_events_desc')),
+        ),
       ],
     );
   }
@@ -624,13 +828,14 @@ class _NotificationCenterPageState
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: prefs.quietHoursEnabled,
-          onChanged: _busy
-              ? null
-              : (value) => _apply(
-                  () => ref
-                      .read(notificationPreferencesProvider.notifier)
-                      .update(prefs.copyWith(quietHoursEnabled: value)),
-                ),
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(quietHoursEnabled: value)),
+                  ),
           title: Text(context.tr('quiet_hours')),
           subtitle: Text(
             '${_formatHourMinute(prefs.quietStartHour, 0)}'
@@ -642,30 +847,38 @@ class _NotificationCenterPageState
             children: [
               Expanded(
                 child: TextButton.icon(
-                  onPressed: () => _pickTime(
-                    hour: prefs.quietStartHour,
-                    minute: 0,
-                    onPicked: (hour, _) => _apply(
-                      () => ref
-                          .read(notificationPreferencesProvider.notifier)
-                          .update(prefs.copyWith(quietStartHour: hour)),
-                    ),
-                  ),
+                  onPressed:
+                      () => _pickTime(
+                        hour: prefs.quietStartHour,
+                        minute: 0,
+                        onPicked:
+                            (hour, _) => _apply(
+                              () => ref
+                                  .read(
+                                    notificationPreferencesProvider.notifier,
+                                  )
+                                  .update(prefs.copyWith(quietStartHour: hour)),
+                            ),
+                      ),
                   icon: const Icon(Icons.nights_stay, size: 18),
                   label: Text(context.tr('quiet_from')),
                 ),
               ),
               Expanded(
                 child: TextButton.icon(
-                  onPressed: () => _pickTime(
-                    hour: prefs.quietEndHour,
-                    minute: 0,
-                    onPicked: (hour, _) => _apply(
-                      () => ref
-                          .read(notificationPreferencesProvider.notifier)
-                          .update(prefs.copyWith(quietEndHour: hour)),
-                    ),
-                  ),
+                  onPressed:
+                      () => _pickTime(
+                        hour: prefs.quietEndHour,
+                        minute: 0,
+                        onPicked:
+                            (hour, _) => _apply(
+                              () => ref
+                                  .read(
+                                    notificationPreferencesProvider.notifier,
+                                  )
+                                  .update(prefs.copyWith(quietEndHour: hour)),
+                            ),
+                      ),
                   icon: const Icon(Icons.wb_sunny, size: 18),
                   label: Text(context.tr('quiet_to')),
                 ),
@@ -721,10 +934,10 @@ class _NotificationCenterPageState
               choice == 0
                   ? context.tr('minutes_off')
                   : AppLocalizations.translate(
-                      Localizations.localeOf(context).languageCode,
-                      'minutes_value',
-                      replacements: {'minutes': choice.toString()},
-                    ),
+                    Localizations.localeOf(context).languageCode,
+                    'minutes_value',
+                    replacements: {'minutes': choice.toString()},
+                  ),
             ),
           ),
       ],
@@ -832,6 +1045,8 @@ class _NotificationCenterPageState
         return Icons.auto_stories;
       case NotificationKind.wird:
         return Icons.menu_book;
+      case NotificationKind.event:
+        return Icons.event;
       case NotificationKind.test:
         return Icons.science;
     }
@@ -851,6 +1066,8 @@ class _NotificationCenterPageState
         return context.tr('notif_kind_ayah');
       case NotificationKind.wird:
         return context.tr('notif_kind_wird');
+      case NotificationKind.event:
+        return context.tr('notif_kind_event');
       case NotificationKind.test:
         return context.tr('send_test');
     }

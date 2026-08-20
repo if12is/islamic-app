@@ -12,21 +12,22 @@ class SplashPage extends StatelessWidget {
   const SplashPage({super.key});
   @override
   Widget build(BuildContext context) =>
-  Scaffold(body: Center(child: Text(context.tr('app_title'))));
+      Scaffold(body: Center(child: Text(context.tr('app_title'))));
 }
 
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key});
   @override
-  Widget build(BuildContext context) =>
-  Scaffold(body: Center(child: Text(context.tr('onboarding_welcome_title'))));
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(child: Text(context.tr('onboarding_welcome_title'))),
+  );
 }
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
   @override
   Widget build(BuildContext context) =>
-  Scaffold(body: Center(child: Text(context.tr('home'))));
+      Scaffold(body: Center(child: Text(context.tr('home'))));
 }
 
 final GoRouter appRouter = GoRouter(

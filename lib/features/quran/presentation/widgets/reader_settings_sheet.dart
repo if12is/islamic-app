@@ -47,6 +47,27 @@ class ReaderSettingsSheet extends ConsumerWidget {
               _preview(context, settings, palette),
               const SizedBox(height: 24),
 
+              _label(context, 'reader_view_mode'),
+              SegmentedButton<ReaderViewMode>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: ReaderViewMode.continuous,
+                    icon: const Icon(Icons.view_stream, size: 18),
+                    label: Text(context.tr('view_continuous')),
+                  ),
+                  ButtonSegment(
+                    value: ReaderViewMode.pages,
+                    icon: const Icon(Icons.auto_stories, size: 18),
+                    label: Text(context.tr('view_pages')),
+                  ),
+                ],
+                selected: {settings.viewMode},
+                onSelectionChanged:
+                    (value) => notifier.setViewMode(value.first),
+              ),
+              const SizedBox(height: 20),
+
               _label(context, 'reader_font'),
               SegmentedButton<ReaderFont>(
                 showSelectedIcon: false,
@@ -128,8 +149,9 @@ class ReaderSettingsSheet extends ConsumerWidget {
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 value: settings.brightnessOverride != null,
-                onChanged: (value) =>
-                    notifier.setBrightnessOverride(value ? 0.6 : null),
+                onChanged:
+                    (value) =>
+                        notifier.setBrightnessOverride(value ? 0.6 : null),
                 title: Text(context.tr('lock_brightness')),
               ),
               if (settings.brightnessOverride != null)
@@ -289,9 +311,10 @@ class ReaderSettingsSheet extends ConsumerWidget {
           color: palette.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outlineVariant,
+            color:
+                selected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outlineVariant,
             width: selected ? 2 : 1,
           ),
         ),
@@ -308,9 +331,9 @@ class ReaderSettingsSheet extends ConsumerWidget {
             const SizedBox(height: 6),
             Text(
               context.tr('reading_theme_${theme.name}'),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: palette.text,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: palette.text),
             ),
           ],
         ),

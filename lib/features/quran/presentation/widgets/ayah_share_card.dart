@@ -200,7 +200,8 @@ class AyahSharing {
       final bytes = await controller.captureFromWidget(
         AyahShareCard(verse: verse, style: style, fontFamily: font.family),
         delay: const Duration(milliseconds: 120),
-        targetSize: targetSize ??
+        targetSize:
+            targetSize ??
             const Size(AyahShareCard.cardSize, AyahShareCard.cardSize),
         pixelRatio: 1,
       );
@@ -217,9 +218,7 @@ class AyahSharing {
     final fileName = 'ayah_${verse.surahNumber}_${verse.numberInSurah}.png';
     await SharePlus.instance.share(
       ShareParams(
-        files: [
-          XFile.fromData(bytes, mimeType: 'image/png', name: fileName),
-        ],
+        files: [XFile.fromData(bytes, mimeType: 'image/png', name: fileName)],
         fileNameOverrides: [fileName],
       ),
     );

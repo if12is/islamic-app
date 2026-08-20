@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/services/hijri_service.dart';
 import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/prayer_calculation_service.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../widgets/imsakiya_table.dart';
 import 'prayer_settings_page.dart';
 
 /// A Hijri month at a glance, with the Gregorian date under every day.
@@ -67,10 +69,12 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
   Widget build(BuildContext context) {
     final settings = ref.watch(prayerCalculationSettingsProvider);
     final offset = settings.hijriOffsetDays;
-    final colorScheme = Theme.of(context).colorScheme;
 
     final daysInMonth = HijriService.daysInMonth(_year, _month);
-    final today = HijriService.fromGregorian(DateTime.now(), offsetDays: offset);
+    final today = HijriService.fromGregorian(
+      DateTime.now(),
+      offsetDays: offset,
+    );
     final isCurrentMonth = today.hYear == _year && today.hMonth == _month;
 
     final firstGregorian = HijriService.toGregorian(
@@ -82,43 +86,42 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
     // Grid starts on Sunday, matching how Hijri calendars are printed.
     final leadingBlanks = firstGregorian.weekday % 7;
 
-    return Directionality(
-      textDirection: context.appTextDirection,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.tr('hijri_calendar')),
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          foregroundColor: colorScheme.onSurface,
-          elevation: 0,
-          actions: [
-            IconButton(
-              tooltip: context.tr('today'),
-              icon: const Icon(Icons.today),
-              onPressed: _goToToday,
-            ),
-            IconButton(
-              tooltip: context.tr('hijri_adjustment'),
-              icon: const Icon(Icons.tune),
-              onPressed: () => Navigator.of(context).push(
+    return AppScaffold(
+      showBack: true,
+      titleWidget: Text(context.tr('hijri_calendar')),
+      actions: [
+        IconButton(
+          tooltip: context.tr('today'),
+          icon: const Icon(Icons.today),
+          onPressed: _goToToday,
+        ),
+        IconButton(
+          tooltip: context.tr('hijri_adjustment'),
+          icon: const Icon(Icons.tune),
+          onPressed:
+              () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const PrayerSettingsPage(),
                 ),
               ),
-            ),
-          ],
         ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-          children: [
-            _monthHeader(firstGregorian),
-            const SizedBox(height: 12),
-            _weekdayRow(),
-            const SizedBox(height: 8),
-            _grid(daysInMonth, leadingBlanks, offset, today, isCurrentMonth),
-            const SizedBox(height: 20),
-            if (_selectedDay != null) _dayDetails(_selectedDay!, offset),
+      ],
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        children: [
+          _monthHeader(firstGregorian),
+          const SizedBox(height: 12),
+          _weekdayRow(),
+          const SizedBox(height: 8),
+          _grid(daysInMonth, leadingBlanks, offset, today, isCurrentMonth),
+          const SizedBox(height: 20),
+          if (_selectedDay != null) _dayDetails(_selectedDay!, offset),
+          // Ramadan gets its own timetable for the whole month.
+          if (HijriService.isRamadan(_month)) ...[
+            const SizedBox(height: 16),
+            ImsakiyaTable(hijriYear: _year, hijriMonth: _month),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -177,10 +180,7 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
         for (final label in labels)
           Expanded(
             child: Center(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
+              child: Text(label, style: Theme.of(context).textTheme.labelSmall),
             ),
           ),
       ],
@@ -223,18 +223,24 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
             margin: const EdgeInsets.all(2),
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
-              color: isToday
-                  ? colorScheme.primary
-                  : isSelected
-                  ? colorScheme.primaryContainer
-                  : events.isNotEmpty
-                  ? colorScheme.secondaryContainer.withValues(alpha: 0.5)
-                  : Colors.transparent,
+              color:
+                  isToday
+                      ? colorScheme.primary
+                      : isSelected
+                      ? colorScheme.primaryContainer
+                      : events.isNotEmpty
+                      ? colorScheme.secondaryContainer.withValues(alpha: 0.5)
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: gregorian.weekday == DateTime.friday
-                    ? colorScheme.secondary.withValues(alpha: 0.5)
-                    : Colors.transparent,
+                // The odd nights of the last ten stand out on their own.
+                color:
+                    HijriService.isOddNightOfLastTen(_month, day)
+                        ? colorScheme.secondary
+                        : gregorian.weekday == DateTime.friday
+                        ? colorScheme.secondary.withValues(alpha: 0.5)
+                        : Colors.transparent,
+                width: HijriService.isOddNightOfLastTen(_month, day) ? 1.5 : 1,
               ),
             ),
             child: Column(
@@ -244,27 +250,26 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
                   '$day',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isToday
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurface,
+                    color:
+                        isToday ? colorScheme.onPrimary : colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   '${gregorian.day}',
                   style: TextStyle(
                     fontSize: 10,
-                    color: isToday
-                        ? colorScheme.onPrimary
-                        : colorScheme.onSurfaceVariant,
+                    color:
+                        isToday
+                            ? colorScheme.onPrimary
+                            : colorScheme.onSurfaceVariant,
                   ),
                 ),
                 if (isFasting)
                   Icon(
                     Icons.circle,
                     size: 5,
-                    color: isToday
-                        ? colorScheme.onPrimary
-                        : colorScheme.secondary,
+                    color:
+                        isToday ? colorScheme.onPrimary : colorScheme.secondary,
                   ),
               ],
             ),
@@ -332,6 +337,34 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
               ],
             ),
           ],
+          if (HijriService.isLastTenOfRamadan(_month, day))
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.nightlight_round,
+                      size: 16,
+                      color: colorScheme.secondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        context.tr('laylat_qadr_note'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (HijriService.isRecommendedFastingWeekday(gregorian))
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -342,12 +375,13 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
             ),
           const Divider(height: 28),
           location.when(
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(8),
-                child: CircularProgressIndicator.adaptive(),
-              ),
-            ),
+            loading:
+                () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator.adaptive(),
+                  ),
+                ),
             error: (_, _) => const SizedBox.shrink(),
             data: (coordinates) {
               final computed = PrayerCalculationService.computeDay(

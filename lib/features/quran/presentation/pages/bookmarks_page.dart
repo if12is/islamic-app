@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/bookmark_store.dart';
 import '../providers/bookmarks_provider.dart';
 import 'notes_page.dart';
@@ -23,109 +24,103 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
     final bookmarks = ref.watch(bookmarksProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Directionality(
-      textDirection: context.appTextDirection,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.tr('bookmarks')),
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          foregroundColor: colorScheme.onSurface,
-          elevation: 0,
-          actions: [
-            IconButton(
-              tooltip: context.tr('my_reflections'),
-              icon: const Icon(Icons.edit_note),
-              onPressed: () => Navigator.of(context).push(
+    return AppScaffold(
+      showBack: true,
+      titleWidget: Text(context.tr('bookmarks')),
+      actions: [
+        IconButton(
+          tooltip: context.tr('my_reflections'),
+          icon: const Icon(Icons.edit_note),
+          onPressed:
+              () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const NotesPage()),
               ),
-            ),
-          ],
         ),
-        body: bookmarks.when(
-          loading: () =>
-              const Center(child: CircularProgressIndicator.adaptive()),
-          error: (error, _) => Center(child: Text(error.toString())),
-          data: (items) {
-            final filtered = _filter == null
-                ? items
-                : items.where((item) => item.tag == _filter).toList();
+      ],
+      body: bookmarks.when(
+        loading:
+            () => const Center(child: CircularProgressIndicator.adaptive()),
+        error: (error, _) => Center(child: Text(error.toString())),
+        data: (items) {
+          final filtered =
+              _filter == null
+                  ? items
+                  : items.where((item) => item.tag == _filter).toList();
 
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              ChoiceChip(
-                                selected: _filter == null,
-                                onSelected: (_) =>
-                                    setState(() => _filter = null),
-                                label: Text(context.tr('all')),
-                              ),
-                              for (final tag in BookmarkTag.values) ...[
-                                const SizedBox(width: 8),
-                                ChoiceChip(
-                                  selected: _filter == tag,
-                                  onSelected: (_) =>
-                                      setState(() => _filter = tag),
-                                  label: Text(
-                                    context.tr('bookmark_tag_${tag.name}'),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (filtered.isEmpty)
-                  Expanded(
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
                           children: [
-                            Icon(
-                              Icons.bookmark_border,
-                              size: 48,
-                              color: colorScheme.onSurfaceVariant,
+                            ChoiceChip(
+                              selected: _filter == null,
+                              onSelected: (_) => setState(() => _filter = null),
+                              label: Text(context.tr('all')),
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              context.tr('no_bookmarks_yet'),
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
+                            for (final tag in BookmarkTag.values) ...[
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                selected: _filter == tag,
+                                onSelected:
+                                    (_) => setState(() => _filter = tag),
+                                label: Text(
+                                  context.tr('bookmark_tag_${tag.name}'),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
                     ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final bookmark = filtered[index];
-                        return _bookmarkTile(bookmark, colorScheme);
-                      },
+                  ],
+                ),
+              ),
+              if (filtered.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.bookmark_border,
+                            size: 48,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            context.tr('no_bookmarks_yet'),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-              ],
-            );
-          },
-        ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final bookmark = filtered[index];
+                      return _bookmarkTile(bookmark, colorScheme);
+                    },
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -208,14 +203,16 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
                 ),
             ],
           ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => SurahReaderPage(
-                surahNumber: bookmark.surahNumber,
-                initialVerse: bookmark.verseNumber,
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder:
+                      (_) => SurahReaderPage(
+                        surahNumber: bookmark.surahNumber,
+                        initialVerse: bookmark.verseNumber,
+                      ),
+                ),
               ),
-            ),
-          ),
         ),
       ),
     );

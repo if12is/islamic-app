@@ -48,7 +48,10 @@ class HijriService {
     HijriEvent(key: 'event_isra_miraj', month: 7, day: 27),
     HijriEvent(key: 'event_mid_shaban', month: 8, day: 15),
     HijriEvent(key: 'event_ramadan_start', month: 9, day: 1, isFasting: true),
-    HijriEvent(key: 'event_laylat_qadr', month: 9, day: 27),
+    // The 27th is the most likely night in the reports, not a certainty; the
+    // wording in the UI says so, and every odd night of the last ten is
+    // marked as well.
+    HijriEvent(key: 'event_laylat_qadr_expected', month: 9, day: 27),
     HijriEvent(key: 'event_eid_fitr', month: 10, day: 1),
     HijriEvent(key: 'event_arafah', month: 12, day: 9, isFasting: true),
     HijriEvent(key: 'event_eid_adha', month: 12, day: 10),
@@ -82,18 +85,38 @@ class HijriService {
   static int daysInMonth(int year, int month) =>
       HijriCalendar().getDaysInMonth(year, month);
 
-  static String monthName(int month) =>
-      monthNamesAr[(month.clamp(1, 12)) - 1];
+  static String monthName(int month) => monthNamesAr[(month.clamp(1, 12)) - 1];
 
-  /// Events falling on a Hijri day, plus the recurring white days.
+  /// Events falling on a Hijri day, plus the recurring ones: the white days
+  /// and the last ten nights of Ramadan.
   static List<HijriEvent> eventsOn(int month, int day) {
-    final matches = events
-        .where((event) => event.month == month && event.day == day)
-        .toList();
+    final matches =
+        events
+            .where((event) => event.month == month && event.day == day)
+            .toList();
+
+    if (isLastTenOfRamadan(month, day)) {
+      matches.add(
+        HijriEvent(
+          key:
+              isOddNightOfLastTen(month, day)
+                  ? 'event_odd_night'
+                  : 'event_last_ten',
+          month: month,
+          day: day,
+          isFasting: true,
+        ),
+      );
+    }
 
     if (day >= 13 && day <= 15) {
       matches.add(
-        HijriEvent(key: 'event_white_days', month: month, day: day, isFasting: true),
+        HijriEvent(
+          key: 'event_white_days',
+          month: month,
+          day: day,
+          isFasting: true,
+        ),
       );
     }
 
@@ -112,6 +135,9 @@ class HijriService {
   static bool isRamadan(int month) => month == 9;
 
   /// The last ten nights of Ramadan.
-  static bool isLastTenOfRamadan(int month, int day) =>
-      month == 9 && day >= 21;
+  static bool isLastTenOfRamadan(int month, int day) => month == 9 && day >= 21;
+
+  /// The odd nights of the last ten — where Laylat al-Qadr is sought.
+  static bool isOddNightOfLastTen(int month, int day) =>
+      isLastTenOfRamadan(month, day) && day.isOdd;
 }

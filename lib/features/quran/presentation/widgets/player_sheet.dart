@@ -185,23 +185,25 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
                 labelKey: 'range_from',
                 value: _fromIndex,
                 display: _verseLabel(_fromIndex),
-                onChanged: (value) => setState(() {
-                  _fromIndex = value;
-                  if (_toIndex < _fromIndex) {
-                    _toIndex = _fromIndex;
-                  }
-                }),
+                onChanged:
+                    (value) => setState(() {
+                      _fromIndex = value;
+                      if (_toIndex < _fromIndex) {
+                        _toIndex = _fromIndex;
+                      }
+                    }),
               ),
               _rangeSlider(
                 labelKey: 'range_to',
                 value: _toIndex,
                 display: _verseLabel(_toIndex),
-                onChanged: (value) => setState(() {
-                  _toIndex = value;
-                  if (_fromIndex > _toIndex) {
-                    _fromIndex = _toIndex;
-                  }
-                }),
+                onChanged:
+                    (value) => setState(() {
+                      _toIndex = value;
+                      if (_fromIndex > _toIndex) {
+                        _fromIndex = _toIndex;
+                      }
+                    }),
               ),
               const SizedBox(height: 8),
               Text(
@@ -229,18 +231,19 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.tonalIcon(
-                  onPressed: widget.verses.isEmpty
-                      ? null
-                      : () {
-                          controller.playRange(
-                            widget.verses,
-                            fromIndex: _fromIndex,
-                            toIndex: _toIndex,
-                            repeatCount: _repeatCount,
-                            reciterCode: settings.reciterCode,
-                          );
-                          Navigator.of(context).pop();
-                        },
+                  onPressed:
+                      widget.verses.isEmpty
+                          ? null
+                          : () {
+                            controller.playRange(
+                              widget.verses,
+                              fromIndex: _fromIndex,
+                              toIndex: _toIndex,
+                              repeatCount: _repeatCount,
+                              reciterCode: settings.reciterCode,
+                            );
+                            Navigator.of(context).pop();
+                          },
                   icon: const Icon(Icons.repeat, size: 18),
                   label: Text(context.tr('start_repeat')),
                 ),
@@ -276,9 +279,10 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
                   for (final minutes in _sleepMinutes)
                     ChoiceChip(
                       selected: false,
-                      onSelected: (_) => controller.setSleepTimer(
-                        Duration(minutes: minutes),
-                      ),
+                      onSelected:
+                          (_) => controller.setSleepTimer(
+                            Duration(minutes: minutes),
+                          ),
                       label: Text(
                         AppLocalizations.translate(
                           Localizations.localeOf(context).languageCode,

@@ -26,8 +26,9 @@ class TafsirEditionNotifier extends Notifier<String> {
   }
 }
 
-final tafsirEditionProvider =
-    NotifierProvider<TafsirEditionNotifier, String>(TafsirEditionNotifier.new);
+final tafsirEditionProvider = NotifierProvider<TafsirEditionNotifier, String>(
+  TafsirEditionNotifier.new,
+);
 
 /// Identifies one verse in one tafsir.
 class TafsirRequest {

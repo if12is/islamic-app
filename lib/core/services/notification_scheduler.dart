@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/quran/data/services/quran_local_service.dart';
@@ -5,9 +7,11 @@ import '../constants/app_constants.dart';
 import '../localization/app_localizations.dart';
 import '../models/notification_preferences.dart';
 import '../utils/app_logger.dart';
+import 'hijri_service.dart';
 import 'notification_service.dart';
 import 'prayer_calculation_service.dart';
 import 'prayer_settings_store.dart';
+import 'widget_service.dart';
 
 /// Outcome of a scheduling pass, surfaced in the notification centre.
 class ScheduleResult {
@@ -49,6 +53,9 @@ class NotificationPlanner {
   static const int _eveningAzkarIdBase = 4100;
   static const int _dailyAyahIdBase = 5000;
   static const int _wirdIdBase = 6000;
+  static const int _eventIdBase = 7000;
+  static const int _fridayIdBase = 7100;
+  static const int _fastingIdBase = 7200;
 
   static List<ScheduledNotification> build({
     required NotificationPreferences prefs,
@@ -105,14 +112,11 @@ class NotificationPlanner {
               },
             ),
             payload: 'prayer:$prayerId',
-            adhanSoundId: prefs.adhanSoundId,
+            adhanSound: prefs.soundForPrayer(prayerId),
             actions: [
               NotificationActionSpec(
                 id: 'open_prayer',
-                label: AppLocalizations.translate(
-                  languageCode,
-                  'prayer_times',
-                ),
+                label: AppLocalizations.translate(languageCode, 'prayer_times'),
               ),
             ],
           ),
@@ -266,9 +270,10 @@ class NotificationPlanner {
                   languageCode,
                   'notif_daily_ayah_body',
                 ),
-            payload: reference == null
-                ? 'quran:ayah_of_the_day'
-                : 'quran:verse:$reference',
+            payload:
+                reference == null
+                    ? 'quran:ayah_of_the_day'
+                    : 'quran:verse:$reference',
             actions: [
               NotificationActionSpec(
                 id: 'open_ayah',
@@ -282,6 +287,100 @@ class NotificationPlanner {
             ],
           ),
         );
+      }
+
+      // Friday: Surah Al-Kahf, an hour after Fajr.
+      if (prefs.fridayRemindersEnabled &&
+          day.date.weekday == DateTime.friday &&
+          fajr != null) {
+        final time = fajr.add(const Duration(hours: 1));
+        _add(
+          items,
+          now,
+          ScheduledNotification(
+            id: _fridayIdBase + dayIndex,
+            kind: NotificationKind.dailyAyah,
+            time: time,
+            mode: _quietAware(prefs, time),
+            title: AppLocalizations.translate(
+              languageCode,
+              'notif_friday_title',
+            ),
+            body: AppLocalizations.translate(languageCode, 'notif_friday_body'),
+            payload: 'quran:verse:18:1',
+            actions: [
+              NotificationActionSpec(
+                id: 'open_ayah',
+                label: AppLocalizations.translate(languageCode, 'open'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Hijri occasions: Ashura, Arafah, the Eids, the white days.
+      if (prefs.islamicEventsEnabled) {
+        final events = HijriService.eventsOn(day.hijri.month, day.hijri.day);
+        if (events.isNotEmpty) {
+          final time = DateTime(day.date.year, day.date.month, day.date.day, 9);
+          _add(
+            items,
+            now,
+            ScheduledNotification(
+              id: _eventIdBase + dayIndex,
+              kind: NotificationKind.event,
+              time: time,
+              mode: _quietAware(prefs, time),
+              title: AppLocalizations.translate(languageCode, events.first.key),
+              body: AppLocalizations.translate(
+                languageCode,
+                events.first.isFasting
+                    ? 'notif_event_fasting_body'
+                    : 'notif_event_body',
+              ),
+              payload: 'calendar',
+            ),
+          );
+        }
+      }
+
+      // The night before a fasting day.
+      if (prefs.fastingRemindersEnabled) {
+        final tomorrow = DateTime(
+          day.date.year,
+          day.date.month,
+          day.date.day + 1,
+        );
+        final tomorrowHijri = HijriService.fromGregorian(tomorrow);
+        final isWhiteDay = tomorrowHijri.hDay >= 13 && tomorrowHijri.hDay <= 15;
+
+        if (HijriService.isRecommendedFastingWeekday(tomorrow) || isWhiteDay) {
+          final time = DateTime(
+            day.date.year,
+            day.date.month,
+            day.date.day,
+            21,
+          );
+          _add(
+            items,
+            now,
+            ScheduledNotification(
+              id: _fastingIdBase + dayIndex,
+              kind: NotificationKind.event,
+              time: time,
+              mode: _quietAware(prefs, time),
+              title: AppLocalizations.translate(
+                languageCode,
+                'notif_fasting_title',
+              ),
+              body: AppLocalizations.translate(
+                languageCode,
+                isWhiteDay ? 'notif_fasting_white_body' : 'notif_fasting_body',
+              ),
+              payload: 'calendar',
+            ),
+          );
+        }
       }
 
       if (prefs.wirdEnabled) {
@@ -399,10 +498,10 @@ class NotificationScheduler {
     final settings = overrides ?? readPreferences(prefs);
 
     final days = PrayerCalculationService.computeRange(
-      latitude: prefs.getDouble(AppConstants.userLatitudeKey) ??
-          _fallbackLatitude,
-      longitude: prefs.getDouble(AppConstants.userLongitudeKey) ??
-          _fallbackLongitude,
+      latitude:
+          prefs.getDouble(AppConstants.userLatitudeKey) ?? _fallbackLatitude,
+      longitude:
+          prefs.getDouble(AppConstants.userLongitudeKey) ?? _fallbackLongitude,
       method: prefs.getInt(AppConstants.prayerMethodKey) ?? 3,
       days: NotificationPlanner.horizonDays,
       // Madhab, manual offsets, and the high-latitude rule move the times, so
@@ -449,6 +548,9 @@ class NotificationScheduler {
     try {
       final prefs = preferences ?? await SharedPreferences.getInstance();
       final settings = overrides ?? readPreferences(prefs);
+
+      // The widget mirrors the same calculation, so refresh it here too.
+      unawaited(WidgetService.refresh(preferences: prefs));
 
       if (!settings.masterEnabled) {
         await NotificationService.cancelAllScheduled();

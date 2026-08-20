@@ -10,15 +10,20 @@ A comprehensive, production-ready Islamic mobile application with prayer times, 
 - ✅ **Verse tools**: Tafsir (5 editions, cached), bookmarks with tags and notes, share as text or image
 - ✅ **Index**: Surahs, juz, hizb, Mushaf pages, sajdah verses, and "go to" any exact reference
 - ✅ **Reflections**: A notes screen with search, ordering, and plain-text export
-- ✅ **Hijri calendar**: The Islamic month with its events, fasting days, and each day's prayer times
+- ✅ **Hijri calendar**: The Islamic month with its events, fasting days, each day's prayer times, and a full Ramadan imsakiya
+- ✅ **Memorisation**: Progressive masking, spaced review, and a "finish the verse" quiz
+- ✅ **Reciter library**: Seven reciters, per-surah downloads, and offline playback
+- ✅ **Backup**: Export everything to a JSON file and restore it on another device
 - ✅ **Recitation**: Verse-by-verse playback with synced highlight, background audio, adjustable speed, range repetition for memorisation, and a sleep timer
-- ✅ **Azkar**: Morning and evening remembrances with an interactive Tasbeeh counter
+- ✅ **Azkar**: The full Hisn al-Muslim — 136 chapters, 352 supplications with their virtues and references, bundled offline
+- ✅ **Khatmah plan & daily wird**: A plan that re-spreads what is left, a combined daily wird card, a reading streak, and a year heat map
+- ✅ **Home-screen widget**: Next prayer, countdown, today's timetable, and the Hijri date
 - ✅ **Qibla Direction**: Compass showing the direction to Kaaba from your location
 - ✅ **Hijri Calendar**: Islamic calendar dates integrated throughout the app
 - ✅ **Dark Mode**: Full support for light and dark themes
 - ✅ **RTL Arabic**: Complete right-to-left support for Arabic language using Cairo font
 - ✅ **Offline Access**: Cache offline data for prayer times and Quran verses
-- ✅ **Notifications**: Real scheduling seven days ahead — per-prayer alert modes, pre-adhan and iqama reminders, sun-anchored azkar, quiet hours, all from one notification centre
+- ✅ **Notifications**: Real scheduling seven days ahead — per-prayer alert modes, three bundled adhans (or import your own), a separate Fajr adhan, pre-adhan and iqama reminders, sun-anchored azkar, Friday/fasting/Hijri occasions, quiet hours, all from one notification centre
 - ✅ **Location Services**: Automatic location detection for accurate prayer times
 
 ## Latest Achievements (March 2026)

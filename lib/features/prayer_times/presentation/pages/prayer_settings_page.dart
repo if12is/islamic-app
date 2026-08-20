@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/prayer_calculation_service.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -23,209 +24,199 @@ class PrayerSettingsPage extends ConsumerWidget {
     final notifier = ref.read(prayerCalculationSettingsProvider.notifier);
     final method = ref.watch(prayerMethodProvider);
     final location = ref.watch(currentLocationCoordinatesProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return Directionality(
-      textDirection: context.appTextDirection,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(context.tr('prayer_calculation_settings')),
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          foregroundColor: colorScheme.onSurface,
-          elevation: 0,
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-          children: [
-            location.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator.adaptive()),
+    return AppScaffold(
+      showBack: true,
+      titleWidget: Text(context.tr('prayer_calculation_settings')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        children: [
+          location.when(
+            loading:
+                () => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator.adaptive()),
+                ),
+            error: (_, _) => const SizedBox.shrink(),
+            data:
+                (coordinates) =>
+                    _preview(context, coordinates, method, settings),
+          ),
+          const SizedBox(height: 16),
+          _card(
+            context,
+            title: context.tr('calculation_method'),
+            icon: Icons.calculate,
+            subtitle: context.tr('calc_method_desc'),
+            children: [
+              RadioGroup<int>(
+                groupValue: method,
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(prayerMethodProvider.notifier).setMethod(value);
+                  }
+                },
+                child: Column(
+                  children: [
+                    for (final entry
+                        in AppConstants.prayerCalculationMethods.entries)
+                      RadioListTile<int>(
+                        contentPadding: EdgeInsets.zero,
+                        value: entry.key,
+                        title: Text(entry.value),
+                      ),
+                  ],
+                ),
               ),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (coordinates) =>
-                  _preview(context, coordinates, method, settings),
-            ),
-            const SizedBox(height: 16),
-            _card(
-              context,
-              title: context.tr('calculation_method'),
-              icon: Icons.calculate,
-              subtitle: context.tr('calc_method_desc'),
-              children: [
-                RadioGroup<int>(
-                  groupValue: method,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(prayerMethodProvider.notifier).setMethod(value);
-                    }
-                  },
-                  child: Column(
+            ],
+          ),
+          const SizedBox(height: 16),
+          _card(
+            context,
+            title: context.tr('asr_madhab'),
+            icon: Icons.wb_cloudy,
+            subtitle: context.tr('asr_madhab_desc'),
+            children: [
+              SegmentedButton<bool>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: false,
+                    label: Text(context.tr('madhab_shafi')),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    label: Text(context.tr('madhab_hanafi')),
+                  ),
+                ],
+                selected: {settings.hanafiAsr},
+                onSelectionChanged:
+                    (value) => notifier.setHanafiAsr(value.first),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _card(
+            context,
+            title: context.tr('high_latitude_rule'),
+            icon: Icons.public,
+            subtitle: context.tr('high_latitude_desc'),
+            children: [
+              DropdownButtonFormField<HighLatitudeRule>(
+                initialValue: settings.highLatitudeRule,
+                isExpanded: true,
+                items: [
+                  for (final rule in HighLatitudeRule.values)
+                    DropdownMenuItem(
+                      value: rule,
+                      child: Text(context.tr('high_lat_${rule.name}')),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    notifier.setHighLatitudeRule(value);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _card(
+            context,
+            title: context.tr('manual_offsets'),
+            icon: Icons.tune,
+            subtitle: context.tr('manual_offsets_desc'),
+            children: [
+              for (final prayerId in PrayerIds.all)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
                     children: [
-                      for (final entry
-                          in AppConstants.prayerCalculationMethods.entries)
-                        RadioListTile<int>(
-                          contentPadding: EdgeInsets.zero,
-                          value: entry.key,
-                          title: Text(entry.value),
+                      SizedBox(width: 84, child: Text(context.tr(prayerId))),
+                      Expanded(
+                        child: SizedBox(
+                          height: 40,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              for (final offset in _offsetChoices) ...[
+                                ChoiceChip(
+                                  selected:
+                                      (settings.minuteAdjustments[prayerId] ??
+                                          0) ==
+                                      offset,
+                                  onSelected:
+                                      (_) =>
+                                          notifier.setOffset(prayerId, offset),
+                                  label: Text(
+                                    offset > 0 ? '+$offset' : '$offset',
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                            ],
+                          ),
                         ),
+                      ),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _card(
-              context,
-              title: context.tr('asr_madhab'),
-              icon: Icons.wb_cloudy,
-              subtitle: context.tr('asr_madhab_desc'),
-              children: [
-                SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(
-                      value: false,
-                      label: Text(context.tr('madhab_shafi')),
-                    ),
-                    ButtonSegment(
-                      value: true,
-                      label: Text(context.tr('madhab_hanafi')),
-                    ),
-                  ],
-                  selected: {settings.hanafiAsr},
-                  onSelectionChanged: (value) =>
-                      notifier.setHanafiAsr(value.first),
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: notifier.resetOffsets,
+                  icon: const Icon(Icons.restart_alt, size: 18),
+                  label: Text(context.tr('reset_offsets')),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _card(
-              context,
-              title: context.tr('high_latitude_rule'),
-              icon: Icons.public,
-              subtitle: context.tr('high_latitude_desc'),
-              children: [
-                DropdownButtonFormField<HighLatitudeRule>(
-                  initialValue: settings.highLatitudeRule,
-                  isExpanded: true,
-                  items: [
-                    for (final rule in HighLatitudeRule.values)
-                      DropdownMenuItem(
-                        value: rule,
-                        child: Text(context.tr('high_lat_${rule.name}')),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      notifier.setHighLatitudeRule(value);
-                    }
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _card(
-              context,
-              title: context.tr('manual_offsets'),
-              icon: Icons.tune,
-              subtitle: context.tr('manual_offsets_desc'),
-              children: [
-                for (final prayerId in PrayerIds.all)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 84,
-                          child: Text(context.tr(prayerId)),
-                        ),
-                        Expanded(
-                          child: SizedBox(
-                            height: 40,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                for (final offset in _offsetChoices) ...[
-                                  ChoiceChip(
-                                    selected:
-                                        (settings.minuteAdjustments[prayerId] ??
-                                            0) ==
-                                        offset,
-                                    onSelected: (_) =>
-                                        notifier.setOffset(prayerId, offset),
-                                    label: Text(
-                                      offset > 0 ? '+$offset' : '$offset',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: TextButton.icon(
-                    onPressed: notifier.resetOffsets,
-                    icon: const Icon(Icons.restart_alt, size: 18),
-                    label: Text(context.tr('reset_offsets')),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _card(
-              context,
-              title: context.tr('hijri_adjustment'),
-              icon: Icons.calendar_month,
-              subtitle: context.tr('hijri_adjustment_desc'),
-              children: [
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final offset in [-2, -1, 0, 1, 2])
-                      ChoiceChip(
-                        selected: settings.hijriOffsetDays == offset,
-                        onSelected: (_) => notifier.setHijriOffset(offset),
-                        label: Text(offset > 0 ? '+$offset' : '$offset'),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: TextButton.icon(
-                onPressed: () async {
-                  final result = await NotificationScheduler.refresh();
-                  if (!context.mounted) {
-                    return;
-                  }
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        AppLocalizations.translate(
-                          Localizations.localeOf(context).languageCode,
-                          'notif_scheduled_count',
-                          replacements: {
-                            'count': result.scheduled.toString(),
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.notifications_active, size: 18),
-                label: Text(context.tr('notif_reschedule')),
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _card(
+            context,
+            title: context.tr('hijri_adjustment'),
+            icon: Icons.calendar_month,
+            subtitle: context.tr('hijri_adjustment_desc'),
+            children: [
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final offset in [-2, -1, 0, 1, 2])
+                    ChoiceChip(
+                      selected: settings.hijriOffsetDays == offset,
+                      onSelected: (_) => notifier.setHijriOffset(offset),
+                      label: Text(offset > 0 ? '+$offset' : '$offset'),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: () async {
+                final result = await NotificationScheduler.refresh();
+                if (!context.mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      AppLocalizations.translate(
+                        Localizations.localeOf(context).languageCode,
+                        'notif_scheduled_count',
+                        replacements: {'count': result.scheduled.toString()},
+                      ),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.notifications_active, size: 18),
+              label: Text(context.tr('notif_reschedule')),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

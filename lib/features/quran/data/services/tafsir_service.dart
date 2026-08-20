@@ -26,9 +26,7 @@ class TafsirService {
   TafsirService({Dio? dio})
     : _dio =
           dio ??
-          SecureHttpClient.create(
-            baseUrl: AppConstants.alQuranCloudApiBaseUrl,
-          );
+          SecureHttpClient.create(baseUrl: AppConstants.alQuranCloudApiBaseUrl);
 
   final Dio _dio;
 
@@ -185,8 +183,7 @@ class TafsirService {
       await box.put(key, {
         'cachedAt': DateTime.now().toIso8601String(),
         'verses': {
-          for (final entry in verses.entries)
-            entry.key.toString(): entry.value,
+          for (final entry in verses.entries) entry.key.toString(): entry.value,
         },
       });
     } catch (e) {

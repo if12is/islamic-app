@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../services/prayer_calculation_service.dart';
+import 'adhan_sound.dart';
 import '../utils/input_validators.dart';
 
 /// How a single prayer announces itself.
@@ -65,7 +66,11 @@ class NotificationPreferences {
     this.quietHoursEnabled = false,
     this.quietStartHour = 23,
     this.quietEndHour = 6,
-    this.adhanSoundId = 'system',
+    this.adhanSound = AdhanSoundSelection.system,
+    this.fajrAdhanSound,
+    this.islamicEventsEnabled = false,
+    this.fridayRemindersEnabled = false,
+    this.fastingRemindersEnabled = false,
   });
 
   /// Master switch. When off, nothing is scheduled.
@@ -105,7 +110,28 @@ class NotificationPreferences {
   final int quietEndHour;
 
   /// Which adhan plays for prayers set to [PrayerAlertMode.adhan].
-  final String adhanSoundId;
+  final AdhanSoundSelection adhanSound;
+
+  /// Optional Fajr-only adhan — the Fajr call has its own extra line, so many
+  /// people want a different recording for it. Null means "same as the rest".
+  final AdhanSoundSelection? fajrAdhanSound;
+
+  /// Ashura, Arafah, the two Eids, Ramadan, the white days.
+  final bool islamicEventsEnabled;
+
+  /// Surah Al-Kahf and salawat on Friday.
+  final bool fridayRemindersEnabled;
+
+  /// The night before Monday, Thursday, and the white days.
+  final bool fastingRemindersEnabled;
+
+  /// The adhan a given prayer should play.
+  AdhanSoundSelection soundForPrayer(String prayerId) {
+    if (prayerId == PrayerIds.fajr && fajrAdhanSound != null) {
+      return fajrAdhanSound!.sanitized;
+    }
+    return adhanSound.sanitized;
+  }
 
   static const NotificationPreferences defaults = NotificationPreferences(
     prayerModes: {
@@ -157,7 +183,12 @@ class NotificationPreferences {
     bool? quietHoursEnabled,
     int? quietStartHour,
     int? quietEndHour,
-    String? adhanSoundId,
+    AdhanSoundSelection? adhanSound,
+    AdhanSoundSelection? fajrAdhanSound,
+    bool clearFajrAdhanSound = false,
+    bool? islamicEventsEnabled,
+    bool? fridayRemindersEnabled,
+    bool? fastingRemindersEnabled,
   }) {
     return NotificationPreferences(
       masterEnabled: masterEnabled ?? this.masterEnabled,
@@ -179,7 +210,14 @@ class NotificationPreferences {
       quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
       quietStartHour: quietStartHour ?? this.quietStartHour,
       quietEndHour: quietEndHour ?? this.quietEndHour,
-      adhanSoundId: adhanSoundId ?? this.adhanSoundId,
+      adhanSound: adhanSound ?? this.adhanSound,
+      fajrAdhanSound:
+          clearFajrAdhanSound ? null : (fajrAdhanSound ?? this.fajrAdhanSound),
+      islamicEventsEnabled: islamicEventsEnabled ?? this.islamicEventsEnabled,
+      fridayRemindersEnabled:
+          fridayRemindersEnabled ?? this.fridayRemindersEnabled,
+      fastingRemindersEnabled:
+          fastingRemindersEnabled ?? this.fastingRemindersEnabled,
     );
   }
 
@@ -203,7 +241,11 @@ class NotificationPreferences {
     'quietHoursEnabled': quietHoursEnabled,
     'quietStartHour': quietStartHour,
     'quietEndHour': quietEndHour,
-    'adhanSoundId': adhanSoundId,
+    'adhanSound': adhanSound.toJson(),
+    if (fajrAdhanSound != null) 'fajrAdhanSound': fajrAdhanSound!.toJson(),
+    'islamicEventsEnabled': islamicEventsEnabled,
+    'fridayRemindersEnabled': fridayRemindersEnabled,
+    'fastingRemindersEnabled': fastingRemindersEnabled,
   };
 
   String encode() => jsonEncode(toJson());
@@ -254,11 +296,23 @@ class NotificationPreferences {
       quietHoursEnabled: json['quietHoursEnabled'] == true,
       quietStartHour: intOr('quietStartHour', 23, max: 23),
       quietEndHour: intOr('quietEndHour', 6, max: 23),
-      adhanSoundId:
-          json['adhanSoundId'] is String
-              ? json['adhanSoundId'] as String
-              : 'system',
+      adhanSound: _readSound(json['adhanSound']) ?? AdhanSoundSelection.system,
+      fajrAdhanSound: _readSound(json['fajrAdhanSound']),
+      islamicEventsEnabled: json['islamicEventsEnabled'] == true,
+      fridayRemindersEnabled: json['fridayRemindersEnabled'] == true,
+      fastingRemindersEnabled: json['fastingRemindersEnabled'] == true,
     );
+  }
+
+  static AdhanSoundSelection? _readSound(Object? raw) {
+    if (raw is Map) {
+      return AdhanSoundSelection.fromJson(raw);
+    }
+    // Older builds stored just the id.
+    if (raw is String && raw.isNotEmpty) {
+      return AdhanSoundSelection(id: raw).sanitized;
+    }
+    return null;
   }
 
   /// Decode from storage, tolerating the legacy `{"fajr": true}` format.

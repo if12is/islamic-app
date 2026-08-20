@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:islamic_app/core/models/adhan_sound.dart';
 import 'package:islamic_app/core/models/notification_preferences.dart';
+import 'package:islamic_app/core/services/hijri_service.dart';
 import 'package:islamic_app/core/services/notification_scheduler.dart';
 import 'package:islamic_app/core/services/notification_service.dart';
 import 'package:islamic_app/core/services/prayer_calculation_service.dart';
@@ -74,7 +76,9 @@ void main() {
       expect(pre, hasLength(5));
       expect(iqama, hasLength(5));
 
-      final fajr = prayers.firstWhere((item) => item.prayerId == PrayerIds.fajr);
+      final fajr = prayers.firstWhere(
+        (item) => item.prayerId == PrayerIds.fajr,
+      );
       final fajrPre = pre.firstWhere((item) => item.prayerId == PrayerIds.fajr);
       final fajrIqama = iqama.firstWhere(
         (item) => item.prayerId == PrayerIds.fajr,
@@ -131,9 +135,8 @@ void main() {
         languageCode: 'ar',
       );
 
-      final azkar = plan
-          .where((item) => item.kind == NotificationKind.azkar)
-          .toList();
+      final azkar =
+          plan.where((item) => item.kind == NotificationKind.azkar).toList();
       expect(azkar, hasLength(2));
 
       expect(
@@ -165,9 +168,7 @@ void main() {
       final ayah = plan.firstWhere(
         (item) => item.kind == NotificationKind.dailyAyah,
       );
-      final fajr = plan.firstWhere(
-        (item) => item.prayerId == PrayerIds.fajr,
-      );
+      final fajr = plan.firstWhere((item) => item.prayerId == PrayerIds.fajr);
 
       expect(ayah.mode, PrayerAlertMode.silent);
       expect(fajr.mode, PrayerAlertMode.adhan);
@@ -236,7 +237,7 @@ void main() {
         prefs: NotificationPreferences.defaults.copyWith(
           masterEnabled: true,
           preAdhanMinutes: 0,
-          adhanSoundId: 'makkah',
+          adhanSound: const AdhanSoundSelection(id: 'rifat'),
         ),
         days: daysFrom(start, days: 1),
         now: now,
@@ -244,8 +245,37 @@ void main() {
       );
 
       final fajr = plan.firstWhere((item) => item.prayerId == PrayerIds.fajr);
-      expect(fajr.adhanSoundId, 'makkah');
+      expect(fajr.adhanSound.id, 'rifat');
       expect(fajr.actions.single.id, 'open_prayer');
+    });
+
+    test('uses the Fajr-only adhan when one is set', () {
+      final plan = NotificationPlanner.build(
+        prefs: NotificationPreferences.defaults.copyWith(
+          masterEnabled: true,
+          preAdhanMinutes: 0,
+          adhanSound: const AdhanSoundSelection(id: 'rifat'),
+          fajrAdhanSound: const AdhanSoundSelection(id: 'fajr_abu_rahiq'),
+        ),
+        days: daysFrom(start, days: 1),
+        now: now,
+        languageCode: 'ar',
+      );
+
+      expect(
+        plan
+            .firstWhere((item) => item.prayerId == PrayerIds.fajr)
+            .adhanSound
+            .id,
+        'fajr_abu_rahiq',
+      );
+      expect(
+        plan
+            .firstWhere((item) => item.prayerId == PrayerIds.maghrib)
+            .adhanSound
+            .id,
+        'rifat',
+      );
     });
 
     test('points the verse of the day at that exact verse', () {
@@ -293,6 +323,80 @@ void main() {
       expect(ayah.actions.map((action) => action.id), ['open_ayah']);
     });
 
+    test('reminds about Surah Al-Kahf on Friday only', () {
+      // 2026-08-21 is a Friday.
+      final friday = DateTime(2026, 8, 21);
+      final plan = NotificationPlanner.build(
+        prefs: NotificationPreferences.defaults.copyWith(
+          masterEnabled: true,
+          preAdhanMinutes: 0,
+          prayerModes: {
+            for (final id in PrayerIds.obligatory) id: PrayerAlertMode.off,
+          },
+          fridayRemindersEnabled: true,
+        ),
+        days: daysFrom(friday, days: 7),
+        now: DateTime(2026, 8, 21, 0, 1),
+        languageCode: 'ar',
+      );
+
+      final kahf = plan.where((item) => item.payload == 'quran:verse:18:1');
+      expect(kahf, hasLength(1));
+      expect(kahf.single.time.weekday, DateTime.friday);
+    });
+
+    test('reminds the night before a fasting day', () {
+      final plan = NotificationPlanner.build(
+        prefs: NotificationPreferences.defaults.copyWith(
+          masterEnabled: true,
+          preAdhanMinutes: 0,
+          prayerModes: {
+            for (final id in PrayerIds.obligatory) id: PrayerAlertMode.off,
+          },
+          fastingRemindersEnabled: true,
+        ),
+        days: daysFrom(DateTime(2026, 8, 20), days: 7),
+        now: DateTime(2026, 8, 20, 0, 1),
+        languageCode: 'ar',
+      );
+
+      final fasting =
+          plan.where((item) => item.kind == NotificationKind.event).toList();
+      expect(fasting, isNotEmpty);
+
+      // Every reminder lands at 21:00 the evening before an actual fasting day.
+      for (final item in fasting) {
+        expect(item.time.hour, 21);
+
+        final tomorrow = item.time.add(const Duration(days: 1));
+        final hijri = HijriService.fromGregorian(tomorrow);
+        final isWhiteDay = hijri.hDay >= 13 && hijri.hDay <= 15;
+
+        expect(
+          HijriService.isRecommendedFastingWeekday(tomorrow) || isWhiteDay,
+          isTrue,
+          reason: 'reminder on ${item.time} points at a non-fasting day',
+        );
+      }
+    });
+
+    test('stays silent about occasions when the switch is off', () {
+      final plan = NotificationPlanner.build(
+        prefs: NotificationPreferences.defaults.copyWith(
+          masterEnabled: true,
+          preAdhanMinutes: 0,
+        ),
+        days: daysFrom(start),
+        now: now,
+        languageCode: 'ar',
+      );
+
+      expect(
+        plan.where((item) => item.kind == NotificationKind.event),
+        isEmpty,
+      );
+    });
+
     test('formats the clock in Arabic digits for Arabic', () {
       final time = DateTime(2026, 6, 15, 13, 5);
 
@@ -338,13 +442,42 @@ void main() {
       expect(restored.modeFor(PrayerIds.maghrib), PrayerAlertMode.adhan);
     });
 
-    test('keeps the chosen adhan sound across a round trip', () {
+    test('keeps bundled and custom adhan choices across a round trip', () {
       final restored = NotificationPreferences.decode(
         NotificationPreferences.defaults
-            .copyWith(masterEnabled: true, adhanSoundId: 'madinah')
+            .copyWith(
+              masterEnabled: true,
+              adhanSound: const AdhanSoundSelection(id: 'mustafa_ismail'),
+              fajrAdhanSound: const AdhanSoundSelection(
+                id: AdhanSoundSelection.customId,
+                uri: 'content://media/external/audio/media/42',
+                title: 'أذاني',
+              ),
+            )
             .encode(),
       );
-      expect(restored.adhanSoundId, 'madinah');
+
+      expect(restored.adhanSound.id, 'mustafa_ismail');
+      expect(restored.fajrAdhanSound?.isCustom, isTrue);
+      expect(restored.fajrAdhanSound?.title, 'أذاني');
+      expect(
+        restored.soundForPrayer(PrayerIds.fajr).uri,
+        'content://media/external/audio/media/42',
+      );
+      expect(restored.soundForPrayer(PrayerIds.isha).id, 'mustafa_ismail');
+    });
+
+    test('a custom sound without a URI falls back to the default', () {
+      const broken = AdhanSoundSelection(id: AdhanSoundSelection.customId);
+      expect(broken.sanitized.id, AdhanSoundSelection.systemId);
+    });
+
+    test('migrates an adhan sound stored as a bare id', () {
+      final restored = NotificationPreferences.fromJson({
+        'masterEnabled': true,
+        'adhanSound': 'rifat',
+      });
+      expect(restored.adhanSound.id, 'rifat');
     });
 
     test('quiet hours wrap past midnight', () {

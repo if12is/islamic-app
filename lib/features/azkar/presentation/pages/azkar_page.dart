@@ -3,7 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
-import '../../../../core/theme/design_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/widgets/app_section.dart';
 import '../../../../core/services/azkar_data_service.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
@@ -36,21 +40,29 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     try {
       final data = await _azkarDataService.loadAzkarData();
       final rawCategories = data['categories'] as List? ?? [];
-      
-      final parsedCategories = rawCategories.map((c) {
-        final azkarList = c['azkar'] as List? ?? [];
-        return AzkarCategory(
-          id: c['id']?.toString() ?? '',
-          nameAr: c['nameAr']?.toString() ?? '',
-          nameEn: c['nameEn']?.toString() ?? '',
-          azkar: azkarList.map((z) => ZekrItem(
-            id: (z['id'] as num?)?.toInt() ?? 0,
-            textAr: z['textAr']?.toString() ?? '',
-            textEn: z['textEn']?.toString() ?? '',
-            targetCount: (z['count'] as num?)?.toInt() ?? 1,
-          )).toList(),
-        );
-      }).toList();
+
+      final parsedCategories =
+          rawCategories.map((c) {
+            final azkarList = c['azkar'] as List? ?? [];
+            return AzkarCategory(
+              id: c['id']?.toString() ?? '',
+              nameAr: c['nameAr']?.toString() ?? '',
+              nameEn: c['nameEn']?.toString() ?? '',
+              azkar:
+                  azkarList
+                      .map(
+                        (z) => ZekrItem(
+                          id: (z['id'] as num?)?.toInt() ?? 0,
+                          textAr: z['textAr']?.toString() ?? '',
+                          textEn: z['textEn']?.toString() ?? '',
+                          targetCount: (z['count'] as num?)?.toInt() ?? 1,
+                          virtue: z['virtue']?.toString() ?? '',
+                          reference: z['reference']?.toString() ?? '',
+                        ),
+                      )
+                      .toList(),
+            );
+          }).toList();
 
       setState(() {
         _categories = parsedCategories;
@@ -65,19 +77,30 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
   }
 
   /// Improved category fetcher to handle remote API lists that may not use "morning" or "evening" as an exact ID
-  AzkarCategory _getCategory(String exactId, String searchKeyword, String fallbackName) {
+  AzkarCategory _getCategory(
+    String exactId,
+    String searchKeyword,
+    String fallbackName,
+  ) {
     try {
       return _categories.firstWhere(
         (c) => c.id == exactId || c.nameAr.contains(searchKeyword),
       );
     } catch (e) {
       // Fallback empty category specifically mapped to nothing if not found via ID or Keyword
-      return AzkarCategory(id: exactId, nameAr: fallbackName, nameEn: '', azkar: []);
+      return AzkarCategory(
+        id: exactId,
+        nameAr: fallbackName,
+        nameEn: '',
+        azkar: [],
+      );
     }
   }
 
   Future<void> _refreshLastAzkar() async {
-    final snapshot = await AzkarProgressStore.lastOpened(categories: _categories);
+    final snapshot = await AzkarProgressStore.lastOpened(
+      categories: _categories,
+    );
     if (!mounted) {
       return;
     }
@@ -105,82 +128,45 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: context.appTextDirection,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: const ShellMenuButton(),
-          title: Text(
-            context.tr('azkar'),
-            style: TextStyle(
-              color: Theme.of(context).textTheme.bodyLarge!.color!,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          centerTitle: true,
-          actions: const [ShellProfileButton()],
-        ),
-        body: _isLoading
-            ? const Center(child: CustomLoader())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SmartTasbeehWidget(),
-                    const SizedBox(height: 24),
-                    _buildAdhkarSectionHeader(),
-                    const SizedBox(height: 16),
-                    if (_lastAzkar != null) ...[
-                      _buildContinueAzkarCard(_lastAzkar!),
-                      const SizedBox(height: 16),
-                    ],
-                    _buildAdhkarGrid(),
-                    const SizedBox(height: 16),
-                    _buildAyahOfTheDayCard(),
+    return AppScaffold(
+      title: 'azkar',
+      leading: const ShellMenuButton(),
+      actions: const [ShellProfileButton()],
+      body:
+          _isLoading
+              ? const Center(child: CustomLoader())
+              : ListView(
+                padding: AppScaffold.scrollPadding,
+                children: [
+                  const SmartTasbeehWidget(),
+                  const SizedBox(height: AppSpacing.xl),
+                  _buildAdhkarSectionHeader(),
+                  if (_lastAzkar != null) ...[
+                    _buildContinueAzkarCard(_lastAzkar!),
+                    const SizedBox(height: AppSpacing.md),
                   ],
-                ),
+                  _buildAdhkarGrid(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildAyahOfTheDayCard(),
+                ],
               ),
-      ),
     );
   }
 
   Widget _buildAdhkarSectionHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          context.tr('muslim_azkar'),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).textTheme.bodyLarge!.color!,
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            // Navigate to robust grid listing all azkar from the API
-            Navigator.of(context)
-                .push(
-                  MaterialPageRoute(
-                    builder: (context) => AllAzkarCategoriesPage(categories: _categories),
-                  ),
-                )
-                .then((_) => _refreshLastAzkar());
-          },
-          child: Text(
-            context.tr('view_all'),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ),
-      ],
+    return SectionHeader(
+      title: context.tr('muslim_azkar'),
+      subtitle: '${_categories.length} ${context.tr('category_word')}',
+      trailingLabel: context.tr('view_all'),
+      onTrailingTap:
+          () => Navigator.of(context)
+              .push(
+                MaterialPageRoute<void>(
+                  builder:
+                      (_) => AllAzkarCategoriesPage(categories: _categories),
+                ),
+              )
+              .then((_) => _refreshLastAzkar()),
     );
   }
 
@@ -190,7 +176,9 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     String fallbackKey,
   ) {
     if (context.isAppRtl) {
-      return category.nameAr.isNotEmpty ? category.nameAr : context.tr(fallbackKey);
+      return category.nameAr.isNotEmpty
+          ? category.nameAr
+          : context.tr(fallbackKey);
     }
 
     if (category.nameEn.isNotEmpty) {
@@ -207,99 +195,96 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
   Widget _buildContinueAzkarCard(AzkarProgressSnapshot snapshot) {
     final category = snapshot.category;
     final title = _displayCategoryName(context, category, 'sleep_azkar');
-    final progressLabel = snapshot.isComplete
-        ? context.tr('azkar_session_complete')
-        : '${context.tr('continue_azkar')} • ${snapshot.completedCount}/${snapshot.totalCount}';
+    final progressLabel =
+        snapshot.isComplete
+            ? context.tr('azkar_session_complete')
+            : '${context.tr('continue_azkar')} • ${snapshot.completedCount}/${snapshot.totalCount}';
 
-    return _buildAdhkarCard(
-      title: title,
-      subtitle: progressLabel,
-      count: category.azkar.length.toString(),
-      icon: _iconForCategory(category),
-      color: Theme.of(context).colorScheme.primaryContainer,
-      isFullWidth: true,
-      showArrow: true,
-      onTap: () => _navigateToDetails(category),
+    // Resuming an unfinished session is the one thing worth a gold card here.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: HeroCard(
+        label: context.tr('continue_azkar'),
+        title: title,
+        subtitle: progressLabel,
+        ornament: HeroOrnament.crescent,
+        height: 118,
+        onTap: () => _navigateToDetails(category),
+      ),
     );
   }
 
-  IconData _iconForCategory(AzkarCategory category) {
-    final haystack = '${category.id} ${category.nameAr} ${category.nameEn}'.toLowerCase();
-    if (haystack.contains('sleep') || haystack.contains('نوم')) {
-      return Icons.nights_stay;
-    }
-    if (haystack.contains('evening') || haystack.contains('مساء')) {
-      return Icons.nights_stay;
-    }
-    if (haystack.contains('morning') || haystack.contains('صباح')) {
-      return Icons.wb_sunny;
-    }
-    if (haystack.contains('prayer') || haystack.contains('صلاة')) {
-      return Icons.mosque;
-    }
-    return Icons.auto_awesome;
-  }
-
   Widget _buildAdhkarGrid() {
-    // Making keyword-based lookups more robust according to what remote API typically provides.
-    final morningCat = _getCategory('morning', 'صباح', context.tr('morning_azkar'));
-    final prayerCat = _getCategory('prayer', 'صلاة', context.tr('after_prayer_azkar'));
-    final eveningCat = _getCategory('evening', 'مساء', context.tr('evening_azkar'));
-    final sleepCat = _getCategory('sleep', 'نوم', context.tr('sleep_azkar'));
+    final morning = _getCategory(
+      'morning',
+      'صباح',
+      context.tr('morning_azkar'),
+    );
+    final prayer = _getCategory(
+      'prayer',
+      'صلاة',
+      context.tr('after_prayer_azkar'),
+    );
+    final evening = _getCategory(
+      'evening',
+      'مساء',
+      context.tr('evening_azkar'),
+    );
+    final sleep = _getCategory('sleep', 'نوم', context.tr('sleep_azkar'));
 
-    // Make the display names clean based exactly on the matched object instead of forcing fallbacks
+    // Two big ones for the two that anchor the day, two smaller for the rest.
     return Column(
       children: [
-        // Morning Adhkar (Top)
-        _buildAdhkarCard(
-          title: _displayCategoryName(context, morningCat, 'morning_azkar'),
-          subtitle: context.tr('morning_azkar_subtitle'),
-          count: morningCat.azkar.length.toString(),
-          icon: Icons.wb_sunny,
-          color: Theme.of(context).cardColor,
-          isFullWidth: true,
-          onTap: () => _navigateToDetails(morningCat),
-        ),
-        const SizedBox(height: 12),
-        // Prayer & Evening Adhkar (Middle Row)
         Row(
           children: [
             Expanded(
               child: _buildAdhkarCard(
-                title: _displayCategoryName(context, prayerCat, 'after_prayer_azkar'),
-                subtitle: context.tr('after_prayer_azkar_subtitle'),
-                count: prayerCat.azkar.length.toString(),
-                icon: Icons.mosque,
-                color: Theme.of(context).cardColor,
-                isFullWidth: false,
-                onTap: () => _navigateToDetails(prayerCat),
+                title: _displayCategoryName(context, morning, 'morning_azkar'),
+                subtitle: context.tr('morning_azkar_subtitle'),
+                count: morning.azkar.length.toString(),
+                icon: Icons.wb_twilight,
+                onTap: () => _navigateToDetails(morning),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: _buildAdhkarCard(
-                title: _displayCategoryName(context, eveningCat, 'evening_azkar'),
+                title: _displayCategoryName(context, evening, 'evening_azkar'),
                 subtitle: context.tr('evening_azkar_subtitle'),
-                count: eveningCat.azkar.length.toString(),
-                icon: Icons.nights_stay,
-                color: Theme.of(context).colorScheme.primaryContainer,
-                isFullWidth: false,
-                onTap: () => _navigateToDetails(eveningCat),
+                count: evening.azkar.length.toString(),
+                icon: Icons.nights_stay_outlined,
+                onTap: () => _navigateToDetails(evening),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        // Sleep Adhkar (Bottom)
-        _buildAdhkarCard(
-          title: _displayCategoryName(context, sleepCat, 'sleep_azkar'),
-          subtitle: context.tr('sleep_azkar_subtitle'),
-          count: sleepCat.azkar.length.toString(),
-          icon: Icons.brightness_3,
-          color: Theme.of(context).cardColor,
-          isFullWidth: true,
-          showArrow: true,
-          onTap: () => _navigateToDetails(sleepCat),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _buildAdhkarCard(
+                title: _displayCategoryName(
+                  context,
+                  prayer,
+                  'after_prayer_azkar',
+                ),
+                subtitle: context.tr('after_prayer_azkar_subtitle'),
+                count: prayer.azkar.length.toString(),
+                icon: Icons.mosque_outlined,
+                onTap: () => _navigateToDetails(prayer),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildAdhkarCard(
+                title: _displayCategoryName(context, sleep, 'sleep_azkar'),
+                subtitle: context.tr('sleep_azkar_subtitle'),
+                count: sleep.azkar.length.toString(),
+                icon: Icons.bedtime_outlined,
+                onTap: () => _navigateToDetails(sleep),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -310,201 +295,121 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     required String subtitle,
     required String count,
     required IconData icon,
-    required Color color,
-    required bool isFullWidth,
     required VoidCallback onTap,
-    bool showArrow = false,
   }) {
-    return GestureDetector(
+    final tokens = context.tokens;
+
+    return AppCard(
       onTap: onTap,
-      child: Container(
-        width: isFullWidth ? double.infinity : null,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircleAvatar(
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Icon(icon, color: Theme.of(context).colorScheme.secondary),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: tokens.brand.withValues(alpha: 0.12),
+                  borderRadius: AppRadii.smAll,
                 ),
-                if (count != '0')
-                  Text(
-                    '$count ${context.tr('zekr_count_unit')}',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Theme.of(context).textTheme.bodyLarge!.color!,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                child: Icon(icon, size: 19, color: tokens.brand),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: tokens.groundAlt,
+                  borderRadius: AppRadii.pillAll,
+                ),
+                child: Text(
+                  count,
+                  style: AppTextStyles.caption(
+                    context,
+                    fontSize: 11,
+                    color: tokens.inkFaint,
                   ),
                 ),
-                if (showArrow)
-                  Icon(Icons.arrow_back_ios, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.display(context, fontSize: 15.5),
+          ),
+          Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption(context, color: tokens.inkFaint),
+          ),
+        ],
       ),
     );
   }
 
+  /// The verse of the day, on a drawn card.
+  ///
+  /// It used to pull a stock photo off the network — in an app whose whole
+  /// point is working offline, and behind text that then needed a shadow to
+  /// stay legible. A painted card owes nothing to a CDN.
   Widget _buildAyahOfTheDayCard() {
     final ayahAsync = ref.watch(dailyAyahProvider);
-    final overlayText = Colors.white;
 
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 132),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: const Color(0xFF0C4F41),
-        image: const DecorationImage(
-          image: NetworkImage(
-              'https://images.unsplash.com/photo-1542816417-0983c9c9ad53?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'),
-          fit: BoxFit.cover,
-        ),
+    String verseText(Map<String, dynamic>? data) {
+      final text = (data?['text'] as String? ?? '').trim();
+      return text.isEmpty ? context.tr('azkar_ayah_of_day_text') : text;
+    }
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: [
-              Colors.black.withValues(alpha: 0.82),
-              Colors.black.withValues(alpha: 0.45),
-            ],
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-          ),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.tr('ayah_of_the_day'),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.secondary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.tr('ayah_of_the_day'),
+                  style: AppTextStyles.display(context, fontSize: 15),
                 ),
-                IconButton(
+              ),
+              if (ayahAsync.isLoading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                GhostIconButton(
+                  icon: Icons.shuffle_rounded,
                   tooltip: context.tr('random_ayah'),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: ayahAsync.isLoading
-                      ? null
-                      : () => ref
-                          .read(dailyAyahIndexProvider.notifier)
-                          .shuffle(),
-                  icon: ayahAsync.isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.shuffle_rounded,
-                          size: 20,
-                          color: Colors.white,
-                        ),
+                  onTap:
+                      () => ref.read(dailyAyahIndexProvider.notifier).shuffle(),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ayahAsync.when(
-              skipLoadingOnReload: true,
-              data: (ayahData) {
-                final ayahText = (ayahData['text'] as String? ?? '').trim();
-                return Text(
-                  ayahText.isEmpty
-                      ? context.tr('azkar_ayah_of_day_text')
-                      : ayahText,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: overlayText,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    height: 1.5,
-                    shadows: const [
-                      Shadow(color: Colors.black87, blurRadius: 8),
-                    ],
-                  ),
-                );
-              },
-              loading: () => Text(
-                context.tr('azkar_ayah_of_day_text'),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: overlayText,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  height: 1.5,
-                ),
-              ),
-              error: (_, _) => Text(
-                context.tr('azkar_ayah_of_day_text'),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: overlayText,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            verseText(ayahAsync.value),
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.rtl,
+            style: AppTextStyles.quran(context, fontSize: 21),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
       ),
     );
   }
@@ -555,7 +460,10 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   void _previousZekr(int phrasesLength) {
     HapticFeedback.lightImpact();
     setState(() {
-      _currentZekrIndex = (_currentZekrIndex - 1) < 0 ? phrasesLength - 1 : _currentZekrIndex - 1;
+      _currentZekrIndex =
+          (_currentZekrIndex - 1) < 0
+              ? phrasesLength - 1
+              : _currentZekrIndex - 1;
       _tasbeehCount = 0;
     });
   }
@@ -572,24 +480,18 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     required IconData icon,
     required VoidCallback onTap,
   }) {
+    final tokens = context.tokens;
+
     return Material(
-      color: Colors.transparent,
+      color: tokens.groundAlt,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Ink(
+        child: SizedBox(
           width: 42,
           height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: Icon(
-            icon,
-            color: Colors.white.withValues(alpha: 0.9),
-            size: 20,
-          ),
+          child: Icon(icon, size: 18, color: tokens.inkMuted),
         ),
       ),
     );
@@ -597,32 +499,18 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final azkarList = _azkarList(context);
-    final double progress = (_tasbeehCount / _target).clamp(0.0, 1.0);
-    final int remaining = (_target - _tasbeehCount).clamp(0, _target);
+    final progress = (_tasbeehCount / _target).clamp(0.0, 1.0);
+    final remaining = (_target - _tasbeehCount).clamp(0, _target);
     final currentZekr = azkarList[_currentZekrIndex];
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0C6653),
-            Color(0xFF084236),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.20),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.xl,
       ),
       child: Column(
         children: [
@@ -631,157 +519,137 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
               Expanded(
                 child: Text(
                   context.tr('smart_tasbeeh'),
-                  style: const TextStyle(
-                    color: DesignColors.gold,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTextStyles.display(context, fontSize: 16),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                  color: tokens.groundAlt,
+                  borderRadius: AppRadii.pillAll,
                 ),
                 child: Text(
-                  '${_tasbeehCount.toString()} / $_target',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                  '$_tasbeehCount / $_target',
+                  style: AppTextStyles.caption(
+                    context,
+                    fontSize: 12,
+                    color: tokens.inkMuted,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.lg),
+
+          // The dhikr being counted, above the thing that counts it.
+          AnimatedSwitcher(
+            duration: AppMotion.base,
+            child: Text(
+              currentZekr,
+              key: ValueKey(currentZekr),
+              textAlign: TextAlign.center,
+              style: AppTextStyles.quran(
+                context,
+                fontSize: 22,
+                height: 1.7,
+                color: tokens.ink,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildControlButton(
-                icon: Icons.arrow_back_ios_new_rounded,
+                icon: Icons.chevron_right,
                 onTap: () => _previousZekr(azkarList.length),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _increment(azkarList.length),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    height: 210,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withValues(alpha: 0.16),
-                          Colors.white.withValues(alpha: 0.03),
-                        ],
-                      ),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 170,
-                        height: 170,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF0C4F41),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-                        ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            SizedBox(
-                              width: 162,
-                              height: 162,
+              const SizedBox(width: AppSpacing.lg),
+              // One big target, because counting happens without looking.
+              GestureDetector(
+                onTap: () => _increment(azkarList.length),
+                child: SizedBox(
+                  width: 190,
+                  height: 190,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: progress.toDouble()),
+                        duration: AppMotion.base,
+                        builder:
+                            (context, value, _) => SizedBox(
+                              width: 190,
+                              height: 190,
                               child: CircularProgressIndicator(
-                                value: progress,
-                                strokeWidth: 10,
-                                backgroundColor: Colors.white.withValues(alpha: 0.12),
-                                valueColor: const AlwaysStoppedAnimation<Color>(DesignColors.gold),
+                                value: value,
+                                strokeWidth: 9,
+                                strokeCap: StrokeCap.round,
+                                backgroundColor: tokens.groundAlt,
+                                valueColor: AlwaysStoppedAnimation(
+                                  tokens.goldBright,
+                                ),
                               ),
                             ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _tasbeehCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 52,
-                                    fontWeight: FontWeight.bold,
-                                    height: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '$remaining ${context.tr('count')}',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.70),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
+                      ),
+                      Container(
+                        width: 154,
+                        height: 154,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: AlignmentDirectional.topStart,
+                            end: AlignmentDirectional.bottomEnd,
+                            colors: [tokens.brand, tokens.brandDeep],
+                          ),
+                          boxShadow: AppShadows.glow(tokens.brand, alpha: 0.28),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$_tasbeehCount',
+                              style: const TextStyle(
+                                fontFamily: AppTextStyles.displayFamily,
+                                fontSize: 48,
+                                height: 1,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              '$remaining ${context.tr('count')}',
+                              style: TextStyle(
+                                fontFamily: AppTextStyles.bodyFamily,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withValues(alpha: 0.75),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.lg),
               _buildControlButton(
-                icon: Icons.arrow_forward_ios_rounded,
+                icon: Icons.chevron_left,
                 onTap: () => _nextZekr(azkarList.length),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          GestureDetector(
+          const SizedBox(height: AppSpacing.md),
+          GhostIconButton(
+            icon: Icons.refresh_rounded,
             onTap: _reset,
-            child: Container(
-              padding: const EdgeInsets.all(11),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-              ),
-              child: const Icon(
-                Icons.refresh_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              transitionBuilder: (child, animation) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-              child: Text(
-                currentZekr,
-                key: ValueKey(currentZekr),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
+            tooltip: context.tr('reset'),
           ),
         ],
       ),

@@ -1,7 +1,7 @@
 import '../../domain/entities/prayer_times_entity.dart';
 
 /// Data model for Prayer Times.
-/// 
+///
 /// This model extends the [PrayerTimesEntity] and handles JSON serialization/deserialization.
 /// It's responsible for mapping between API responses and domain entities.
 class PrayerTimesModel extends PrayerTimesEntity {
@@ -15,7 +15,7 @@ class PrayerTimesModel extends PrayerTimesEntity {
   });
 
   /// Create PrayerTimesModel from API response.
-  /// 
+  ///
   /// Parses the Aladhan API response and maps it to our model.
   /// This handles the default Aladhan API response format.
   factory PrayerTimesModel.fromAladhanResponse({
@@ -68,9 +68,12 @@ class PrayerTimesModel extends PrayerTimesEntity {
   }
 
   /// Helper method to create a PrayerEntity from prayer time string.
-  /// 
+  ///
   /// Aladhan API returns times like "05:14 (EET)", this extracts just the time.
-  static PrayerEntity _createPrayerEntity(String prayerName, dynamic timeValue) {
+  static PrayerEntity _createPrayerEntity(
+    String prayerName,
+    dynamic timeValue,
+  ) {
     String cleanTime = '';
     if (timeValue is String) {
       // Extract time from format "HH:mm (TZ)"
@@ -81,13 +84,12 @@ class PrayerTimesModel extends PrayerTimesEntity {
 
   /// Convert to JSON for caching purposes.
   Map<String, dynamic> toJson() => {
-    'prayers': prayers
-        .map((p) => {
-          'name': p.name,
-          'time': p.time,
-          'hasPassed': p.hasPassed,
-        })
-        .toList(),
+    'prayers':
+        prayers
+            .map(
+              (p) => {'name': p.name, 'time': p.time, 'hasPassed': p.hasPassed},
+            )
+            .toList(),
     'hijriDate': {
       'day': hijriDate.day,
       'month': hijriDate.month,
@@ -104,12 +106,15 @@ class PrayerTimesModel extends PrayerTimesEntity {
   /// Create instance from cached JSON.
   factory PrayerTimesModel.fromJson(Map json) {
     return PrayerTimesModel(
-      prayers: (json['prayers'] as List?)
-              ?.map((p) => PrayerEntity(
-                    name: p['name'] as String,
-                    time: p['time'] as String,
-                    hasPassed: p['hasPassed'] as bool? ?? false,
-                  ))
+      prayers:
+          (json['prayers'] as List?)
+              ?.map(
+                (p) => PrayerEntity(
+                  name: p['name'] as String,
+                  time: p['time'] as String,
+                  hasPassed: p['hasPassed'] as bool? ?? false,
+                ),
+              )
               .toList() ??
           [],
       hijriDate: _parseHijriDate(json['hijriDate']),
@@ -131,7 +136,7 @@ class PrayerTimesModel extends PrayerTimesEntity {
         monthArabic: '',
       );
     }
-    
+
     final map = Map<String, dynamic>.from(hijriJson);
     return HijriDateEntity(
       day: map['day'] as int? ?? 1,
@@ -142,4 +147,3 @@ class PrayerTimesModel extends PrayerTimesEntity {
     );
   }
 }
-

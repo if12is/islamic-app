@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../features/azkar/presentation/pages/azkar_page.dart';
+import '../../features/prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../features/prayer_times/presentation/pages/prayer_times_page.dart';
 import '../../features/quran/data/services/quran_local_service.dart';
 import '../../features/quran/presentation/pages/surah_reader_page.dart';
@@ -17,6 +18,7 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 /// * `quran:verse:<surah>:<verse>:play` — same, and start the recitation
 /// * `quran:wird` — the reader where the user stopped
 /// * `azkar:morning` / `azkar:evening` — the azkar screen
+/// * `calendar` — the Hijri calendar
 class NotificationRouter {
   NotificationRouter._();
 
@@ -31,9 +33,10 @@ class NotificationRouter {
       return;
     }
 
-    final resolved = actionId == 'listen_ayah' && !payload.endsWith(':play')
-        ? '$payload:play'
-        : payload;
+    final resolved =
+        actionId == 'listen_ayah' && !payload.endsWith(':play')
+            ? '$payload:play'
+            : payload;
 
     final navigator = appNavigatorKey.currentState;
     if (navigator == null) {
@@ -69,6 +72,8 @@ class NotificationRouter {
     switch (parts.first) {
       case 'prayer':
         return const PrayerTimesPage();
+      case 'calendar':
+        return const HijriCalendarPage();
       case 'azkar':
         return const AzkarPage();
       case 'quran':

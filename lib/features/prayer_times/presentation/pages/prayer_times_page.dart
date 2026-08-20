@@ -1,16 +1,24 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/widgets/app_section.dart';
+import '../../../../core/widgets/arc_gauge.dart';
+import 'hijri_calendar_page.dart';
+import 'prayer_settings_page.dart';
+import 'qibla_page.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../domain/entities/prayer_times_entity.dart';
 import '../providers/prayer_times_providers.dart';
-import '../widgets/qibla_compass.dart';
+import '../widgets/location_picker_sheet.dart';
 
 class _PrayerSlot {
   final String id;
@@ -120,6 +128,31 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     return Icons.access_time;
   }
 
+  /// "٤٢ د" or "٢:١٥" — what is left before the next prayer.
+  String _remainingLabel(BuildContext context, Duration duration) {
+    if (duration.isNegative) {
+      return '';
+    }
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final text = hours > 0
+        ? '$hours:${minutes.toString().padLeft(2, '0')}'
+        : '$minutes ${context.tr('minute_short')}';
+    return _localizeDigits(context, text);
+  }
+
+  /// The clock split from its marker, for the arc's centre.
+  (String, String) _clockParts(BuildContext context, DateTime time) {
+    final suffix =
+        time.hour >= 12 ? context.tr('pm_short') : context.tr('am_short');
+    var hour = time.hour % 12;
+    if (hour == 0) {
+      hour = 12;
+    }
+    final minutes = time.minute.toString().padLeft(2, '0');
+    return (_localizeDigits(context, '$hour:$minutes'), suffix);
+  }
+
   String _formatTime12H(BuildContext context, DateTime time) {
     var hour = time.hour;
     final minute = time.minute;
@@ -131,25 +164,6 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     final formatted =
         '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $ampm';
     return _localizeDigits(context, formatted);
-  }
-
-  double _calculateQiblaBearing({
-    required double latitude,
-    required double longitude,
-  }) {
-    final userLat = latitude * (math.pi / 180);
-    final userLon = longitude * (math.pi / 180);
-    final kaabaLat = AppConstants.kaabaLatitude * (math.pi / 180);
-    final kaabaLon = AppConstants.kaabaLongitude * (math.pi / 180);
-
-    final deltaLon = kaabaLon - userLon;
-    final y = math.sin(deltaLon);
-    final x =
-        math.cos(userLat) * math.tan(kaabaLat) -
-        math.sin(userLat) * math.cos(deltaLon);
-
-    final bearing = math.atan2(y, x) * (180 / math.pi);
-    return (bearing + 360) % 360;
   }
 
   @override
@@ -184,10 +198,6 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     );
 
     final prayerTimesAsync = ref.watch(prayerTimesProvider(params));
-    final qiblaBearing = _calculateQiblaBearing(
-      latitude: coordinates.latitude,
-      longitude: coordinates.longitude,
-    );
 
     Future<void> refreshAll() async {
       ref.invalidate(currentLocationCoordinatesProvider);
@@ -195,283 +205,249 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
       await ref.read(dailyPrayerCompletionProvider.notifier).reloadToday();
     }
 
-    return Directionality(
-      textDirection: context.appTextDirection,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back,
-              color: Theme.of(context).textTheme.bodyLarge!.color!,
-              size: 28,
-            ),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Text(
-            context.tr('qibla_direction'),
-            style: TextStyle(
-              color: Theme.of(context).textTheme.bodyLarge!.color!,
-              fontWeight: FontWeight.w900,
-              fontSize: 26,
-              letterSpacing: -0.5,
-            ),
-          ),
-          centerTitle: false,
-          actions: const [SizedBox(width: 12)],
-        ),
-        body: prayerTimesAsync.when(
-          loading: () => const Center(child: CustomLoader()),
-          error:
-              (_, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.wifi_off_rounded,
-                        color: Theme.of(context).colorScheme.error,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        context.tr('unable_load_prayer_times_connection'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          ref.invalidate(currentLocationCoordinatesProvider);
-                          ref.invalidate(prayerTimesProvider(params));
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          context.tr('retry'),
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            fontFamily: 'Cairo',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+    return AppScaffold(
+      title: 'prayer_times',
+      showBack: Navigator.of(context).canPop(),
+      body: prayerTimesAsync.when(
+        loading: () => const Center(child: CustomLoader()),
+        error:
+            (_, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.wifi_off_rounded,
+                      color: context.tokens.inkFaint,
+                      size: 44,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      context.tr('unable_load_prayer_times_connection'),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.body(context, fontSize: 15),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    FilledButton(
+                      onPressed: () {
+                        ref.invalidate(currentLocationCoordinatesProvider);
+                        ref.invalidate(prayerTimesProvider(params));
+                      },
+                      child: Text(context.tr('retry')),
+                    ),
+                  ],
                 ),
               ),
-          data: (entity) {
-            final order = {
-              'fajr': 0,
-              'dhuhr': 1,
-              'asr': 2,
-              'maghrib': 3,
-              'isha': 4,
-            };
+            ),
+        data: (entity) {
+          final tokens = context.tokens;
+          final order = {
+            'fajr': 0,
+            'dhuhr': 1,
+            'asr': 2,
+            'maghrib': 3,
+            'isha': 4,
+          };
 
-            final slots =
-                entity.prayers
-                    .where(
-                      (p) => [
-                        'fajr',
-                        'dhuhr',
-                        'asr',
-                        'maghrib',
-                        'isha',
-                      ].any((valid) => p.name.toLowerCase().contains(valid)),
-                    )
-                    .map((prayer) {
-                      final id = _canonicalPrayerId(prayer.name);
-                      if (id.isEmpty) {
-                        return null;
-                      }
-                      return _PrayerSlot(
-                        id: id,
-                        prayer: prayer,
-                        time: _parseTime(prayer.time),
-                      );
-                    })
-                    .whereType<_PrayerSlot>()
-                    .toList()
-                  ..sort((a, b) {
-                    return (order[a.id] ?? 99).compareTo(order[b.id] ?? 99);
-                  });
-
-            _PrayerSlot? currentSlot;
-            for (final slot in slots) {
-              if (!_currentTime.isBefore(slot.time)) {
-                currentSlot = slot;
-              } else {
-                break;
-              }
-            }
-
-            if (currentSlot == null && slots.isNotEmpty) {
-              currentSlot = slots.last;
-            }
-
-            final lat = _localizeDigits(
-              context,
-              coordinates.latitude.toStringAsFixed(4),
-            );
-            final lon = _localizeDigits(
-              context,
-              coordinates.longitude.toStringAsFixed(4),
-            );
-            final locationText = '${context.tr('location')}: $lat, $lon';
-
-            return RefreshIndicator(
-              color: Theme.of(context).colorScheme.primary,
-              onRefresh: refreshAll,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                children: [
-                  Center(
-                    child: Text(
-                      context.tr('qibla_direction'),
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).textTheme.bodyLarge!.color!,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      context.tr('qibla_precision_desc'),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  QiblaCompass(
-                    qiblaBearing: qiblaBearing,
-                    alignedText: context.tr('qibla_correct_direction'),
-                    rotateText: context.tr('rotate_to_qibla'),
-                  ),
-                  const SizedBox(height: 56),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        context.tr('prayer_times_today'),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: Theme.of(context).textTheme.bodyLarge!.color!,
-                        ),
-                      ),
-                      Text(
-                        _localizeDigits(
-                          context,
-                          entity.hijriDate.formattedDate,
-                        ),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  ...slots.map((slot) {
-                    final isCurrent = currentSlot?.id == slot.id;
-                    final isDone = completedPrayers.contains(slot.id);
-
-                    return _buildPrayerTimeTile(
-                      context: context,
-                      name: _getPrayerDisplayName(context, slot.prayer.name),
-                      time: _formatTime12H(context, slot.time),
-                      icon: _getIconForPrayer(slot.prayer.name),
-                      isCurrent: isCurrent,
-                      isDone: isDone,
-                      onToggleDone:
-                          () => ref
-                              .read(dailyPrayerCompletionProvider.notifier)
-                              .togglePrayer(slot.id),
+          final slots =
+              entity.prayers
+                  .map((prayer) {
+                    final id = _canonicalPrayerId(prayer.name);
+                    if (id.isEmpty) {
+                      return null;
+                    }
+                    return _PrayerSlot(
+                      id: id,
+                      prayer: prayer,
+                      time: _parseTime(prayer.time),
                     );
-                  }),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(32),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.my_location,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                locationText,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: Theme.of(context).textTheme.bodyLarge!.color!,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                context.tr('prayer_times_auto_update'),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        InkWell(
-                          onTap: () {
-                            ref.invalidate(currentLocationCoordinatesProvider);
-                            ref.invalidate(prayerTimesProvider(params));
-                          },
-                          child: Text(
-                            context.tr('change'),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                  })
+                  .whereType<_PrayerSlot>()
+                  .toList()
+                ..sort(
+                  (a, b) => (order[a.id] ?? 99).compareTo(order[b.id] ?? 99),
+                );
+
+          _PrayerSlot? currentSlot;
+          _PrayerSlot? nextSlot;
+          for (final slot in slots) {
+            if (!_currentTime.isBefore(slot.time)) {
+              currentSlot = slot;
+            } else {
+              nextSlot ??= slot;
+            }
+          }
+          currentSlot ??= slots.isEmpty ? null : slots.last;
+          nextSlot ??= slots.isEmpty ? null : slots.first;
+
+          var progress = 0.0;
+          if (currentSlot != null && nextSlot != null) {
+            final start =
+                currentSlot.time.isAfter(_currentTime)
+                    ? currentSlot.time.subtract(const Duration(days: 1))
+                    : currentSlot.time;
+            final finish =
+                nextSlot.time.isBefore(start)
+                    ? nextSlot.time.add(const Duration(days: 1))
+                    : nextSlot.time;
+            final span = finish.difference(start).inSeconds;
+            if (span > 0) {
+              progress = _currentTime.difference(start).inSeconds / span;
+            }
+          }
+
+          // The place name, not two numbers nobody can read.
+          final locationLabel = ref.watch(locationLabelProvider);
+          final isManualLocation = ref.watch(locationIsManualProvider);
+          final locationText = locationLabel.maybeWhen(
+            data:
+                (label) =>
+                    label.isEmpty ? context.tr('location_unknown') : label,
+            orElse: () => context.tr('location_resolving'),
+          );
+
+          return RefreshIndicator(
+            color: tokens.brand,
+            onRefresh: refreshAll,
+            child: ListView(
+              padding: AppScaffold.scrollPadding,
+              children: [
+                Center(
+                  child: ArcGauge(
+                    progress: progress,
+                    headline:
+                        nextSlot == null
+                            ? '—'
+                            : _clockParts(context, nextSlot.time).$1,
+                    headlineSuffix:
+                        nextSlot == null
+                            ? null
+                            : _clockParts(context, nextSlot.time).$2,
+                    caption:
+                        nextSlot == null
+                            ? null
+                            : _getPrayerDisplayName(
+                              context,
+                              nextSlot.prayer.name,
                             ),
+                    footnote: locationText,
+                    remaining: nextSlot == null
+                        ? null
+                        : _remainingLabel(
+                            context,
+                            nextSlot.time.difference(_currentTime),
                           ),
-                        ),
-                      ],
-                    ),
+                    startLabel:
+                        currentSlot == null
+                            ? null
+                            : _getPrayerDisplayName(
+                              context,
+                              currentSlot.prayer.name,
+                            ),
+                    startTime:
+                        currentSlot == null
+                            ? null
+                            : _formatTime12H(context, currentSlot.time),
+                    startIcon:
+                        currentSlot == null
+                            ? Icons.wb_twilight
+                            : _getIconForPrayer(currentSlot.prayer.name),
+                    endLabel:
+                        nextSlot == null
+                            ? null
+                            : _getPrayerDisplayName(
+                              context,
+                              nextSlot.prayer.name,
+                            ),
+                    endTime:
+                        nextSlot == null
+                            ? null
+                            : _formatTime12H(context, nextSlot.time),
+                    endIcon:
+                        nextSlot == null
+                            ? Icons.nights_stay_outlined
+                            : _getIconForPrayer(nextSlot.prayer.name),
                   ),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            );
-          },
-        ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                _LocationCard(
+                  label: locationText,
+                  detail:
+                      isManualLocation
+                          ? context.tr('location_pinned')
+                          : context.tr('prayer_times_auto_update'),
+                  onChange: () async {
+                    await LocationPickerSheet.show(context);
+                    ref.invalidate(prayerTimesProvider(params));
+                  },
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                SectionHeader(title: context.tr('prayer_times_today')),
+                ...slots.map((slot) {
+                  return _buildPrayerTimeTile(
+                    context: context,
+                    name: _getPrayerDisplayName(context, slot.prayer.name),
+                    time: _formatTime12H(context, slot.time),
+                    icon: _getIconForPrayer(slot.prayer.name),
+                    isCurrent: currentSlot?.id == slot.id,
+                    isDone: completedPrayers.contains(slot.id),
+                    onToggleDone:
+                        () => ref
+                            .read(dailyPrayerCompletionProvider.notifier)
+                            .togglePrayer(slot.id),
+                  );
+                }),
+
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ShortcutCard(
+                        icon: Icons.explore_outlined,
+                        label: context.tr('qibla_direction'),
+                        onTap:
+                            () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const QiblaPage(),
+                              ),
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _ShortcutCard(
+                        icon: Icons.calendar_month_outlined,
+                        label: context.tr('hijri_calendar'),
+                        onTap:
+                            () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const HijriCalendarPage(),
+                              ),
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _ShortcutCard(
+                        icon: Icons.tune,
+                        label: context.tr('prayer_settings'),
+                        onTap:
+                            () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const PrayerSettingsPage(),
+                              ),
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -485,122 +461,139 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     required bool isDone,
     required VoidCallback onToggleDone,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: BoxDecoration(
-        color: isCurrent ? Theme.of(context).colorScheme.primary : Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow:
-            isCurrent
-                ? []
-                : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+    final tokens = context.tokens;
+
+    return AppListRow(
+      dense: true,
+      selected: isCurrent,
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color:
+              isCurrent
+                  ? tokens.gold.withValues(alpha: 0.18)
+                  : tokens.groundAlt,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          size: 19,
+          color: isCurrent ? tokens.gold : tokens.inkFaint,
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      title: name,
+      meta: isCurrent ? context.tr('current_prayer') : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color:
-                      isCurrent
-                          ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  color: isCurrent ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${context.tr('prayer_label_prefix')} $name',
-                    style: TextStyle(
-                      color:
-                          isCurrent
-                              ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8)
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    time,
-                    style: TextStyle(
-                      color: isCurrent ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+          Text(
+            time,
+            style: AppTextStyles.display(
+              context,
+              fontSize: 15,
+              color: isCurrent ? tokens.ink : tokens.inkMuted,
+            ),
           ),
-          Row(
-            children: [
-              if (isCurrent)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    context.tr('current_prayer'),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSecondary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
-                  ),
+          const SizedBox(width: AppSpacing.xs),
+          GhostIconButton(
+            icon: isDone ? Icons.check_circle : Icons.circle_outlined,
+            active: isDone,
+            onTap: onToggleDone,
+            tooltip: context.tr('mark_prayed'),
+          ),
+        ],
+      ),
+      onTap: onToggleDone,
+    );
+  }
+}
+
+/// Where the times are being calculated for, and how to change it.
+class _LocationCard extends StatelessWidget {
+  const _LocationCard({
+    required this.label,
+    required this.detail,
+    required this.onChange,
+  });
+
+  final String label;
+  final String detail;
+  final VoidCallback onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
+    return AppCard(
+      onTap: onChange,
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: tokens.brand.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.place_outlined, size: 19, color: tokens.brand),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.display(context, fontSize: 15),
                 ),
-              if (isCurrent) const SizedBox(width: 10),
-              GestureDetector(
-                onTap: onToggleDone,
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color:
-                          isDone
-                              ? Theme.of(context).colorScheme.secondary
-                              : (isCurrent
-                                  ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.45)
-                                  : Theme.of(context).colorScheme.outline),
-                      width: 2,
-                    ),
-                    color:
-                        isDone ? Theme.of(context).colorScheme.secondary : Colors.transparent,
-                  ),
-                  child:
-                      isDone
-                          ? Icon(
-                            Icons.check,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.onSecondary,
-                          )
-                          : null,
+                Text(
+                  detail,
+                  style: AppTextStyles.caption(context, color: tokens.inkFaint),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          Text(
+            context.tr('change'),
+            style: AppTextStyles.caption(context, color: tokens.brand),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A square shortcut under the day's list.
+class _ShortcutCard extends StatelessWidget {
+  const _ShortcutCard({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: Column(
+        children: [
+          Icon(icon, size: 22, color: tokens.brand),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            label,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption(context, fontSize: 11.5),
           ),
         ],
       ),

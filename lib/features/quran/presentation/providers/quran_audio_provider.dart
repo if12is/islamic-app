@@ -152,12 +152,10 @@ class QuranAudioState {
       rangeLabel: clearRange ? null : (rangeLabel ?? this.rangeLabel),
       repeatTarget: clearRange ? 0 : (repeatTarget ?? this.repeatTarget),
       repeatsDone: clearRange ? 0 : (repeatsDone ?? this.repeatsDone),
-      sleepTimerEndsAt: clearSleepTimer
-          ? null
-          : (sleepTimerEndsAt ?? this.sleepTimerEndsAt),
-      stopAtEndOfQueue: clearSleepTimer
-          ? false
-          : (stopAtEndOfQueue ?? this.stopAtEndOfQueue),
+      sleepTimerEndsAt:
+          clearSleepTimer ? null : (sleepTimerEndsAt ?? this.sleepTimerEndsAt),
+      stopAtEndOfQueue:
+          clearSleepTimer ? false : (stopAtEndOfQueue ?? this.stopAtEndOfQueue),
     );
   }
 }
@@ -179,6 +177,11 @@ class QuranAudioController extends Notifier<QuranAudioState> {
 
   Timer? _sleepTimer;
   int? _previousIndex;
+
+  /// The verses currently loaded, kept so switching reciter can rebuild the
+  /// same passage instead of dropping playback.
+  List<QuranVerse> _queueVerses = const [];
+  LoopMode _loopMode = LoopMode.off;
 
   @override
   QuranAudioState build() {
@@ -300,6 +303,8 @@ class QuranAudioController extends Notifier<QuranAudioState> {
   }) async {
     try {
       _previousIndex = initialIndex;
+      _queueVerses = verses;
+      _loopMode = loopMode;
       state = state.copyWith(
         loading: true,
         queue: verses.map((verse) => verse.key).toList(),
@@ -350,6 +355,7 @@ class QuranAudioController extends Notifier<QuranAudioState> {
     _sleepTimer?.cancel();
     _sleepTimer = null;
     _previousIndex = null;
+    _queueVerses = const [];
     await _player.stop();
     await _player.setLoopMode(LoopMode.off);
     state = state.copyWith(
@@ -416,8 +422,43 @@ class QuranAudioController extends Notifier<QuranAudioState> {
     state = state.copyWith(stopAtEndOfQueue: true);
   }
 
+  /// Switch voice without losing your place.
+  ///
+  /// The queue is rebuilt with the new reciter's files and resumes at the same
+  /// verse, playing again if it was playing — changing reciter mid-listen
+  /// should sound like the voice changed, not like playback stopped.
   Future<void> setReciter(String code) async {
+    if (code == state.reciterCode) {
+      return;
+    }
+
     state = state.copyWith(reciterCode: code);
+
+    if (_queueVerses.isEmpty) {
+      return;
+    }
+
+    final resumeIndex = (state.currentIndex ?? 0).clamp(
+      0,
+      _queueVerses.length - 1,
+    );
+    final wasPlaying = _player.playing;
+    final position = _player.position;
+
+    await _load(
+      _queueVerses,
+      initialIndex: resumeIndex,
+      reciterCode: code,
+      loopMode: _loopMode,
+    );
+
+    // Land on roughly the same spot inside the verse.
+    if (position > Duration.zero) {
+      await _player.seek(position, index: resumeIndex);
+    }
+    if (!wasPlaying) {
+      await _player.pause();
+    }
   }
 }
 

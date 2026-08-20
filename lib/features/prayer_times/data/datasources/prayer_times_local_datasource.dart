@@ -15,7 +15,7 @@ class PrayerTimesLocalDataSource {
   static const String _cacheKeyPrefix = 'cached_prayer_times';
 
   /// Get the Hive box instance for prayer times.
-  /// 
+  ///
   /// Creates the box if it doesn't exist.
   Future<Box<Map>> _getBox() async {
     if (!Hive.isBoxOpen(_boxName)) {
@@ -31,7 +31,7 @@ class PrayerTimesLocalDataSource {
   ///
   /// Parameters:
   /// - [prayerTimes]: The prayer times model to cache
-  /// 
+  ///
   /// Throws: Exception if caching fails
   Future<void> cachePrayerTimes({
     required PrayerTimesModel prayerTimes,
@@ -49,12 +49,12 @@ class PrayerTimesLocalDataSource {
         method: method,
         date: date,
       );
-      
+
       await box.put(cacheKey, {
         'cachedAt': DateTime.now().toIso8601String(),
         'payload': jsonData,
       });
-      
+
       AppLogger.debug('Prayer times cached successfully');
     } catch (e) {
       AppLogger.warning('Error caching prayer times: $e');
@@ -82,7 +82,7 @@ class PrayerTimesLocalDataSource {
         method: method,
         date: date,
       );
-      
+
       final cachedData = box.get(cacheKey);
       if (cachedData == null) {
         return null;
@@ -95,7 +95,8 @@ class PrayerTimesLocalDataSource {
       }
 
       final cachedAtRaw = wrapper['cachedAt'] as String?;
-      final cachedAt = cachedAtRaw == null ? null : DateTime.tryParse(cachedAtRaw);
+      final cachedAt =
+          cachedAtRaw == null ? null : DateTime.tryParse(cachedAtRaw);
       if (cachedAt != null &&
           DateTime.now().difference(cachedAt) >
               AppConstants.prayerTimesCacheDuration) {
@@ -103,7 +104,7 @@ class PrayerTimesLocalDataSource {
       }
 
       final jsonData = Map<String, dynamic>.from(payload);
-      
+
       // Convert back to model
       final prayerTimes = PrayerTimesModel.fromJson(jsonData);
 
@@ -135,7 +136,8 @@ class PrayerTimesLocalDataSource {
         final wrapper = Map<String, dynamic>.from(raw);
         final payload = wrapper['payload'];
         final cachedAtRaw = wrapper['cachedAt'] as String?;
-        final cachedAt = cachedAtRaw == null ? null : DateTime.tryParse(cachedAtRaw);
+        final cachedAt =
+            cachedAtRaw == null ? null : DateTime.tryParse(cachedAtRaw);
 
         if (payload is! Map || cachedAt == null) {
           continue;
@@ -167,10 +169,11 @@ class PrayerTimesLocalDataSource {
   Future<void> clearCache() async {
     try {
       final box = await _getBox();
-      final keysToDelete = box.keys
-          .whereType<String>()
-          .where((key) => key.startsWith(_cacheKeyPrefix))
-          .toList();
+      final keysToDelete =
+          box.keys
+              .whereType<String>()
+              .where((key) => key.startsWith(_cacheKeyPrefix))
+              .toList();
 
       await box.deleteAll(keysToDelete);
       AppLogger.debug('Prayer times cache cleared');
@@ -190,7 +193,7 @@ class PrayerTimesLocalDataSource {
       if (cached == null) {
         return false;
       }
-      
+
       // Cache is valid if we have data
       // In a production app, you might also check timestamps
       return true;

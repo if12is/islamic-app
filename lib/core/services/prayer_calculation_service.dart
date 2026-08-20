@@ -5,7 +5,8 @@ import '../utils/input_validators.dart';
 
 // Re-exported so callers can configure the calculation without importing the
 // adhan package directly.
-export 'package:adhan/adhan.dart' show CalculationMethod, HighLatitudeRule, Madhab;
+export 'package:adhan/adhan.dart'
+    show CalculationMethod, HighLatitudeRule, Madhab;
 
 /// Prayer ids used across scheduling, storage, and UI.
 class PrayerIds {
@@ -281,18 +282,12 @@ class PrayerCalculationService {
       date.day + offsetDays.clamp(-2, 2),
     );
 
-    final arabic = HijriCalendar.setLocal('ar')..gregorianToHijri(
-      adjusted.year,
-      adjusted.month,
-      adjusted.day,
-    );
+    final arabic = HijriCalendar.setLocal('ar')
+      ..gregorianToHijri(adjusted.year, adjusted.month, adjusted.day);
     final monthNameAr = arabic.getLongMonthName();
 
-    final english = HijriCalendar.setLocal('en')..gregorianToHijri(
-      adjusted.year,
-      adjusted.month,
-      adjusted.day,
-    );
+    final english = HijriCalendar.setLocal('en')
+      ..gregorianToHijri(adjusted.year, adjusted.month, adjusted.day);
     final monthNameEn = english.getLongMonthName();
 
     // Leave the shared locale on Arabic: it is the app default.

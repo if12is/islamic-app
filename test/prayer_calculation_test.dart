@@ -24,7 +24,8 @@ void main() {
         expect(
           times[i].isAfter(times[i - 1]),
           isTrue,
-          reason: '${day.prayers[i].id} must come after ${day.prayers[i - 1].id}',
+          reason:
+              '${day.prayers[i].id} must come after ${day.prayers[i - 1].id}',
         );
       }
     });
@@ -118,9 +119,9 @@ void main() {
       );
 
       expect(
-        adjusted.timeOf(PrayerIds.maghrib)!.difference(
-          base.timeOf(PrayerIds.maghrib)!,
-        ),
+        adjusted
+            .timeOf(PrayerIds.maghrib)!
+            .difference(base.timeOf(PrayerIds.maghrib)!),
         const Duration(minutes: 5),
       );
       expect(adjusted.timeOf(PrayerIds.fajr), base.timeOf(PrayerIds.fajr));

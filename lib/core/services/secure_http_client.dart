@@ -12,7 +12,6 @@ class SecureHttpClient {
     'api.aladhan.com',
     'api.quran.com',
     'api.alquran.cloud',
-    'raw.githubusercontent.com',
     'cdn.islamic.network',
   };
 
@@ -61,7 +60,9 @@ class SecureHttpClient {
           return handler.next(options);
         },
         onError: (error, handler) {
-          AppLogger.warning('HTTP error ${error.type} ${error.requestOptions.uri.host}');
+          AppLogger.warning(
+            'HTTP error ${error.type} ${error.requestOptions.uri.host}',
+          );
           return handler.next(error);
         },
       ),

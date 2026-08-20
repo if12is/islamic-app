@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import '../../../../core/theme/design_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -20,6 +22,15 @@ enum ReaderFont {
 
 /// Reading surfaces tuned for different light conditions.
 enum ReaderTheme { auto, light, sepia, dark, green }
+
+/// How the Mushaf is laid out.
+enum ReaderViewMode {
+  /// One continuous scroll — good for reading a long passage.
+  continuous,
+
+  /// Page by page, the way a printed Mushaf is read and memorised.
+  pages,
+}
 
 /// A resolved palette for the reading surface.
 class ReaderPalette {
@@ -53,6 +64,7 @@ class ReaderSettings {
     this.brightnessOverride,
     this.showVerseNumbers = true,
     this.reciterCode = 'ar.alafasy',
+    this.viewMode = ReaderViewMode.continuous,
   });
 
   final ReaderFont font;
@@ -82,6 +94,9 @@ class ReaderSettings {
   /// Reciter used for verse-by-verse playback.
   final String reciterCode;
 
+  /// Continuous scroll or page-by-page.
+  final ReaderViewMode viewMode;
+
   ReaderSettings copyWith({
     ReaderFont? font,
     double? fontSize,
@@ -94,6 +109,7 @@ class ReaderSettings {
     bool clearBrightnessOverride = false,
     bool? showVerseNumbers,
     String? reciterCode,
+    ReaderViewMode? viewMode,
   }) {
     return ReaderSettings(
       font: font ?? this.font,
@@ -111,6 +127,7 @@ class ReaderSettings {
               : (brightnessOverride ?? this.brightnessOverride),
       showVerseNumbers: showVerseNumbers ?? this.showVerseNumbers,
       reciterCode: reciterCode ?? this.reciterCode,
+      viewMode: viewMode ?? this.viewMode,
     );
   }
 
@@ -125,6 +142,7 @@ class ReaderSettings {
     'brightnessOverride': brightnessOverride,
     'showVerseNumbers': showVerseNumbers,
     'reciterCode': reciterCode,
+    'viewMode': viewMode.name,
   };
 
   factory ReaderSettings.fromJson(Map<dynamic, dynamic> json) {
@@ -157,32 +175,38 @@ class ReaderSettings {
           json['reciterCode'] is String
               ? json['reciterCode'] as String
               : 'ar.alafasy',
+      viewMode: ReaderViewMode.values.firstWhere(
+        (mode) => mode.name == json['viewMode'],
+        orElse: () => ReaderViewMode.continuous,
+      ),
     );
   }
 
   /// Colours for the current reading theme, falling back to the app theme when
   /// the reader theme is [ReaderTheme.auto].
   ReaderPalette paletteFor(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     switch (theme) {
       case ReaderTheme.auto:
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        // Follows the app's own tokens, so the reader is dressed for the
+        // season along with everything else.
+        final tokens = context.tokens;
         return ReaderPalette(
-          background: Theme.of(context).scaffoldBackgroundColor,
-          surface: Theme.of(context).cardColor,
-          text: scheme.onSurface,
-          accent: scheme.secondary,
-          highlight: scheme.primary.withValues(alpha: isDark ? 0.28 : 0.16),
-          isDark: isDark,
+          background: tokens.ground,
+          surface: tokens.surface,
+          text: tokens.ink,
+          accent: tokens.gold,
+          highlight: tokens.brand.withValues(
+            alpha: tokens.isDark ? 0.28 : 0.16,
+          ),
+          isDark: tokens.isDark,
         );
       case ReaderTheme.light:
         return ReaderPalette(
-          background: const Color(0xFFF7F8F7),
-          surface: Colors.white,
-          text: const Color(0xFF17201B),
-          accent: const Color(0xFF8A6614),
-          highlight: const Color(0xFF0B6B4F).withValues(alpha: 0.14),
+          background: const Color(0xFFFBF6EC),
+          surface: const Color(0xFFFFFCF6),
+          text: const Color(0xFF12261F),
+          accent: const Color(0xFFB07C21),
+          highlight: const Color(0xFF0F6B4F).withValues(alpha: 0.14),
           isDark: false,
         );
       case ReaderTheme.sepia:
@@ -291,6 +315,9 @@ class ReaderSettingsNotifier extends Notifier<ReaderSettings> {
 
   Future<void> setReciter(String code) =>
       update(state.copyWith(reciterCode: code));
+
+  Future<void> setViewMode(ReaderViewMode mode) =>
+      update(state.copyWith(viewMode: mode));
 
   Future<void> resetToDefaults() => update(const ReaderSettings());
 }

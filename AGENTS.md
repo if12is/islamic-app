@@ -12,9 +12,9 @@ Flutter Islamic mobile app: prayer times, Quran, Azkar/Tasbeeh, Qibla, settings,
 Stack: latest stable Flutter / Dart, Riverpod, Dio (via SecureHttpClient), Hive, Material 3, RTL Arabic.
 
 Offline-first is a hard rule now: prayer times are calculated on device (`adhan`), the full
-Quran text ships with the app (`quran`), and all fonts are bundled (Cairo for UI, ReemKufi for
-headings, AmiriQuran / ScheherazadeNew for the Mushaf). The network is only used for tafsir,
-recitation audio, and the Azkar dataset.
+Quran text ships with the app (`quran`), the full Hisn al-Muslim ships as an asset, and all
+fonts are bundled (Cairo for UI, ReemKufi for headings, AmiriQuran / ScheherazadeNew for the
+Mushaf). The network is used only for tafsir and recitation audio.
 
 Package name: `islamic_app` (`pubspec.yaml`).
 Android applicationId: `com.islamicapp.islamic_app`.
@@ -102,9 +102,89 @@ lib/features/<name>/
 ### Runtime flow
 
 1. `main.dart` → `AppServices.initialize()` (Hive + notifications + time zones) → `JustAudioBackground.init()` → theme/locale prefs → background `runStartupSync()` → `NotificationScheduler.refresh()`.
-2. `IslamicApp` shows splash/onboarding on first launch, then `HomePage`.
-3. `HomePage` bottom nav: Dashboard (0), Quran (1), Azkar (2), Settings (3). Prayer times and Qibla open from the dashboard, not the nav bar.
+2. `IslamicApp` shows splash/onboarding on first launch, then `HomePage`. During Ramadan the splash
+   plays a seasonal intro once a day (`SeasonalIntroService` decides, `SeasonalIntroScreen` plays it);
+   any failure or timeout falls straight through to the app.
+3. `HomePage` bottom nav has five slots, icons only, with Dashboard raised in a circle at the centre:
+   Settings, Azkar, **Dashboard**, Quran, Prayer times. Tab indices stay logical (0 dashboard, 1 Quran,
+   2 azkar, 3 settings, 4 prayer times) — `GlassNavBar` owns the visual order. Qibla opens from the dashboard.
 4. Data sources: prayer times calculated locally by `PrayerCalculationService` (Aladhan is a fallback only); Quran text, pages, and juz from the bundled `quran` package; tafsir from AlQuran Cloud (cached in Hive for good); verse audio from `cdn.islamic.network`; Azkar from bundled JSON + GitHub JSON.
+
+### Design system (read this before touching any screen)
+
+`lib/core/theme/design_tokens.dart` is the only place a colour may be declared. `AppTokens` is a
+`ThemeExtension`; read it with `context.tokens`, never `Color(0x…)` — `test/design_system_test.dart`
+fails the build if a new literal appears outside the allowlist. `AppTheme.from(tokens)` builds both
+themes, and `SeasonalTheme.dress(tokens, event)` returns a modified copy for Ramadan and the Eids,
+which is why a season reaches every screen without any screen knowing about it.
+
+The rule the palette rests on: **green is the identity, gold is the accent.** Gold is for the live
+element, the hero card, and the one primary button on a screen. Text on gold is `tokens.onGold`
+(deep green ink) — white on gold fails contrast and the test enforces it.
+
+Shared components live in `lib/core/widgets/`: `AppScaffold` (wash + RTL + nav clearance),
+`MeshBackground`, `AppCard`, `HeroCard`, `ProgressCard`, `AppListRow`, `SectionHeader`,
+`PillSelector`, `ArcGauge`, `StoryRail`, `AyahBlock`, `HintPill`, `GhostIconButton`,
+`GlassContainer`. Build a screen out of these rather than a fresh `Container` — see them all in
+Settings → **معرض المكوّنات** (`DesignGalleryPage`), where the mood and season can be switched live.
+
+Spacing, radii, shadows and motion come from `AppSpacing`, `AppRadii`, `AppShadows`, `AppMotion`.
+Separate with space and elevation, not with borders.
+
+### Seasonal decoration
+
+`SeasonalDecorScope` (set once in `main.dart`) carries the current `SeasonalEvent` down the tree.
+`MeshBackground` reads it and paints `SeasonalDecor` behind every page: swaying lanterns and a
+domed skyline in Ramadan, twinkling stars in the last ten nights, drifting confetti and a garland
+for Eid al-Fitr, palms and dunes for Eid al-Adha. `SeasonalNavFlourish` gives the floating bar the
+same character. All of it is `IgnorePointer`, sits *behind* the page content, and stops dead when
+`MediaQuery.disableAnimationsOf` is true.
+
+Islamic symbols come from `Motif` / `MotifIcon` / `MotifPainter` (`core/widgets/motif_icon.dart`) —
+Kaaba, mosque, open book, misbaha, lantern, crescent-and-star, eight-point star, prayer rug. They
+are paths, not images: an app that promises to work offline must not fetch its own icons.
+
+### Layout safety
+
+`test/layout_overflow_test.dart` renders every shared component at 320px with 1.3× text in both
+directions and fails on a single overflowed pixel. Fixed heights are the usual cause — prefer a
+`ConstrainedBox(minHeight:)`, an `Expanded` bar, or a `FittedBox` over a `SizedBox(height:)` that a
+font metric can outgrow.
+
+### Typography
+
+Three faces, three jobs, and they are not interchangeable: `ReemKufi` for titles
+(`AppTextStyles.display`), `Cairo` for ordinary text (`AppTextStyles.body`), and `AmiriQuran`
+for revelation (`AppTextStyles.quran`). All three are bundled — never reach for `google_fonts`,
+which downloads at runtime and breaks offline.
+
+Quranic text inside azkar and du'a is detected, not guessed: `QuranTextDetector` matches a line
+against the whole normalized Mushaf and `ArabicTextBlock` renders the matched runs in the Mushaf
+face inside a tinted frame. Use `ArabicTextBlock` for any text that may mix the two.
+
+### Glass surfaces
+
+`GlassContainer` and `GlassSearchField` (core/widgets) back the floating nav bar and the search
+fields. They rely on a `BackdropFilter`, so whatever hosts them must let content scroll
+underneath (`Scaffold(extendBody: true)` plus ~110px of bottom padding in scrollables).
+
+### Location naming
+
+`NearestCityService` bundles ~3,200 places (`assets/data/cities.json`, built by
+`scripts/build_cities.py` + `scripts/finalize_cities.py` from GeoNames) with their governorate
+and country in Arabic and English. `LocationService.describe` asks it first and the platform
+geocoder second — the table is the only source that answers offline, on the web, and on devices
+with no geocoding backend, and it answers at city level ("دمنهور، البحيرة، مصر") rather than
+street level. Never show raw coordinates in the UI; if the table returns null (>120 km from any
+known place) fall back to the geocoder, then to the stored label.
+
+### Recitation check (experimental)
+
+`RecitationService` wraps `speech_to_text` and uses the device's own recognizer: nothing is recorded,
+nothing is uploaded, no model is downloaded. That recognizer is not built for classical recitation, so
+`RecitationMatcher` (pure Dart, unit-tested) aligns what it heard against the text on the alef-stripped
+skeleton, tolerating a dropped or inserted word, and grades each word correct / near / wrong. Treat its
+output as a reading aid, never as a ruling — the screen says as much, and so should any feature built on it.
 
 ### Quran data
 
@@ -112,6 +192,26 @@ lib/features/<name>/
 sajdah verses, offline search, the verse of the day, and CDN audio URLs. Hizb quarter starts and
 the 15 sajdah verses live in the generated `quran_meta_data.dart` — regenerate it rather than
 hand-editing. Nothing in it performs I/O, so it is safe to call from the notification scheduler.
+
+### Reading log, khatmah, and wird
+
+`ReadingProgressStore` (Hive) records which Mushaf pages were opened on which day and for how
+long; the reader writes to it as the user scrolls. Everything else is derived from that log:
+the khatmah plan's progress, the streak and year heat map, and the daily wird card on the
+dashboard. Never ask the user to "mark" a page — if they read it, it counts.
+
+### Home-screen widget
+
+`WidgetService` pushes the next prayer, the countdown, today's timetable, and the Hijri date to
+`PrayerWidgetProvider` (Kotlin + `res/layout/prayer_widget.xml`) through `home_widget`. It is
+refreshed by the same pass that reschedules notifications, so the widget can never drift from
+the app.
+
+### Memorisation
+
+`HifzItem` carries its own spaced-repetition schedule (boxes of 1/2/4/7/15/30/60 days); the
+review screen only grades, it never computes intervals inline. `HifzVerseView` handles the
+progressive masking.
 
 ### Notifications
 
@@ -123,9 +223,11 @@ whenever the location or calculation method changes. Never call `zonedSchedule` 
 
 Notification taps and action buttons are resolved by `NotificationRouter` through
 `appNavigatorKey`, using payloads like `quran:verse:2:255:play`. Adhan sounds are declared in
-`NotificationService.adhanSounds`; a sound only becomes selectable once its file is in
-`android/app/src/main/res/raw/` and its id is listed in `bundledAdhanSoundIds` (Android freezes a
-channel's sound at creation, so each sound gets its own channel).
+`NotificationService.adhanSounds` and shipped in `android/app/src/main/res/raw/` (see the README
+there before adding one). Users can also import any audio file: `MainActivity` copies it into the
+MediaStore notifications collection and returns a `content://` URI, because Android only plays a
+sound the system itself can read. Android freezes a channel's sound at creation, so every sound —
+bundled or imported — gets its own channel via `adhanChannelFor`.
 
 ## Keep Flutter and packages current
 

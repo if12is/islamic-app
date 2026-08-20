@@ -10,15 +10,18 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../data/bookmark_store.dart';
 import '../../data/services/quran_local_service.dart';
 import '../providers/bookmarks_provider.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import '../providers/reading_progress_provider.dart';
 import '../widgets/ayah_actions_sheet.dart';
 import '../widgets/player_sheet.dart';
 import '../widgets/reader_settings_sheet.dart';
 import 'bookmarks_page.dart';
+import 'hifz_page.dart';
 import 'notes_page.dart';
 
 /// The Quran reader.
@@ -59,10 +62,13 @@ class SurahReaderPage extends ConsumerStatefulWidget {
 }
 
 class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _verseKeys = {};
-  final List<TapGestureRecognizer> _recognizers = [];
+
+  /// One recognizer per verse, kept for the life of the page so page mode can
+  /// build and rebuild pages without disposing spans that are still on screen.
+  final Map<String, TapGestureRecognizer> _tapRecognizers = {};
 
   List<QuranVerse> _verses = const [];
   String? _selectedKey;
@@ -77,23 +83,61 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   Ticker? _autoScrollTicker;
   bool _autoScrolling = false;
 
+  PageController? _pageController;
+  List<int> _pages = const [];
+
   Timer? _saveDebounce;
+  Timer? _readingClock;
   double? _previousBrightness;
+  int _lastRecordedPage = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
+    _startReadingClock();
     _load();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Leaving the app mid-page must not lose the position, so write it now
+    // instead of waiting for the scroll debounce.
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _saveDebounce?.cancel();
+      final verse = _currentVerse();
+      if (verse != null) {
+        _persistPosition(verse);
+      }
+    }
+  }
+
+  /// Where the reader is right now: the selected verse if there is one,
+  /// otherwise whatever sits at the top of the viewport.
+  QuranVerse? _currentVerse() {
+    if (_selectedKey != null) {
+      for (final verse in _verses) {
+        if (verse.key == _selectedKey) {
+          return verse;
+        }
+      }
+    }
+    return _firstVisibleVerse();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _saveDebounce?.cancel();
+    _readingClock?.cancel();
     _autoScrollTicker?.dispose();
-    for (final recognizer in _recognizers) {
+    for (final recognizer in _tapRecognizers.values) {
       recognizer.dispose();
     }
+    _pageController?.dispose();
     _scrollController.dispose();
     _releaseScreenSettings();
     super.dispose();
@@ -104,8 +148,9 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       final verses = switch (widget) {
         SurahReaderPage(surahNumber: final surah?) =>
           QuranLocalService.versesOfSurah(surah),
-        SurahReaderPage(juzNumber: final juz?) =>
-          QuranLocalService.versesOfJuz(juz),
+        SurahReaderPage(juzNumber: final juz?) => QuranLocalService.versesOfJuz(
+          juz,
+        ),
         SurahReaderPage(hizbNumber: final hizb?) =>
           QuranLocalService.versesOfHizb(hizb),
         SurahReaderPage(pageNumber: final page?) =>
@@ -129,15 +174,26 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
         }
       });
 
+      if (verses.isNotEmpty) {
+        _pages = _pageRangeFor(verses);
+        _lastRecordedPage = verses.first.page;
+        unawaited(
+          ref
+              .read(readingProgressProvider.notifier)
+              .recordPage(verses.first.page),
+        );
+      }
+
       await _applyScreenSettings();
       _restorePosition();
 
       if (widget.autoPlay && verses.isNotEmpty) {
-        final index = widget.initialVerse == null
-            ? 0
-            : verses.indexWhere(
-                (verse) => verse.numberInSurah == widget.initialVerse,
-              );
+        final index =
+            widget.initialVerse == null
+                ? 0
+                : verses.indexWhere(
+                  (verse) => verse.numberInSurah == widget.initialVerse,
+                );
         await _playFrom(verses[index < 0 ? 0 : index]);
       }
     } catch (e, stack) {
@@ -239,7 +295,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     }
 
     _saveDebounce?.cancel();
-    _saveDebounce = Timer(const Duration(milliseconds: 900), () {
+    _saveDebounce = Timer(const Duration(milliseconds: 600), () {
       _persistPosition(topVerse);
     });
   }
@@ -265,10 +321,26 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
         .update(
           surahNumber: verse.surahNumber,
           verseNumber: verse.numberInSurah,
-          scrollOffset: _scrollController.hasClients
-              ? _scrollController.offset
-              : 0,
+          scrollOffset:
+              _scrollController.hasClients ? _scrollController.offset : 0,
         );
+
+    // Feed the reading log, which drives the streak and the khatmah plan.
+    if (verse.page != _lastRecordedPage) {
+      _lastRecordedPage = verse.page;
+      ref.read(readingProgressProvider.notifier).recordPage(verse.page);
+    }
+  }
+
+  /// Counts reading time a minute at a time, so closing the app mid-session
+  /// never loses what was already read.
+  void _startReadingClock() {
+    _readingClock = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+      ref.read(readingProgressProvider.notifier).addMinutes(1);
+    });
   }
 
   void _scrollToVerse(String verseKey, {bool select = false}) {
@@ -384,6 +456,8 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
                   ],
                 ),
               )
+            else if (settings.viewMode == ReaderViewMode.pages)
+              _pagesView(settings, palette, bookmarkedKeys, audio)
             else
               _readingView(settings, palette, bookmarkedKeys, audio),
             if (!_loading && _errorKey.isEmpty)
@@ -401,103 +475,119 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
   PreferredSizeWidget _appBar(ReaderPalette palette) {
     return AppBar(
-      backgroundColor: palette.background,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       foregroundColor: palette.text,
       elevation: 0,
       centerTitle: true,
-      title: Text(
-        _pageTitle(),
-        style: TextStyle(
-          fontFamily: AppTheme.displayFontFamily,
-          fontSize: 20,
-          color: palette.text,
+      automaticallyImplyLeading: false,
+      leading: Center(
+        child: Material(
+          color: palette.surface,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => Navigator.of(context).maybePop(),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(
+                context.isAppRtl
+                    ? Icons.arrow_forward_rounded
+                    : Icons.arrow_back_rounded,
+                size: 19,
+                color: palette.text,
+              ),
+            ),
+          ),
         ),
+      ),
+      title: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _pageTitle(),
+            style: TextStyle(
+              fontFamily: AppTheme.displayFontFamily,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: palette.text,
+            ),
+          ),
+          Text(
+            '${context.tr('juz_word')} ${_localizedNumber(_headerJuz)}'
+            ' · ${_hizbLabel(_headerQuarter)}'
+            ' · ${context.tr('page_word')} ${_localizedNumber(_headerPage)}',
+            style: TextStyle(
+              fontFamily: AppTheme.fontFamily,
+              fontSize: 11,
+              color: palette.accent,
+            ),
+          ),
+        ],
       ),
       actions: [
         IconButton(
           tooltip: context.tr('bookmarks'),
-          icon: const Icon(Icons.bookmarks_outlined),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const BookmarksPage()),
-          ),
+          icon: const Icon(Icons.bookmarks_outlined, size: 20),
+          onPressed:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BookmarksPage()),
+              ),
         ),
         IconButton(
           tooltip: context.tr('my_reflections'),
-          icon: const Icon(Icons.edit_note),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const NotesPage()),
-          ),
+          icon: const Icon(Icons.edit_note, size: 20),
+          onPressed:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NotesPage()),
+              ),
+        ),
+        IconButton(
+          tooltip: context.tr('hifz'),
+          icon: const Icon(Icons.psychology_alt_outlined, size: 20),
+          onPressed:
+              () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => const HifzPage())),
         ),
       ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(42),
-        child: Container(
-          height: 42,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: palette.surface,
-            border: Border(
-              bottom: BorderSide(
-                color: palette.accent.withValues(alpha: 0.25),
-              ),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${context.tr('juz_word')} ${_localizedNumber(_headerJuz)}',
-                style: TextStyle(
-                  color: palette.accent,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                _hizbLabel(_headerQuarter),
-                style: TextStyle(
-                  color: palette.accent,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Flexible(
-                child: Text(
-                  '${context.tr('surah_word')} $_headerSurahName',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: palette.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Text(
-                '${context.tr('page_word')} ${_localizedNumber(_headerPage)}',
-                style: TextStyle(
-                  color: palette.accent,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _readingView(
+  /// The pages this passage covers, in order.
+  List<int> _pageRangeFor(List<QuranVerse> verses) {
+    final pages = verses.map((verse) => verse.page).toSet().toList()..sort();
+    return pages;
+  }
+
+  TapGestureRecognizer _recognizerFor(QuranVerse verse) {
+    return _tapRecognizers.putIfAbsent(verse.key, () {
+      return TapGestureRecognizer()
+        ..onTap = () {
+          // One tap selects, a second tap on the same verse opens its tools.
+          if (_selectedKey == verse.key) {
+            _openActions(verse);
+          } else {
+            setState(() => _selectedKey = verse.key);
+            // Tapping a verse says "this is where I am" more clearly than
+            // any scroll position does.
+            _persistPosition(verse);
+          }
+        };
+    });
+  }
+
+  /// Turns verses into laid-out blocks: surah banners, basmalah, and justified
+  /// text with tappable ayah spans. Shared by both view modes.
+  List<Widget> _verseBlocks(
+    List<QuranVerse> verses,
     ReaderSettings settings,
     ReaderPalette palette,
     Set<String> bookmarkedKeys,
-    QuranAudioState audio,
-  ) {
-    for (final recognizer in _recognizers) {
-      recognizer.dispose();
-    }
-    _recognizers.clear();
-
+    QuranAudioState audio, {
+    bool showBanners = true,
+  }) {
     final blocks = <Widget>[];
     var spans = <InlineSpan>[];
     var currentSurah = -1;
@@ -530,33 +620,24 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       spans = <InlineSpan>[];
     }
 
-    for (final verse in _verses) {
+    for (final verse in verses) {
       if (verse.surahNumber != currentSurah) {
         flush();
         currentSurah = verse.surahNumber;
-        blocks.add(_surahBanner(verse, palette));
-        if (verse.isFirstOfSurah &&
-            verse.surahNumber != 1 &&
-            verse.surahNumber != 9) {
-          blocks.add(_basmalah(settings, palette));
+        if (showBanners || verse.isFirstOfSurah) {
+          blocks.add(_surahBanner(verse, palette));
+          if (verse.isFirstOfSurah &&
+              verse.surahNumber != 1 &&
+              verse.surahNumber != 9) {
+            blocks.add(_basmalah(settings, palette));
+          }
         }
       }
 
       final isSelected = _selectedKey == verse.key;
       final isPlaying = audio.currentKey == verse.key;
       final isBookmarked = bookmarkedKeys.contains(verse.key);
-
-      // One tap selects the verse, a second tap on the selected verse opens
-      // its actions. A plain tap never overwrites a saved bookmark.
-      final recognizer = TapGestureRecognizer()
-        ..onTap = () {
-          if (_selectedKey == verse.key) {
-            _openActions(verse);
-          } else {
-            setState(() => _selectedKey = verse.key);
-          }
-        };
-      _recognizers.add(recognizer);
+      final recognizer = _recognizerFor(verse);
 
       spans.add(
         WidgetSpan(
@@ -569,13 +650,14 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
           text: '${verse.text} ',
           style: TextStyle(
             color: isPlaying ? palette.accent : palette.text,
-            backgroundColor: isPlaying
-                ? palette.highlight
-                : isSelected
-                ? palette.highlight.withValues(alpha: 0.5)
-                : isBookmarked
-                ? palette.accent.withValues(alpha: 0.12)
-                : null,
+            backgroundColor:
+                isPlaying
+                    ? palette.highlight
+                    : isSelected
+                    ? palette.highlight.withValues(alpha: 0.5)
+                    : isBookmarked
+                    ? palette.accent.withValues(alpha: 0.12)
+                    : null,
           ),
           recognizer: recognizer,
         ),
@@ -593,15 +675,29 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
       if (verse.isSajdah) {
         spans.add(
-          TextSpan(
-            text: '۩ ',
-            style: TextStyle(color: palette.accent),
-          ),
+          TextSpan(text: '۩ ', style: TextStyle(color: palette.accent)),
         );
       }
     }
 
     flush();
+    return blocks;
+  }
+
+  /// Continuous scroll.
+  Widget _readingView(
+    ReaderSettings settings,
+    ReaderPalette palette,
+    Set<String> bookmarkedKeys,
+    QuranAudioState audio,
+  ) {
+    final blocks = _verseBlocks(
+      _verses,
+      settings,
+      palette,
+      bookmarkedKeys,
+      audio,
+    );
 
     return SingleChildScrollView(
       controller: _scrollController,
@@ -629,24 +725,130 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     );
   }
 
+  /// Page by page, the way a printed Mushaf is read.
+  Widget _pagesView(
+    ReaderSettings settings,
+    ReaderPalette palette,
+    Set<String> bookmarkedKeys,
+    QuranAudioState audio,
+  ) {
+    if (_pages.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    _pageController ??= PageController(
+      initialPage: _pages.indexOf(_headerPage).clamp(0, _pages.length - 1),
+    );
+
+    return PageView.builder(
+      controller: _pageController,
+      // RTL: swiping from the left edge moves forward, like turning a Mushaf.
+      reverse: true,
+      itemCount: _pages.length,
+      onPageChanged: _onPageChanged,
+      itemBuilder: (context, index) {
+        final page = _pages[index];
+        final verses = QuranLocalService.versesOfPage(page);
+        final blocks = _verseBlocks(
+          verses,
+          settings,
+          palette,
+          bookmarkedKeys,
+          audio,
+        );
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            settings.horizontalPadding,
+            16,
+            settings.horizontalPadding,
+            140,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: palette.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: palette.accent.withValues(alpha: 0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ...blocks,
+                const SizedBox(height: 18),
+                Center(
+                  child: Text(
+                    '${context.tr('page_word')} ${_localizedNumber(page)}',
+                    style: TextStyle(
+                      color: palette.accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Page mode has no scroll listener, so the header and the log update here.
+  void _onPageChanged(int index) {
+    final page = _pages[index];
+    final verses = QuranLocalService.versesOfPage(page);
+    if (verses.isEmpty) {
+      return;
+    }
+
+    final first = verses.first;
+    setState(() {
+      _headerJuz = first.juz;
+      _headerPage = first.page;
+      _headerQuarter = first.hizbQuarter;
+      _headerSurahName = first.surahNameAr;
+    });
+
+    _persistPosition(first);
+  }
+
+  /// The head of a surah, drawn as an arch rather than boxed in a border.
   Widget _surahBanner(QuranVerse verse, ReaderPalette palette) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 20, bottom: 14),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: palette.accent.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: palette.accent.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        '${context.tr('surah_word')} ${verse.surahNameAr}',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontFamily: AppTheme.displayFontFamily,
-          fontSize: 22,
-          height: 1.6,
-          color: palette.accent,
+    final surah = QuranLocalService.surahInfo(verse.surahNumber);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 22, bottom: 12),
+      child: SizedBox(
+        height: 96,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _SurahHeaderPainter(color: palette.accent),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                verse.surahNameAr,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppTheme.displayFontFamily,
+                  fontSize: 22,
+                  height: 1.5,
+                  fontWeight: FontWeight.w600,
+                  color: palette.text,
+                ),
+              ),
+              Text(
+                '${_localizedNumber(surah.versesCount)} '
+                '${context.tr('verses')}',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontFamily,
+                  fontSize: 11.5,
+                  color: palette.accent,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -654,7 +856,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
   Widget _basmalah(ReaderSettings settings, ReaderPalette palette) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 20, top: 4),
       child: Text(
         'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ',
         textAlign: TextAlign.center,
@@ -676,11 +878,12 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
     return Center(
       child: FilledButton.icon(
-        onPressed: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) => SurahReaderPage(surahNumber: currentSurah + 1),
-          ),
-        ),
+        onPressed:
+            () => Navigator.of(context).pushReplacement(
+              MaterialPageRoute<void>(
+                builder: (_) => SurahReaderPage(surahNumber: currentSurah + 1),
+              ),
+            ),
         icon: const Icon(Icons.arrow_back_ios_new, size: 16),
         label: Text(context.tr('next_surah')),
       ),
@@ -721,16 +924,17 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
           _divider(palette),
           IconButton(
             tooltip: context.tr('listen'),
-            icon: audio.loading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                  )
-                : Icon(
-                    audio.playing ? Icons.pause : Icons.play_arrow,
-                    color: audio.playing ? palette.accent : palette.text,
-                  ),
+            icon:
+                audio.loading
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                    )
+                    : Icon(
+                      audio.playing ? Icons.pause : Icons.play_arrow,
+                      color: audio.playing ? palette.accent : palette.text,
+                    ),
             onPressed: () {
               if (audio.hasQueue) {
                 ref.read(quranAudioProvider.notifier).toggle();
@@ -748,9 +952,10 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
             tooltip: context.tr('player'),
             icon: Icon(
               Icons.graphic_eq,
-              color: audio.isRepeatingRange || audio.hasSleepTimer
-                  ? palette.accent
-                  : palette.text,
+              color:
+                  audio.isRepeatingRange || audio.hasSleepTimer
+                      ? palette.accent
+                      : palette.text,
             ),
             onPressed: () => PlayerSheet.show(context, _verses),
           ),
@@ -833,4 +1038,55 @@ Color bookmarkTagColor(BookmarkTag tag, ColorScheme scheme) {
     case BookmarkTag.review:
       return scheme.error;
   }
+}
+
+/// The ornament behind a surah's name: a pointed arch with a thin rule running
+/// out to each side, the way a printed Mushaf marks the head of a chapter.
+class _SurahHeaderPainter extends CustomPainter {
+  const _SurahHeaderPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final frame = Rect.fromLTWH(
+      size.width * 0.16,
+      2,
+      size.width * 0.68,
+      size.height - 4,
+    );
+    final arch = IslamicOrnaments.archPath(frame, pointPixels: 34);
+
+    canvas
+      ..drawPath(arch, Paint()..color = color.withValues(alpha: 0.07))
+      ..drawPath(
+        arch,
+        Paint()
+          ..color = color.withValues(alpha: 0.55)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.3,
+      );
+
+    final rule =
+        Paint()
+          ..color = color.withValues(alpha: 0.35)
+          ..strokeWidth = 1;
+    final middle = size.height / 2;
+    canvas
+      ..drawLine(Offset(0, middle), Offset(frame.left - 12, middle), rule)
+      ..drawLine(
+        Offset(frame.right + 12, middle),
+        Offset(size.width, middle),
+        rule,
+      )
+      ..drawCircle(Offset(frame.left - 20, middle), 2.5, Paint()..color = color)
+      ..drawCircle(
+        Offset(frame.right + 20, middle),
+        2.5,
+        Paint()..color = color,
+      );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SurahHeaderPainter old) => old.color != color;
 }

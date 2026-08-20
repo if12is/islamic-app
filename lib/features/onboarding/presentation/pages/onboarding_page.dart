@@ -5,6 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/motif_icon.dart';
+import '../../../../core/widgets/islamic_icon.dart';
+import '../../../../core/widgets/islamic_ornaments.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -43,98 +48,88 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.primary.withValues(alpha: isDark ? 0.36 : 0.18),
-              Theme.of(context).scaffoldBackgroundColor,
-              colorScheme.surface.withValues(alpha: isDark ? 0.98 : 0.94),
-            ],
-          ),
-        ),
-        child: Stack(
+    return Directionality(
+      textDirection: context.appTextDirection,
+      child: Scaffold(
+        backgroundColor: tokens.brandDeep,
+        body: Stack(
+          fit: StackFit.expand,
           children: [
-            Positioned(
-              top: -72,
-              right: context.isAppRtl ? null : -48,
-              left: context.isAppRtl ? -48 : null,
-              child: IgnorePointer(
-                child: _GlowOrb(
-                  color: colorScheme.tertiary
-                      .withValues(alpha: isDark ? 0.24 : 0.16),
-                  size: 180,
+            // The panel runs the full height. The earlier version faded to
+            // cream two thirds down and put white text on it — unreadable, and
+            // it left a bare strip underneath.
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    tokens.brandDeep,
+                    Color.lerp(tokens.brandDeep, tokens.ink, 0.7)!,
+                    tokens.ink,
+                  ],
                 ),
               ),
             ),
-            Positioned(
-              bottom: -88,
-              left: context.isAppRtl ? null : -56,
-              right: context.isAppRtl ? -56 : null,
-              child: IgnorePointer(
-                child: _GlowOrb(
-                  color: colorScheme.primary
-                      .withValues(alpha: isDark ? 0.20 : 0.14),
-                  size: 220,
-                ),
+            // A single quiet lattice, low enough to be texture rather than
+            // pattern, and fading out before it reaches the words.
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _PanelPainter(colour: tokens.goldBright),
               ),
             ),
+
             SafeArea(
               child: Column(
                 children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: _isFinishing
-                              ? null
-                              : () => _finishOnboarding(
-                                    requestNotifications: false,
-                                  ),
-                          child: Text(context.tr('skip')),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        AppSpacing.sm,
+                        AppSpacing.md,
+                        0,
+                      ),
+                      child: TextButton(
+                        onPressed: _isFinishing
+                            ? null
+                            : () =>
+                                  _finishOnboarding(requestNotifications: false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white.withValues(alpha: 0.7),
                         ),
-                      ],
+                        child: Text(context.tr('skip')),
+                      ),
                     ),
                   ),
                   Expanded(
-                    child: Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: PageView(
-                        controller: _pageController,
-                        onPageChanged: (int page) =>
-                            setState(() => _currentPage = page),
-                        children: [
-                          _buildFeaturePage(
-                            context,
-                            icon: Icons.auto_awesome,
-                            accent: colorScheme.tertiary,
-                            titleKey: 'onboarding_welcome_title',
-                            bodyKey: 'onboarding_welcome_body',
-                          ),
-                          _buildFeaturePage(
-                            context,
-                            icon: Icons.location_on,
-                            accent: colorScheme.primary,
-                            titleKey: 'onboarding_location_title',
-                            bodyKey: 'onboarding_location_body',
-                          ),
-                          _buildFeaturePage(
-                            context,
-                            icon: Icons.notifications_active,
-                            accent: colorScheme.secondary,
-                            titleKey: 'onboarding_notifications_title',
-                            bodyKey: 'onboarding_notifications_body',
-                          ),
-                        ],
-                      ),
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: (page) =>
+                          setState(() => _currentPage = page),
+                      children: [
+                        _buildFeaturePage(
+                          context,
+                          icon: IslamicIcon.crescentStars,
+                          titleKey: 'onboarding_welcome_title',
+                          bodyKey: 'onboarding_welcome_body',
+                        ),
+                        _buildFeaturePage(
+                          context,
+                          icon: IslamicIcon.compass,
+                          titleKey: 'onboarding_location_title',
+                          bodyKey: 'onboarding_location_body',
+                        ),
+                        _buildFeaturePage(
+                          context,
+                          icon: IslamicIcon.bell,
+                          titleKey: 'onboarding_notifications_title',
+                          bodyKey: 'onboarding_notifications_body',
+                        ),
+                      ],
                     ),
                   ),
                   _buildBottomNavigation(context),
@@ -211,171 +206,184 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     try {
       await ref.read(firstLaunchProvider.notifier).completeOnboarding();
     } catch (error, stackTrace) {
-      AppLogger.error('Failed to persist onboarding completion', error, stackTrace);
+      AppLogger.error(
+        'Failed to persist onboarding completion',
+        error,
+        stackTrace,
+      );
     }
 
     if (!mounted) {
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomePage()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
   }
 
   Widget _buildFeaturePage(
     BuildContext context, {
-    required IconData icon,
-    required Color accent,
+    required IslamicIcon icon,
     required String titleKey,
     required String bodyKey,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colorScheme.surface.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: colorScheme.primary.withValues(alpha: 0.08),
-              blurRadius: 30,
-              offset: const Offset(0, 14),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 28, 24, 28),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accent.withValues(alpha: 0.88),
-                      Theme.of(context).colorScheme.primary,
-                    ],
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      child: Column(
+        children: [
+          const Spacer(flex: 3),
+          // The motif behind the icon, big and faint: decoration that does not
+          // compete with the sentence it sits above.
+          SizedBox(
+            width: 190,
+            height: 190,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CustomPaint(
+                  size: const Size.square(190),
+                  painter: MotifPainter(
+                    motif: Motif.star8,
+                    color: tokens.goldBright.withValues(alpha: 0.14),
                   ),
                 ),
-                child: Icon(icon, size: 42, color: Colors.white),
-              ),
-              const SizedBox(height: 30),
-              Text(
-                context.tr(titleKey),
-                textDirection: context.appTextDirection,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-              const SizedBox(height: 14),
-              Text(
-                context.tr(bodyKey),
-                textDirection: context.appTextDirection,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      height: 1.45,
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.07),
+                    border: Border.all(
+                      color: tokens.goldBright.withValues(alpha: 0.35),
                     ),
-              ),
-            ],
+                  ),
+                  child: Center(
+                    child: AppIcon(icon, size: 44, color: tokens.goldBright),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const Spacer(flex: 2),
+          Text(
+            context.tr(titleKey),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.display(
+              context,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            context.tr(bodyKey),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.body(
+              context,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w400,
+              color: Colors.white.withValues(alpha: 0.72),
+            ),
+          ),
+          const Spacer(flex: 3),
+        ],
       ),
     );
   }
 
   Widget _buildBottomNavigation(BuildContext context) {
+    final tokens = context.tokens;
+
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.90),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(14, 10, 14, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  3,
-                  (index) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    width: _currentPage == index ? 24 : 10,
-                    height: 10,
-                    margin: EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: _currentPage == index
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.25),
-                    ),
-                  ),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        0,
+        AppSpacing.xl,
+        AppSpacing.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              3,
+              (index) => AnimatedContainer(
+                duration: AppMotion.base,
+                curve: AppMotion.enter,
+                width: _currentPage == index ? 26 : 8,
+                height: 8,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  borderRadius: AppRadii.pillAll,
+                  color:
+                      _currentPage == index
+                          ? tokens.goldBright
+                          : tokens.inkFaint.withValues(alpha: 0.4),
                 ),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  if (_currentPage > 0)
-                    TextButton(
-                      onPressed: _isFinishing
-                          ? null
-                          : () => _pageController.previousPage(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                              ),
-                      child: Text(context.tr('back')),
-                    )
-                  else
-                    const SizedBox(width: 72),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _isFinishing
-                          ? null
-                          : () async {
-                              if (_currentPage == 0) {
-                                await _pageController.nextPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                                return;
-                              }
-
-                              if (_currentPage == 1) {
-                                await _handleLocationPermission();
-                                return;
-                              }
-
-                              await _finishOnboarding(
-                                requestNotifications: true,
-                              );
-                            },
-                      child: _isFinishing
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_primaryActionLabel(context)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: tokens.goldBright,
+                foregroundColor: tokens.onGold,
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.lg + 2,
+                ),
+              ),
+              onPressed:
+                  _isFinishing
+                      ? null
+                      : () async {
+                        if (_currentPage == 0) {
+                          await _pageController.nextPage(
+                            duration: AppMotion.base,
+                            curve: AppMotion.enter,
+                          );
+                          return;
+                        }
+                        if (_currentPage == 1) {
+                          await _handleLocationPermission();
+                          return;
+                        }
+                        await _finishOnboarding(requestNotifications: true);
+                      },
+              child:
+                  _isFinishing
+                      ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : Text(
+                        _primaryActionLabel(context),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+            ),
+          ),
+          if (_currentPage > 0)
+            TextButton(
+              onPressed:
+                  _isFinishing
+                      ? null
+                      : () => _pageController.previousPage(
+                        duration: AppMotion.base,
+                        curve: AppMotion.enter,
+                      ),
+              child: Text(context.tr('back')),
+            ),
+        ],
       ),
     );
   }
@@ -393,24 +401,63 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 }
 
-class _GlowOrb extends StatelessWidget {
-  final Color color;
-  final double size;
+/// The panel behind the words: an arch and a sparse lattice that fades out
+/// before it reaches the text.
+class _PanelPainter extends CustomPainter {
+  const _PanelPainter({required this.colour});
 
-  const _GlowOrb({
-    required this.color,
-    required this.size,
-  });
+  final Color colour;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
+  void paint(Canvas canvas, Size size) {
+    // Only the top half carries texture, and even there it fades.
+    final band = Rect.fromLTWH(0, 0, size.width, size.height * 0.55);
+    canvas
+      ..saveLayer(band, Paint())
+      ..clipRect(band);
+
+    IslamicOrnaments.lattice(
+      canvas,
+      Rect.fromLTWH(-30, -30, size.width + 60, size.height * 0.6),
+      colour.withValues(alpha: 0.16),
+      cell: 74,
+    );
+
+    // Fade the pattern to nothing towards the middle of the screen.
+    canvas
+      ..drawRect(
+        band,
+        Paint()
+          ..blendMode = BlendMode.dstIn
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Colors.white.withValues(alpha: 0),
+            ],
+          ).createShader(band),
+      )
+      ..restore();
+
+    final arch = IslamicOrnaments.archPath(
+      Rect.fromLTWH(
+        size.width * 0.14,
+        size.height * 0.08,
+        size.width * 0.72,
+        size.height * 0.60,
       ),
+      pointPixels: 104,
+    );
+    canvas.drawPath(
+      arch,
+      Paint()
+        ..color = colour.withValues(alpha: 0.22)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
     );
   }
+
+  @override
+  bool shouldRepaint(covariant _PanelPainter old) => old.colour != colour;
 }

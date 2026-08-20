@@ -148,19 +148,20 @@ void main() {
       expect(QuranLocalService.search('ا'), isEmpty);
     });
 
-    test('searches the surah index by Arabic name, English name, or number', () {
-      expect(QuranLocalService.searchSurahs('كهف').single.id, 18);
-      expect(QuranLocalService.searchSurahs('Kahf').single.id, 18);
-      expect(QuranLocalService.searchSurahs('36').single.id, 36);
-      expect(QuranLocalService.searchSurahs(''), hasLength(114));
-    });
+    test(
+      'searches the surah index by Arabic name, English name, or number',
+      () {
+        expect(QuranLocalService.searchSurahs('كهف').single.id, 18);
+        expect(QuranLocalService.searchSurahs('Kahf').single.id, 18);
+        expect(QuranLocalService.searchSurahs('36').single.id, 36);
+        expect(QuranLocalService.searchSurahs(''), hasLength(114));
+      },
+    );
   });
 
   group('QuranLocalService daily verse and audio', () {
     test('gives the same verse for the whole day and moves on the next', () {
-      final morning = QuranLocalService.verseOfTheDay(
-        DateTime(2026, 8, 19, 6),
-      );
+      final morning = QuranLocalService.verseOfTheDay(DateTime(2026, 8, 19, 6));
       final evening = QuranLocalService.verseOfTheDay(
         DateTime(2026, 8, 19, 23),
       );
@@ -176,11 +177,7 @@ void main() {
         'https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3',
       );
       expect(
-        QuranLocalService.audioUrlForVerse(
-          2,
-          255,
-          reciterCode: 'ar.husary',
-        ),
+        QuranLocalService.audioUrlForVerse(2, 255, reciterCode: 'ar.husary'),
         'https://cdn.islamic.network/quran/audio/128/ar.husary/262.mp3',
       );
       expect(

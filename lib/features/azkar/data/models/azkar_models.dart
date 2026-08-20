@@ -18,10 +18,18 @@ class ZekrItem {
   final String textEn;
   final int targetCount;
 
+  /// What the Sunnah says this dhikr brings, when the source records it.
+  final String virtue;
+
+  /// Where it is narrated (Bukhari, Muslim, …).
+  final String reference;
+
   const ZekrItem({
     required this.id,
     required this.textAr,
     required this.textEn,
     required this.targetCount,
+    this.virtue = '',
+    this.reference = '',
   });
 }

@@ -3,10 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/services/seasonal_intro_service.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../home/presentation/pages/home_page.dart';
 import 'onboarding_page.dart';
+import 'seasonal_intro_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -30,6 +35,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
+    // Ramadan and the Eids open with a short film — once a day, skippable.
+    await _playSeasonalIntro();
+    if (!mounted) {
+      return;
+    }
+
     var showOnboarding = true;
     try {
       showOnboarding =
@@ -44,68 +55,109 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            showOnboarding ? const OnboardingPage() : const HomePage(),
+        builder:
+            (_) => showOnboarding ? const OnboardingPage() : const HomePage(),
       ),
     );
   }
 
+  /// Show the seasonal opening and wait for it to finish or be skipped.
+  Future<void> _playSeasonalIntro() async {
+    try {
+      final event = ref.read(seasonalEventProvider);
+      final asset = SeasonalIntroService.assetFor(event);
+      if (asset == null ||
+          !SeasonalIntroService.shouldShow(appPreferences, event)) {
+        return;
+      }
+
+      await SeasonalIntroService.markShown(appPreferences);
+      if (!mounted) {
+        return;
+      }
+
+      await Navigator.of(context).push(
+        PageRouteBuilder<void>(
+          transitionDuration: const Duration(milliseconds: 250),
+          pageBuilder:
+              (context, animation, _) => FadeTransition(
+                opacity: animation,
+                child: SeasonalIntroScreen(
+                  assetPath: asset,
+                  event: event,
+                  onFinished: () => Navigator.of(context).maybePop(),
+                ),
+              ),
+        ),
+      );
+    } catch (e, stack) {
+      AppLogger.warning('Seasonal intro failed: $e');
+      AppLogger.debug(stack.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final tokens = context.tokens;
 
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer,
-                  shape: BoxShape.circle,
+      child: MeshBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 108,
+                  height: 108,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: AlignmentDirectional.topStart,
+                      end: AlignmentDirectional.bottomEnd,
+                      colors: [tokens.brand, tokens.brandDeep],
+                    ),
+                    boxShadow: AppShadows.glow(tokens.brand, alpha: 0.30),
+                  ),
+                  child: const Icon(
+                    Icons.brightness_low,
+                    color: Colors.white,
+                    size: 52,
+                  ),
                 ),
-                child: Icon(
-                  Icons.brightness_low,
-                  color: onSurface,
-                  size: 60,
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  'الفجر',
+                  style: TextStyle(
+                    fontFamily: AppTextStyles.displayFamily,
+                    fontSize: 58,
+                    fontWeight: FontWeight.w700,
+                    color: tokens.ink,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'الفجر',
-                style: TextStyle(
-                  fontSize: 64,
-                  fontWeight: FontWeight.w900,
-                  color: onSurface,
-                  fontFamily: 'Cairo',
-                  letterSpacing: -1,
+                Text(
+                  'AL - FAJR',
+                  style: TextStyle(
+                    fontFamily: AppTextStyles.bodyFamily,
+                    fontSize: 13,
+                    letterSpacing: 7,
+                    fontWeight: FontWeight.w600,
+                    color: tokens.gold,
+                  ),
                 ),
-              ),
-              Text(
-                'AL - FAJR',
-                style: TextStyle(
-                  fontSize: 18,
-                  letterSpacing: 6,
-                  fontWeight: FontWeight.w500,
-                  color: colors.primary.withValues(alpha: 0.5),
+                const SizedBox(height: AppSpacing.xxl + AppSpacing.lg),
+                SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator.adaptive(
+                    strokeWidth: 2.4,
+                    valueColor: AlwaysStoppedAnimation<Color>(tokens.brand),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator.adaptive(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

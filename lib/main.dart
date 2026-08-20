@@ -11,6 +11,9 @@ import 'core/services/app_services.dart';
 import 'core/services/notification_router.dart';
 import 'core/services/notification_scheduler.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/seasonal_theme.dart';
+import 'core/theme/design_tokens.dart';
+import 'core/widgets/seasonal_decor.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_logger.dart';
 import 'features/onboarding/presentation/pages/splash_screen.dart';
@@ -72,6 +75,12 @@ class IslamicApp extends ConsumerWidget {
     // Watch the theme mode - will rebuild when theme changes
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
+    final season = ref.watch(seasonalEventProvider);
+
+    // Ramadan and the two Eids shift the accent and the wash behind the page;
+    // the green identity stays put so the app never becomes unfamiliar.
+    ThemeData themeFor(AppTokens tokens) =>
+        AppTheme.from(SeasonalTheme.dress(tokens, season));
 
     return MaterialApp(
       // App metadata
@@ -84,8 +93,8 @@ class IslamicApp extends ConsumerWidget {
       // ========================
       // Theme Configuration
       // ========================
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: themeFor(AppTokens.light),
+      darkTheme: themeFor(AppTokens.dark),
       themeMode: themeMode,
 
       // ========================
@@ -94,10 +103,10 @@ class IslamicApp extends ConsumerWidget {
       localizationsDelegates: const [
         /// Provides localized strings for Material widgets like buttons, dialogs, etc.
         GlobalMaterialLocalizations.delegate,
-        
+
         /// Provides localized text directions (LTR/RTL)
         GlobalWidgetsLocalizations.delegate,
-        
+
         /// Provides localized strings for Cupertino (iOS-style) widgets
         GlobalCupertinoLocalizations.delegate,
       ],
@@ -106,7 +115,7 @@ class IslamicApp extends ConsumerWidget {
       supportedLocales: const [
         /// Arabic - RTL language
         Locale('ar', ''),
-        
+
         /// English - LTR language
         Locale('en', ''),
       ],
@@ -124,13 +133,18 @@ class IslamicApp extends ConsumerWidget {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           NotificationRouter.flushPending();
         });
-        return child ?? const SizedBox.shrink();
+        // One place tells the whole tree which season it is; every scaffold
+        // and the nav bar pick their decoration up from here.
+        return SeasonalDecorScope(
+          event: season,
+          child: child ?? const SizedBox.shrink(),
+        );
       },
 
       // ========================
       // Global Settings
       // ========================
-      
+
       /// Enable scrollbar visibilty by default
       scrollBehavior: const ScrollBehavior(),
     );
@@ -145,9 +159,9 @@ class ScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.stylus,
-        PointerDeviceKind.unknown,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
 }

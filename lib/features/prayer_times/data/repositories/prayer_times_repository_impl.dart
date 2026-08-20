@@ -19,7 +19,7 @@ import '../models/prayer_times_model.dart';
 class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
   /// Remote API data source (fallback only)
   final PrayerTimesRemoteDataSource remoteDataSource;
-  
+
   /// Local cache data source
   final PrayerTimesLocalDataSource localDataSource;
 
@@ -53,9 +53,8 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
     int method = 3,
     String? date,
   }) async {
-    final requestedDate = date == null || date.isEmpty
-        ? null
-        : DateTime.tryParse(date);
+    final requestedDate =
+        date == null || date.isEmpty ? null : DateTime.tryParse(date);
 
     try {
       final computed = calculator.getPrayerTimes(
@@ -67,17 +66,21 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
         settings: calculationSettings,
       );
 
-      unawaited(_cacheQuietly(
-        model: computed,
-        latitude: latitude,
-        longitude: longitude,
-        method: method,
-        date: date,
-      ));
+      unawaited(
+        _cacheQuietly(
+          model: computed,
+          latitude: latitude,
+          longitude: longitude,
+          method: method,
+          date: date,
+        ),
+      );
 
       return Right(computed);
     } catch (e) {
-      AppLogger.warning('Local prayer calculation failed: $e, falling back to API');
+      AppLogger.warning(
+        'Local prayer calculation failed: $e, falling back to API',
+      );
     }
 
     try {
@@ -107,8 +110,10 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
       return Right(remoteModel);
     } on RemoteException catch (e) {
       // API call failed, try to use cache
-      AppLogger.warning('API call failed: ${e.message}, attempting to use cache');
-      
+      AppLogger.warning(
+        'API call failed: ${e.message}, attempting to use cache',
+      );
+
       try {
         final cachedData = await localDataSource.getCachedPrayerTimes(
           latitude: latitude,
@@ -116,7 +121,7 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
           method: method,
           date: date,
         );
-        
+
         if (cachedData != null) {
           AppLogger.info('Using cached prayer times');
           return Right(cachedData);

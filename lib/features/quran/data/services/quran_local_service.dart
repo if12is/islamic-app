@@ -112,8 +112,10 @@ class QuranLocalService {
     _assertSurah(surahNumber);
     final count = quran.getVerseCount(surahNumber);
     if (verseNumber < 1 || verseNumber > count) {
-      throw ArgumentError('Verse $verseNumber is out of range for surah '
-          '$surahNumber (1-$count)');
+      throw ArgumentError(
+        'Verse $verseNumber is out of range for surah '
+        '$surahNumber (1-$count)',
+      );
     }
 
     final info = surahInfo(surahNumber);
@@ -188,13 +190,14 @@ class QuranLocalService {
       hizbQuarterStarts[quarter - 1][0],
       hizbQuarterStarts[quarter - 1][1],
     );
-    final end = quarter == quarterCount
-        ? verseCount
-        : globalVerseNumber(
-              hizbQuarterStarts[quarter][0],
-              hizbQuarterStarts[quarter][1],
-            ) -
-            1;
+    final end =
+        quarter == quarterCount
+            ? verseCount
+            : globalVerseNumber(
+                  hizbQuarterStarts[quarter][0],
+                  hizbQuarterStarts[quarter][1],
+                ) -
+                1;
 
     return [
       for (var global = start; global <= end; global++)
@@ -313,9 +316,11 @@ class QuranLocalService {
   /// A stable verse for a given day — same verse for everyone, all day long.
   static QuranVerse verseOfTheDay(DateTime date) {
     final dayNumber =
-        DateTime(date.year, date.month, date.day)
-            .difference(DateTime(2000, 1, 1))
-            .inDays;
+        DateTime(
+          date.year,
+          date.month,
+          date.day,
+        ).difference(DateTime(2000, 1, 1)).inDays;
     final index = (dayNumber.abs() * 7919) % verseCount;
     return verseByGlobalNumber(index + 1);
   }
@@ -382,6 +387,99 @@ class QuranLocalService {
     return 'https://cdn.islamic.network/quran/audio-surah/$bitrate/$reciterCode/$surahNumber.mp3';
   }
 
+  static String? _normalizedCorpus;
+  static Set<int>? _quranNgrams;
+
+  /// The whole Mushaf, normalized, as one searchable string.
+  ///
+  /// Built once and kept: used to tell Quranic text apart from du'a inside
+  /// azkar, and available to any other exact-match lookup.
+  static String normalizedCorpus() {
+    if (_normalizedCorpus != null) {
+      return _normalizedCorpus!;
+    }
+
+    final buffer = StringBuffer();
+    for (var surah = 1; surah <= surahCount; surah++) {
+      final count = quran.getVerseCount(surah);
+      for (var ayah = 1; ayah <= count; ayah++) {
+        // Single space between verses, so a quotation that runs across two
+        // verses still matches.
+        buffer
+          ..write(normalizeArabic(quran.getVerse(surah, ayah)))
+          ..write(' ');
+      }
+    }
+    return _normalizedCorpus = buffer.toString();
+  }
+
+  /// Every four-word sequence in the Mushaf, hashed.
+  ///
+  /// Quoting collections spell the Quran differently — dagger alef versus a
+  /// written one, `النفثت` versus `النفاثات` — so matching a whole passage
+  /// verbatim fails on a single word. Scoring a passage by how many of its
+  /// four-word windows exist in the Mushaf tolerates the spelling and still
+  /// refuses ordinary supplication, which shares only the odd phrase.
+  ///
+  /// The windows run across verse boundaries, because a quoted surah is read
+  /// as one continuous passage.
+  static Set<int> quranNgrams() {
+    if (_quranNgrams != null) {
+      return _quranNgrams!;
+    }
+
+    final words = <String>[];
+    for (var surah = 1; surah <= surahCount; surah++) {
+      final count = quran.getVerseCount(surah);
+      for (var ayah = 1; ayah <= count; ayah++) {
+        words.addAll(skeleton(quran.getVerse(surah, ayah)).split(' '));
+      }
+    }
+    words.removeWhere((word) => word.isEmpty);
+
+    final ngrams = <int>{};
+    for (var i = 0; i + ngramSize <= words.length; i++) {
+      ngrams.add(_hashWindow(words, i));
+    }
+    return _quranNgrams = ngrams;
+  }
+
+  /// Words per matching window.
+  static const int ngramSize = 4;
+
+  static int _hashWindow(List<String> words, int start) {
+    var hash = 0x811c9dc5;
+    for (var i = start; i < start + ngramSize; i++) {
+      for (final unit in words[i].codeUnits) {
+        hash ^= unit;
+        hash = (hash * 0x01000193) & 0xffffffff;
+      }
+      hash ^= 0x20;
+      hash = (hash * 0x01000193) & 0xffffffff;
+    }
+    return hash;
+  }
+
+  /// Hash of one window of [words] starting at [start]; null when the window
+  /// runs past the end.
+  static int? windowHash(List<String> words, int start) {
+    if (start < 0 || start + ngramSize > words.length) {
+      return null;
+    }
+    return _hashWindow(words, start);
+  }
+
+  /// A spelling-insensitive skeleton: normalized, then stripped of alef.
+  ///
+  /// Alef is where Uthmani and modern orthography disagree most (the dagger
+  /// alef in `الرَّحْمَٰن` against the written one in `الرحمان`), so dropping it
+  /// makes both spellings compare equal.
+  static String skeleton(String input) {
+    return normalizeArabic(
+      input,
+    ).replaceAll('ا', '').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
   /// Strip diacritics and normalize letter variants so search matches what
   /// people actually type.
   static String normalizeArabic(String input) {
@@ -391,7 +489,12 @@ class QuranLocalService {
         .replaceAll('ى', 'ي')
         .replaceAll('ة', 'ه')
         .replaceAll('ؤ', 'و')
-        .replaceAll('ئ', 'ي');
+        .replaceAll('ئ', 'ي')
+        // Punctuation differs between datasets; matching must not depend on it.
+        .replaceAll(
+          RegExp(r'[،؛؟!.,:«»"\u2018\u2019\u201C\u201D()\[\]{}﴿﴾۩\u06dd-]'),
+          ' ',
+        );
 
     return stripped.replaceAll(RegExp(r'\s+'), ' ').trim();
   }

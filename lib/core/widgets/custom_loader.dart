@@ -17,7 +17,8 @@ class CustomLoader extends StatelessWidget {
           minHeight: 4,
           borderRadius: BorderRadius.circular(999),
           color: Theme.of(context).colorScheme.secondary,
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+          backgroundColor:
+              Theme.of(context).colorScheme.surfaceContainerHighest,
         ),
       ),
     );

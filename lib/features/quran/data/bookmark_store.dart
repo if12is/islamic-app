@@ -90,7 +90,10 @@ class BookmarkStore {
       final box = await _openBox();
       final items =
           box.values
-              .map((raw) => QuranBookmark.fromJson(Map<dynamic, dynamic>.from(raw)))
+              .map(
+                (raw) =>
+                    QuranBookmark.fromJson(Map<dynamic, dynamic>.from(raw)),
+              )
               .toList();
       items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return items;

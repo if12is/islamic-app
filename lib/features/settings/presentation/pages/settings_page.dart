@@ -3,11 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/models/notification_preferences.dart';
+import '../../../../core/services/backup_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../prayer_times/presentation/pages/prayer_settings_page.dart';
 import 'notification_center_page.dart';
+import 'design_gallery_page.dart';
+import 'seasonal_preview_page.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/input_validators.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -37,6 +43,8 @@ class SettingsPage extends ConsumerWidget {
     final prayerMethod = ref.watch(prayerMethodProvider);
     final profile = ref.watch(userProfileProvider);
     final notificationPrefs = ref.watch(notificationPreferencesProvider);
+    final seasonalIntroEnabled = ref.watch(seasonalIntroEnabledProvider);
+    final seasonalOverride = ref.watch(seasonalOverrideProvider);
 
     final isDark = themeMode == ThemeMode.dark;
 
@@ -59,403 +67,477 @@ class SettingsPage extends ConsumerWidget {
           }
           _handleBack(context);
         },
-        child: Scaffold(
-          backgroundColor: bgColor,
-          appBar: AppBar(
-            backgroundColor: bgColor,
-            elevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back, color: textColor, size: 28),
-              onPressed: () {
-                _handleBack(context);
-              },
+        child: MeshBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(
+                  context.isAppRtl
+                      ? Icons.arrow_forward_rounded
+                      : Icons.arrow_back_rounded,
+                  color: textColor,
+                  size: 22,
+                ),
+                onPressed: () => _handleBack(context),
+              ),
+              title: Text(
+                context.tr('settings'),
+                style: AppTextStyles.display(context, fontSize: 18),
+              ),
+              centerTitle: true,
             ),
-            title: Text(
-              context.tr('settings'),
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w900,
-                fontSize: 24,
-                letterSpacing: -0.5,
-              ),
-            ),
-            centerTitle: false,
-          ),
-          body: ListView(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            children: [
-              // Profile Area
-              Center(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color:
-                            isDark
-                                ? colorScheme.surfaceContainerHighest
-                                : const Color(0xFF1A1C1C),
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      child: Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.white24,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -8,
-                      right: -8,
-                      child: Material(
-                        color: accentColor,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => _editProfile(context, ref),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Icon(
-                              Icons.edit,
-                              size: 16,
-                              color: colorScheme.onSecondary,
-                            ),
-                          ),
+            body: ListView(
+              padding: AppScaffold.scrollPadding,
+              children: [
+                // Profile Area
+                Center(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? colorScheme.surfaceContainerHighest
+                                  : context.tokens.ink,
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        child: Icon(
+                          Icons.person,
+                          size: 60,
+                          color: Colors.white24,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  profile.name.isEmpty ? context.tr('user_name') : profile.name,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-              ),
-              Center(
-                child: Text(
-                  profile.location.isEmpty
-                      ? context.tr('user_location')
-                      : profile.location,
-                  style: TextStyle(fontSize: 14, color: subtitleColor),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Adhan Notifications
-              Container(
-                padding: EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.notifications_active,
-                              color: accentColor,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              context.tr('adhan_notifications'),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Switch.adaptive(
-                          value: isNotificationsEnabled,
-                          onChanged: (value) {
-                            _setNotificationsEnabled(context, ref, value);
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildPrayerIconTile(
-                          context.tr('fajr'),
-                          Icons.wb_twilight,
-                          notificationPrefs.modeFor('fajr').isEnabled,
-                          primaryColor,
-                          subtitleColor,
-                          onTap: () => _togglePrayerAlert(ref, 'fajr'),
-                        ),
-                        _buildPrayerIconTile(
-                          context.tr('dhuhr'),
-                          Icons.wb_sunny,
-                          notificationPrefs.modeFor('dhuhr').isEnabled,
-                          primaryColor,
-                          subtitleColor,
-                          onTap: () => _togglePrayerAlert(ref, 'dhuhr'),
-                        ),
-                        _buildPrayerIconTile(
-                          context.tr('asr'),
-                          Icons.wb_cloudy,
-                          notificationPrefs.modeFor('asr').isEnabled,
-                          primaryColor,
-                          subtitleColor,
-                          onTap: () => _togglePrayerAlert(ref, 'asr'),
-                        ),
-                        _buildPrayerIconTile(
-                          context.tr('maghrib'),
-                          Icons.nights_stay,
-                          notificationPrefs.modeFor('maghrib').isEnabled,
-                          primaryColor,
-                          subtitleColor,
-                          onTap: () => _togglePrayerAlert(ref, 'maghrib'),
-                        ),
-                        _buildPrayerIconTile(
-                          context.tr('isha'),
-                          Icons.bedtime,
-                          notificationPrefs.modeFor('isha').isEnabled,
-                          primaryColor,
-                          subtitleColor,
-                          onTap: () => _togglePrayerAlert(ref, 'isha'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment:
-                          context.isAppRtl
-                              ? Alignment.centerLeft
-                              : Alignment.centerRight,
-                      child: Material(
-                        color: mutedFill,
-                        borderRadius: BorderRadius.circular(20),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () => _openCustomizeSheet(context, ref),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            child: Text(
-                              context.tr('customize_all'),
-                              style: TextStyle(
-                                color: textColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                      Positioned(
+                        bottom: -8,
+                        right: -8,
+                        child: Material(
+                          color: accentColor,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => _editProfile(context, ref),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Icon(
+                                Icons.edit,
+                                size: 16,
+                                color: colorScheme.onSecondary,
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Calculation Method
-              Container(
-                padding: EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.calculate, color: accentColor, size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          context.tr('calculation_method'),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      context.tr('calc_method_desc'),
-                      style: TextStyle(color: subtitleColor, fontSize: 14),
-                    ),
-                    const SizedBox(height: 16),
-                    MenuAnchor(
-                      builder: (context, controller, child) {
-                        return FilledButton.tonalIcon(
-                          onPressed: () {
-                            if (controller.isOpen) {
-                              controller.close();
-                            } else {
-                              controller.open();
-                            }
-                          },
-                          icon: const Icon(Icons.expand_more),
-                          label: Text(
-                            AppConstants.prayerCalculationMethods[prayerMethod] ??
-                                context.tr('egyptian_general_authority'),
-                          ),
-                        );
-                      },
-                      menuChildren: AppConstants.prayerCalculationMethods.entries
-                          .map(
-                            (entry) => MenuItemButton(
-                              onPressed: () {
-                                ref
-                                    .read(prayerMethodProvider.notifier)
-                                    .setMethod(entry.key);
-                              },
-                              child: Text(entry.value),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Tools: everything with its own screen.
-              Material(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(32),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+                    ],
                   ),
-                child: Column(
-                  children: [
-                    _buildToolTile(
-                      context,
-                      icon: Icons.notifications_active,
-                      color: accentColor,
-                      title: context.tr('notification_center'),
-                      subtitle: context.tr('notification_center_desc'),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const NotificationCenterPage(),
-                        ),
-                      ),
-                    ),
-                    _buildToolTile(
-                      context,
-                      icon: Icons.tune,
-                      color: accentColor,
-                      title: context.tr('prayer_calculation_settings'),
-                      subtitle: context.tr('manual_offsets_desc'),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const PrayerSettingsPage(),
-                        ),
-                      ),
-                    ),
-                    _buildToolTile(
-                      context,
-                      icon: Icons.calendar_month,
-                      color: accentColor,
-                      title: context.tr('hijri_calendar'),
-                      subtitle: context.tr('hijri_calendar_desc'),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const HijriCalendarPage(),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    profile.name.isEmpty
+                        ? context.tr('user_name')
+                        : profile.name,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    profile.location.isEmpty
+                        ? context.tr('user_location')
+                        : profile.location,
+                    style: TextStyle(fontSize: 14, color: subtitleColor),
+                  ),
+                ),
+                const SizedBox(height: 32),
 
-              // Language & Appearance
-              Container(
-                padding: EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(32),
-                ),
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        final newLang =
-                            locale.languageCode == 'ar' ? 'en' : 'ar';
-                        ref.read(localeProvider.notifier).setLocale(newLang);
-                      },
-                      child: Row(
+                // Adhan Notifications
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: mutedFill,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(Icons.language, color: textColor),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  context.tr('language'),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: textColor,
-                                  ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.notifications_active,
+                                color: accentColor,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                context.tr('adhan_notifications'),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
                                 ),
-                                Text(
-                                  locale.languageCode == 'ar'
-                                      ? context.tr('language_arabic')
-                                      : context.tr('language_english'),
-                                  style: TextStyle(
-                                    color: subtitleColor,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          Icon(
-                            context.isAppRtl
-                                ? Icons.keyboard_arrow_left
-                                : Icons.keyboard_arrow_right,
-                            color: subtitleColor,
+                          Switch.adaptive(
+                            value: isNotificationsEnabled,
+                            onChanged: (value) {
+                              _setNotificationsEnabled(context, ref, value);
+                            },
                           ),
                         ],
                       ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Divider(
-                        color: colorScheme.outlineVariant,
-                        thickness: 1,
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildPrayerIconTile(
+                            context.tr('fajr'),
+                            Icons.wb_twilight,
+                            notificationPrefs.modeFor('fajr').isEnabled,
+                            primaryColor,
+                            subtitleColor,
+                            onTap: () => _togglePrayerAlert(ref, 'fajr'),
+                          ),
+                          _buildPrayerIconTile(
+                            context.tr('dhuhr'),
+                            Icons.wb_sunny,
+                            notificationPrefs.modeFor('dhuhr').isEnabled,
+                            primaryColor,
+                            subtitleColor,
+                            onTap: () => _togglePrayerAlert(ref, 'dhuhr'),
+                          ),
+                          _buildPrayerIconTile(
+                            context.tr('asr'),
+                            Icons.wb_cloudy,
+                            notificationPrefs.modeFor('asr').isEnabled,
+                            primaryColor,
+                            subtitleColor,
+                            onTap: () => _togglePrayerAlert(ref, 'asr'),
+                          ),
+                          _buildPrayerIconTile(
+                            context.tr('maghrib'),
+                            Icons.nights_stay,
+                            notificationPrefs.modeFor('maghrib').isEnabled,
+                            primaryColor,
+                            subtitleColor,
+                            onTap: () => _togglePrayerAlert(ref, 'maghrib'),
+                          ),
+                          _buildPrayerIconTile(
+                            context.tr('isha'),
+                            Icons.bedtime,
+                            notificationPrefs.modeFor('isha').isEnabled,
+                            primaryColor,
+                            subtitleColor,
+                            onTap: () => _togglePrayerAlert(ref, 'isha'),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment:
+                            context.isAppRtl
+                                ? Alignment.centerLeft
+                                : Alignment.centerRight,
+                        child: Material(
+                          color: mutedFill,
+                          borderRadius: BorderRadius.circular(20),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => _openCustomizeSheet(context, ref),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: Text(
+                                context.tr('customize_all'),
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Calculation Method
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.calculate, color: accentColor, size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            context.tr('calculation_method'),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        context.tr('calc_method_desc'),
+                        style: TextStyle(color: subtitleColor, fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      MenuAnchor(
+                        builder: (context, controller, child) {
+                          return FilledButton.tonalIcon(
+                            onPressed: () {
+                              if (controller.isOpen) {
+                                controller.close();
+                              } else {
+                                controller.open();
+                              }
+                            },
+                            icon: const Icon(Icons.expand_more),
+                            label: Text(
+                              AppConstants
+                                      .prayerCalculationMethods[prayerMethod] ??
+                                  context.tr('egyptian_general_authority'),
+                            ),
+                          );
+                        },
+                        menuChildren:
+                            AppConstants.prayerCalculationMethods.entries
+                                .map(
+                                  (entry) => MenuItemButton(
+                                    onPressed: () {
+                                      ref
+                                          .read(prayerMethodProvider.notifier)
+                                          .setMethod(entry.key);
+                                    },
+                                    child: Text(entry.value),
+                                  ),
+                                )
+                                .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Tools: everything with its own screen.
+                Material(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(32),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        ref.read(themeModeProvider.notifier).toggleTheme();
-                      },
-                      child: Row(
+                    child: Column(
+                      children: [
+                        _buildToolTile(
+                          context,
+                          icon: Icons.notifications_active,
+                          color: accentColor,
+                          title: context.tr('notification_center'),
+                          subtitle: context.tr('notification_center_desc'),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder:
+                                      (_) => const NotificationCenterPage(),
+                                ),
+                              ),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.tune,
+                          color: accentColor,
+                          title: context.tr('prayer_calculation_settings'),
+                          subtitle: context.tr('manual_offsets_desc'),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const PrayerSettingsPage(),
+                                ),
+                              ),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.calendar_month,
+                          color: accentColor,
+                          title: context.tr('hijri_calendar'),
+                          subtitle: context.tr('hijri_calendar_desc'),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const HijriCalendarPage(),
+                                ),
+                              ),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.backup_outlined,
+                          color: accentColor,
+                          title: context.tr('backup'),
+                          subtitle: context.tr('backup_desc'),
+                          onTap: () => _openBackupSheet(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Language & Appearance
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          final newLang =
+                              locale.languageCode == 'ar' ? 'en' : 'ar';
+                          ref.read(localeProvider.notifier).setLocale(newLang);
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: mutedFill,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.language, color: textColor),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.tr('language'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    locale.languageCode == 'ar'
+                                        ? context.tr('language_arabic')
+                                        : context.tr('language_english'),
+                                    style: TextStyle(
+                                      color: subtitleColor,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              context.isAppRtl
+                                  ? Icons.keyboard_arrow_left
+                                  : Icons.keyboard_arrow_right,
+                              color: subtitleColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(
+                          color: colorScheme.outlineVariant,
+                          thickness: 1,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          ref.read(themeModeProvider.notifier).toggleTheme();
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: mutedFill,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                isDark ? Icons.dark_mode : Icons.light_mode,
+                                color: textColor,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.tr('appearance'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    isDark
+                                        ? context.tr('dark_mode_on')
+                                        : context.tr('light_mode'),
+                                    style: TextStyle(
+                                      color: subtitleColor,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch.adaptive(
+                              value: isDark,
+                              onChanged: (val) {
+                                ref
+                                    .read(themeModeProvider.notifier)
+                                    .toggleTheme();
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(
+                          color: colorScheme.outlineVariant,
+                          thickness: 1,
+                        ),
+                      ),
+                      Row(
                         children: [
                           Container(
                             padding: EdgeInsets.all(12),
@@ -464,7 +546,7 @@ class SettingsPage extends ConsumerWidget {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              isDark ? Icons.dark_mode : Icons.light_mode,
+                              Icons.movie_filter_outlined,
                               color: textColor,
                             ),
                           ),
@@ -474,7 +556,7 @@ class SettingsPage extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  context.tr('appearance'),
+                                  context.tr('seasonal_intro'),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -482,9 +564,7 @@ class SettingsPage extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  isDark
-                                      ? context.tr('dark_mode_on')
-                                      : context.tr('light_mode'),
+                                  context.tr('seasonal_intro_desc'),
                                   style: TextStyle(
                                     color: subtitleColor,
                                     fontSize: 13,
@@ -494,129 +574,249 @@ class SettingsPage extends ConsumerWidget {
                             ),
                           ),
                           Switch.adaptive(
-                            value: isDark,
-                            onChanged: (val) {
-                              ref
-                                  .read(themeModeProvider.notifier)
-                                  .toggleTheme();
-                            },
+                            value: seasonalIntroEnabled,
+                            onChanged:
+                                (value) => ref
+                                    .read(seasonalIntroEnabledProvider.notifier)
+                                    .setEnabled(value),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Contact Us Custom Card
-              Container(
-                padding: EdgeInsets.all(0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(32),
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [
-                            colorScheme.primaryContainer,
-                            bgColor,
-                          ]
-                        : const [
-                            Color(0xFF003527),
-                            Color(0xFF001A13),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(
+                          color: colorScheme.outlineVariant,
+                          thickness: 1,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap:
+                            () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const DesignGalleryPage(),
+                              ),
+                            ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: mutedFill,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.widgets_outlined,
+                                color: textColor,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.tr('design_gallery'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    context.tr('design_gallery_desc'),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: subtitleColor,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              context.isAppRtl
+                                  ? Icons.keyboard_arrow_left
+                                  : Icons.keyboard_arrow_right,
+                              color: subtitleColor,
+                            ),
                           ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(
+                          color: colorScheme.outlineVariant,
+                          thickness: 1,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap:
+                            () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SeasonalPreviewPage(),
+                              ),
+                            ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: mutedFill,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.palette_outlined,
+                                color: textColor,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    context.tr('seasonal_preview'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    seasonalOverride == null
+                                        ? context.tr('seasonal_preview_auto')
+                                        : context.tr('seasonal_preview_active'),
+                                    style: TextStyle(
+                                      color:
+                                          seasonalOverride == null
+                                              ? subtitleColor
+                                              : accentColor,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              context.isAppRtl
+                                  ? Icons.keyboard_arrow_left
+                                  : Icons.keyboard_arrow_right,
+                              color: subtitleColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: -20,
-                      top: -20,
-                      child: Icon(
-                        Icons.mosque,
-                        size: 120,
-                        color: Colors.white.withValues(alpha: 0.05),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.tr('contact_us'),
-                            style: TextStyle(
-                              fontSize: 20,
-                              color: isDark
-                                  ? colorScheme.onPrimaryContainer
-                                  : Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            context.tr('contact_us_desc'),
-                            style: TextStyle(
-                              color: (isDark
-                                      ? colorScheme.onPrimaryContainer
-                                      : Colors.white)
-                                  .withValues(alpha: 0.8),
-                              fontSize: 14,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          FilledButton.icon(
-                            onPressed: () => _sendMessage(context),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: colorScheme.secondary,
-                              foregroundColor: colorScheme.onSecondary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                            icon: const Icon(Icons.send, size: 20),
-                            label: Text(
-                              context.tr('send_message'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
-              // Logout Button
-              Center(
-                child: TextButton.icon(
-                  onPressed: () => _logout(context, ref),
-                  style: TextButton.styleFrom(
-                    foregroundColor: colorScheme.error,
-                    minimumSize: const Size(48, 48),
+                // Contact Us Custom Card
+                Container(
+                  padding: EdgeInsets.all(0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(32),
+                    gradient: LinearGradient(
+                      colors:
+                          isDark
+                              ? [colorScheme.primaryContainer, bgColor]
+                              : [context.tokens.brandDeep, context.tokens.ink],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   ),
-                  icon: const Icon(Icons.logout),
-                  label: Text(
-                    context.tr('logout'),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        right: -20,
+                        top: -20,
+                        child: Icon(
+                          Icons.mosque,
+                          size: 120,
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.tr('contact_us'),
+                              style: TextStyle(
+                                fontSize: 20,
+                                color:
+                                    isDark
+                                        ? colorScheme.onPrimaryContainer
+                                        : Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              context.tr('contact_us_desc'),
+                              style: TextStyle(
+                                color: (isDark
+                                        ? colorScheme.onPrimaryContainer
+                                        : Colors.white)
+                                    .withValues(alpha: 0.8),
+                                fontSize: 14,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            FilledButton.icon(
+                              onPressed: () => _sendMessage(context),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colorScheme.secondary,
+                                foregroundColor: colorScheme.onSecondary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                              icon: const Icon(Icons.send, size: 20),
+                              label: Text(
+                                context.tr('send_message'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Logout Button
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => _logout(context, ref),
+                    style: TextButton.styleFrom(
+                      foregroundColor: colorScheme.error,
+                      minimumSize: const Size(48, 48),
+                    ),
+                    icon: const Icon(Icons.logout),
+                    label: Text(
+                      context.tr('logout'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 48),
-            ],
+                const SizedBox(height: 48),
+              ],
+            ),
           ),
         ),
       ),
@@ -682,21 +882,20 @@ class SettingsPage extends ConsumerWidget {
     if (!InputValidators.isDisplayName(name) ||
         !InputValidators.isLocationLabel(location)) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('profile_invalid'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.tr('profile_invalid'))));
       }
       return;
     }
 
-    await ref.read(userProfileProvider.notifier).update(
-          name: name,
-          location: location,
-        );
+    await ref
+        .read(userProfileProvider.notifier)
+        .update(name: name, location: location);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('profile_saved'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('profile_saved'))));
     }
   }
 
@@ -733,6 +932,86 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  /// Export everything to a file, or restore from one.
+  Future<void> _openBackupSheet(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sheetContext.tr('backup'),
+                  style: Theme.of(sheetContext).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  sheetContext.tr('backup_explain'),
+                  style: Theme.of(sheetContext).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.ios_share),
+                  title: Text(sheetContext.tr('backup_export')),
+                  subtitle: Text(sheetContext.tr('backup_export_desc')),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await BackupService.exportBackup();
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.restore),
+                  title: Text(sheetContext.tr('backup_import')),
+                  subtitle: Text(sheetContext.tr('backup_import_desc')),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _restoreBackup(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _restoreBackup(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final restoredMessage = context.tr('backup_restored');
+    final invalidMessage = context.tr('backup_invalid');
+    final versionMessage = context.tr('backup_newer_version');
+
+    try {
+      final summary = await BackupService.importBackup();
+      if (summary == null) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            '$restoredMessage — '
+            '${summary.bookmarks} · ${summary.readingDays} · '
+            '${summary.hifzItems}',
+          ),
+        ),
+      );
+    } on BackupException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(error.isWrongVersion ? versionMessage : invalidMessage),
+        ),
+      );
+    }
+  }
+
   Future<void> _setNotificationsEnabled(
     BuildContext context,
     WidgetRef ref,
@@ -745,9 +1024,9 @@ class SettingsPage extends ConsumerWidget {
       final granted = await NotificationService.requestPermissions();
       if (!granted) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(deniedMessage)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(deniedMessage)));
         }
         return;
       }
@@ -778,9 +1057,7 @@ class SettingsPage extends ConsumerWidget {
   /// centre.
   Future<void> _openCustomizeSheet(BuildContext context, WidgetRef ref) async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const NotificationCenterPage(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const NotificationCenterPage()),
     );
   }
 
@@ -822,9 +1099,9 @@ class SettingsPage extends ConsumerWidget {
     }
     if (!InputValidators.isFeedbackMessage(message)) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(invalidMessage)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(invalidMessage)));
       }
       return;
     }
@@ -838,16 +1115,16 @@ class SettingsPage extends ConsumerWidget {
     try {
       final launched = await launchUrl(uri);
       if (!launched && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(launchFailed)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(launchFailed)));
       }
     } catch (error, stackTrace) {
       AppLogger.error('Failed to open mail app', error, stackTrace);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(launchFailed)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(launchFailed)));
       }
     }
   }
@@ -890,9 +1167,9 @@ class SettingsPage extends ConsumerWidget {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('logged_out'))),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.tr('logged_out'))));
   }
 
   Widget _buildPrayerIconTile(

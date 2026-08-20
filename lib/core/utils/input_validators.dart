@@ -16,8 +16,7 @@ class InputValidators {
   static bool isSupportedPrayerMethod(int method) =>
       method >= 0 && method <= 15;
 
-  static bool isSupportedLanguage(String code) =>
-      code == 'ar' || code == 'en';
+  static bool isSupportedLanguage(String code) => code == 'ar' || code == 'en';
 
   static String sanitizePrayerId(String value) {
     return value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');

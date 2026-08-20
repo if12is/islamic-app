@@ -1,291 +1,414 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
-import 'package:flutter_compass/flutter_compass.dart';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/qibla_math.dart';
+import '../../../../core/widgets/app_section.dart';
+
+/// A compass that tells you when you are facing the Kaaba without being
+/// looked at.
+///
+/// The dial stays muted until you are close, warms through gold, and turns
+/// green when you are on it. Haptics tighten as the angle closes — far away a
+/// slow tap, near the qibla a quick pulse, and landing on it a single firm
+/// confirmation. That way the phone can be held at chest height, in a dark
+/// room, and still guide you. The sentence underneath is the part that makes
+/// it usable: a number is not an instruction.
 class QiblaCompass extends StatefulWidget {
-  final double qiblaBearing;
-  final String alignedText;
-  final String rotateText;
-
   const QiblaCompass({
     super.key,
     required this.qiblaBearing,
     required this.alignedText,
-    required this.rotateText,
+    this.size = 280,
   });
+
+  final double qiblaBearing;
+  final String alignedText;
+
+  final double size;
+
+  /// Within this many degrees counts as facing the qibla.
+  static const double alignedThreshold = QiblaMath.alignedThreshold;
 
   @override
   State<QiblaCompass> createState() => _QiblaCompassState();
 }
 
 class _QiblaCompassState extends State<QiblaCompass> {
+  StreamSubscription<CompassEvent>? _subscription;
+  Timer? _hapticTimer;
+
   double _heading = 0;
-  StreamSubscription<CompassEvent>? _compassSubscription;
+  double? _accuracy;
+  bool _hasSensor = true;
+  bool _wasAligned = false;
 
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb) {
-      _compassSubscription = FlutterCompass.events?.listen((event) {
-        final heading = event.heading;
-        if (heading == null) {
-          return;
-        }
-
-        if (mounted) {
-          setState(() {
-            _heading = heading;
-          });
-        }
-      });
+    if (kIsWeb) {
+      _hasSensor = false;
+      return;
     }
+
+    final events = FlutterCompass.events;
+    if (events == null) {
+      _hasSensor = false;
+      return;
+    }
+
+    _subscription = events.listen((event) {
+      final heading = event.heading;
+      if (heading == null || !mounted) {
+        return;
+      }
+
+      setState(() {
+        // Low-pass filter: raw compass data jitters by several degrees and a
+        // needle that shivers is unusable.
+        _heading = QiblaMath.smooth(_heading, heading);
+        _accuracy = event.accuracy;
+      });
+
+      _updateHaptics(_difference(_heading));
+    });
   }
 
   @override
   void dispose() {
-    _compassSubscription?.cancel();
+    _subscription?.cancel();
+    _hapticTimer?.cancel();
     super.dispose();
+  }
+
+  double _difference(double heading) =>
+      QiblaMath.difference(heading, widget.qiblaBearing);
+
+  /// Which way is shorter, and by how much.
+  double get _signedOffset {
+    final raw = (widget.qiblaBearing - _heading) % 360;
+    return raw > 180 ? raw - 360 : raw;
+  }
+
+  /// Pulse faster the closer the phone gets, and confirm once on arrival.
+  void _updateHaptics(double difference) {
+    if (QiblaMath.isAligned(difference)) {
+      _hapticTimer?.cancel();
+      _hapticTimer = null;
+      if (!_wasAligned) {
+        _wasAligned = true;
+        HapticFeedback.heavyImpact();
+      }
+      return;
+    }
+
+    _wasAligned = false;
+    final interval = QiblaMath.hapticInterval(difference);
+    if (interval == null) {
+      // Pointing away from the qibla: stay quiet rather than buzz constantly.
+      _hapticTimer?.cancel();
+      _hapticTimer = null;
+      return;
+    }
+
+    if (_hapticTimer?.isActive ?? false) {
+      return;
+    }
+    _hapticTimer = Timer(interval, () {
+      if (!mounted) {
+        return;
+      }
+      if (difference < 20) {
+        HapticFeedback.mediumImpact();
+      } else {
+        HapticFeedback.selectionClick();
+      }
+    });
+  }
+
+  /// "Turn 135° to the left" — the sentence that makes the dial actionable.
+  String _instruction(BuildContext context) {
+    if (!_hasSensor) {
+      return context.tr('qibla_no_sensor');
+    }
+    final offset = _signedOffset;
+    if (QiblaMath.isAligned(offset.abs())) {
+      return widget.alignedText;
+    }
+
+    final degrees = offset.abs().round();
+    final key = offset > 0 ? 'qibla_turn_right' : 'qibla_turn_left';
+    return AppLocalizations.translate(
+      Localizations.localeOf(context).languageCode,
+      key,
+      replacements: {'degrees': '$degrees'},
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final heading = _heading;
-    final deviceAngle = -(heading * (math.pi / 180));
-    final arrowAngle = ((widget.qiblaBearing - heading) * math.pi) / 180;
+    final tokens = context.tokens;
+    final difference = _difference(_heading);
+    final isAligned = QiblaMath.isAligned(difference);
 
-    double diff = (heading - widget.qiblaBearing).abs();
-    if (diff > 180) diff = 360 - diff;
-    final isFacingQibla = diff < 10;
+    // Muted when off, warming through gold as it closes, green on target.
+    final closeness = (1 - (difference / 90)).clamp(0.0, 1.0);
+    final dialColor =
+        isAligned
+            ? tokens.brand
+            : Color.lerp(tokens.inkFaint, tokens.goldBright, closeness)!;
 
     return Column(
       children: [
-        Center(
+        SizedBox(
+          width: widget.size,
+          height: widget.size,
           child: Stack(
             alignment: Alignment.center,
-            clipBehavior: Clip.none,
             children: [
-              Container(
-                width: 320,
-                height: 320,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Container(
-                    width: 250,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF003527),
-                    ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Transform.rotate(
-                            angle: deviceAngle,
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        width: 1,
-                                        strokeAlign:
-                                            BorderSide.strokeAlignCenter,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Positioned(
-                                  top: 16,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(
-                                    child: Text(
-                                      'N',
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Positioned(
-                                  bottom: 16,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(
-                                    child: Text(
-                                      'S',
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Positioned(
-                                  right: 16,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: Center(
-                                    child: Text(
-                                      'E',
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const Positioned(
-                                  left: 16,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: Center(
-                                    child: Text(
-                                      'W',
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        Center(
-                          child: Transform.rotate(
-                            angle: arrowAngle,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Container(
-                                  width: 4,
-                                  height: 166,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFE088),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 6,
-                                  child: Transform.rotate(
-                                    angle: 0,
-                                    child: const Icon(
-                                      Icons.navigation_rounded,
-                                      size: 30,
-                                      color: Color(0xFFFFE088),
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0xFFFFE088),
-                                      width: 3,
-                                    ),
-                                    color: const Color(
-                                      0xFF003527,
-                                    ).withValues(alpha: 0.9),
-                                  ),
-                                  child: Center(
-                                    child: Transform.rotate(
-                                      angle: -arrowAngle,
-                                      child: const Icon(
-                                        Icons.explore,
-                                        color: Color(0xFFFFE088),
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+              // The dial turns with the phone, so north stays north.
+              AnimatedRotation(
+                duration: const Duration(milliseconds: 120),
+                turns: -_heading / 360,
+                child: CustomPaint(
+                  size: Size.square(widget.size),
+                  painter: _DialPainter(
+                    face: tokens.surface,
+                    ring: tokens.line,
+                    tick: tokens.inkFaint.withValues(alpha: 0.55),
+                    label: tokens.inkMuted,
+                    marker: dialColor,
+                    qiblaBearing: widget.qiblaBearing,
+                    isAligned: isAligned,
+                    shadow: tokens.ink,
                   ),
                 ),
               ),
-              Positioned(
-                bottom: -20,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color:
-                        isFacingQibla
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        isFacingQibla ? widget.alignedText : widget.rotateText,
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color:
-                              isFacingQibla
-                                  ? Theme.of(context).colorScheme.onPrimaryContainer
-                                  : Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color:
-                              isFacingQibla
-                                  ? Theme.of(context).colorScheme.secondary
-                                  : Theme.of(context).colorScheme.secondary,
-                        ),
-                      ),
-                    ],
+              // The needle points at the qibla relative to the phone.
+              AnimatedRotation(
+                duration: const Duration(milliseconds: 120),
+                turns: (widget.qiblaBearing - _heading) / 360,
+                child: CustomPaint(
+                  size: Size.square(widget.size * 0.82),
+                  painter: _NeedlePainter(
+                    color: dialColor,
+                    tail: tokens.inkFaint.withValues(alpha: 0.30),
+                    pivotFill: tokens.surface,
                   ),
                 ),
+              ),
+              // A fixed pointer at the top: line the needle up with this.
+              PositionedDirectional(
+                top: 0,
+                child: Icon(Icons.arrow_drop_down, size: 30, color: dialColor),
               ),
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.lg),
+        AnimatedDefaultTextStyle(
+          duration: AppMotion.base,
+          style: AppTextStyles.display(
+            context,
+            fontSize: 40,
+            fontWeight: FontWeight.w700,
+            color: isAligned ? tokens.brand : tokens.ink,
+          ),
+          child: Text('${difference.round()}°'),
+        ),
+        Text(
+          context.tr('qibla_angle_caption'),
+          style: AppTextStyles.caption(context, color: tokens.inkFaint),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        HintPill(
+          text: _instruction(context),
+          icon:
+              !_hasSensor
+                  ? Icons.explore_off_outlined
+                  : isAligned
+                  ? Icons.check_circle
+                  : (_signedOffset > 0
+                      ? Icons.rotate_right
+                      : Icons.rotate_left),
+          tone: isAligned ? HintTone.success : HintTone.neutral,
+        ),
+        if (_hasSensor && (_accuracy ?? 0) > 15) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            context.tr('qibla_calibrate'),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption(context, color: tokens.danger),
+          ),
+        ],
       ],
     );
   }
+}
+
+/// The dial: a soft face, a thin ring, quarter dots, cardinal letters, and a
+/// Kaaba marker sitting on the ring at the qibla bearing.
+class _DialPainter extends CustomPainter {
+  const _DialPainter({
+    required this.face,
+    required this.ring,
+    required this.tick,
+    required this.label,
+    required this.marker,
+    required this.qiblaBearing,
+    required this.isAligned,
+    required this.shadow,
+  });
+
+  final Color face;
+  final Color ring;
+  final Color tick;
+  final Color label;
+  final Color marker;
+  final double qiblaBearing;
+  final bool isAligned;
+  final Color shadow;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = size.center(Offset.zero);
+    final radius = size.width / 2 - 14;
+
+    canvas
+      ..drawCircle(
+        centre,
+        radius,
+        Paint()
+          ..color = shadow.withValues(alpha: 0.06)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
+      )
+      ..drawCircle(centre, radius, Paint()..color = face)
+      ..drawCircle(
+        centre,
+        radius,
+        Paint()
+          ..color = ring
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      )
+      ..drawCircle(
+        centre,
+        radius * 0.72,
+        Paint()
+          ..color = ring.withValues(alpha: 0.6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
+
+    // Four dots on the diagonals — enough orientation without a ruler face.
+    for (var i = 0; i < 4; i++) {
+      final angle = math.pi / 4 + i * math.pi / 2;
+      canvas.drawCircle(
+        centre + Offset(math.cos(angle), math.sin(angle)) * (radius * 0.72),
+        2.5,
+        Paint()..color = tick,
+      );
+    }
+
+    const letters = ['N', 'E', 'S', 'W'];
+    for (var i = 0; i < letters.length; i++) {
+      final angle = -math.pi / 2 + i * math.pi / 2;
+      final painter = TextPainter(
+        text: TextSpan(
+          text: letters[i],
+          style: TextStyle(
+            fontFamily: AppTextStyles.bodyFamily,
+            fontSize: 13,
+            fontWeight: i == 0 ? FontWeight.w700 : FontWeight.w500,
+            color: label,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      final position =
+          centre +
+          Offset(math.cos(angle), math.sin(angle)) * (radius * 0.86) -
+          Offset(painter.width / 2, painter.height / 2);
+      painter.paint(canvas, position);
+    }
+
+    // The Kaaba sits on the ring where the qibla is.
+    final qiblaAngle = (qiblaBearing - 90) * math.pi / 180;
+    final markerCentre =
+        centre + Offset(math.cos(qiblaAngle), math.sin(qiblaAngle)) * radius;
+
+    canvas.drawCircle(markerCentre, 15, Paint()..color = marker);
+    if (isAligned) {
+      canvas.drawCircle(
+        markerCentre,
+        22,
+        Paint()
+          ..color = marker.withValues(alpha: 0.28)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+      );
+    }
+
+    final kaaba = Rect.fromCenter(center: markerCentre, width: 12, height: 12);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(kaaba, const Radius.circular(2)),
+      Paint()..color = face,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _DialPainter old) =>
+      old.qiblaBearing != qiblaBearing ||
+      old.marker != marker ||
+      old.isAligned != isAligned;
+}
+
+/// The needle: a slim blade towards the qibla, a faint tail behind, and a
+/// round pivot that hides where the two meet.
+class _NeedlePainter extends CustomPainter {
+  const _NeedlePainter({
+    required this.color,
+    required this.tail,
+    required this.pivotFill,
+  });
+
+  final Color color;
+  final Color tail;
+  final Color pivotFill;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = size.center(Offset.zero);
+    final length = size.height / 2;
+
+    final blade =
+        Path()
+          ..moveTo(centre.dx, centre.dy - length)
+          ..lineTo(centre.dx - 7, centre.dy + 6)
+          ..lineTo(centre.dx + 7, centre.dy + 6)
+          ..close();
+    canvas.drawPath(blade, Paint()..color = color);
+
+    final back =
+        Path()
+          ..moveTo(centre.dx, centre.dy + length * 0.52)
+          ..lineTo(centre.dx - 5, centre.dy - 4)
+          ..lineTo(centre.dx + 5, centre.dy - 4)
+          ..close();
+    canvas.drawPath(back, Paint()..color = tail);
+
+    canvas
+      ..drawCircle(centre, 11, Paint()..color = color)
+      ..drawCircle(centre, 6, Paint()..color = pivotFill);
+  }
+
+  @override
+  bool shouldRepaint(covariant _NeedlePainter old) => old.color != color;
 }

@@ -5,6 +5,7 @@ import '../constants/app_constants.dart';
 import '../../features/prayer_times/data/datasources/prayer_times_calculator_datasource.dart';
 import '../../features/prayer_times/data/datasources/prayer_times_local_datasource.dart';
 import 'azkar_data_service.dart';
+import 'nearest_city_service.dart';
 import 'notification_scheduler.dart';
 import 'prayer_method_resolver.dart';
 import '../utils/app_logger.dart';
@@ -75,6 +76,13 @@ class StartupSyncService {
 
       final date = DateTime.now().toIso8601String().split('T').first;
 
+      // A place has a name; two decimals of latitude tell nobody anything.
+      await NearestCityService.ensureLoaded();
+      final place = NearestCityService.nearest(
+        position.latitude,
+        position.longitude,
+      );
+
       // Calculated on device: no network call, works in airplane mode.
       const calculator = PrayerTimesCalculatorDataSource();
       final prayerModel = calculator.getPrayerTimes(
@@ -82,8 +90,9 @@ class StartupSyncService {
         longitude: position.longitude,
         method: method,
         location:
+            place?.label('ar') ??
             '${position.latitude.toStringAsFixed(4)}, '
-            '${position.longitude.toStringAsFixed(4)}',
+                '${position.longitude.toStringAsFixed(4)}',
       );
 
       await PrayerTimesLocalDataSource().cachePrayerTimes(

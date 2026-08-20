@@ -22,6 +22,42 @@ class AzkarProgressSnapshot {
 class AzkarProgressStore {
   AzkarProgressStore._();
 
+  /// Azkar reset twice a day: the morning set in the morning, the evening set
+  /// after noon. The key encodes both the day and the half.
+  static String sessionKey([DateTime? now]) {
+    final moment = now ?? DateTime.now();
+    final half = moment.hour < 12 ? 'AM' : 'PM';
+    return '${moment.year}-${moment.month}-${moment.day}_$half';
+  }
+
+  /// How many of a category's azkar are finished in the current session.
+  static Future<AzkarProgressSnapshot> progressFor(
+    AzkarCategory category, {
+    DateTime? now,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedSession = prefs.getString('azkar_session_${category.id}');
+
+    // A stale session means the category starts over.
+    final counts =
+        savedSession == sessionKey(now)
+            ? _countsFor(prefs, category.id)
+            : const <int, int>{};
+
+    var completed = 0;
+    for (final zekr in category.azkar) {
+      if ((counts[zekr.id] ?? 0) >= zekr.targetCount) {
+        completed++;
+      }
+    }
+
+    return AzkarProgressSnapshot(
+      category: category,
+      completedCount: completed,
+      totalCount: category.azkar.length,
+    );
+  }
+
   static Future<void> markOpened(String categoryId) async {
     if (categoryId.trim().isEmpty) {
       return;

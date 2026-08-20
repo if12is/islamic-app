@@ -26,8 +26,7 @@ dependencies:
   flutter_compass: ^0.8.1
   just_audio: ^0.10.4
   flutter_local_notifications: ^22.3.0
-  google_fonts: ^8.2.1
-  flutter_svg: ^2.1.0
+  flutter_svg: ^2.3.0
   animations: ^2.0.11
   shimmer: ^3.0.0
   timezone: ^0.11.1
@@ -44,6 +43,11 @@ dependencies:
   screenshot: ^3.0.0
   share_plus: ^13.3.0
   screen_brightness: ^2.1.11
+  home_widget: ^0.9.3
+  file_picker: ^12.0.0
+  path_provider: ^2.1.6
+  video_player: ^2.14.0
+  speech_to_text: ^7.4.0
 
 dev_dependencies:
   flutter_test:
@@ -57,6 +61,7 @@ flutter:
     - assets/data/
     - assets/images/
     - assets/icons/
+    - assets/video/
   fonts:
     - family: Cairo
       fonts:

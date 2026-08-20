@@ -30,8 +30,9 @@ class DailyAyahIndexNotifier extends Notifier<int> {
   }
 }
 
-final dailyAyahIndexProvider =
-    NotifierProvider<DailyAyahIndexNotifier, int>(DailyAyahIndexNotifier.new);
+final dailyAyahIndexProvider = NotifierProvider<DailyAyahIndexNotifier, int>(
+  DailyAyahIndexNotifier.new,
+);
 
 final dailyAyahProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final ayahNumber = ref.watch(dailyAyahIndexProvider);

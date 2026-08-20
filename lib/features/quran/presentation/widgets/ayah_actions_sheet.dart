@@ -6,7 +6,9 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../data/bookmark_store.dart';
 import '../../data/services/quran_local_service.dart';
 import '../providers/bookmarks_provider.dart';
+import '../providers/hifz_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import '../pages/recitation_page.dart';
 import 'ayah_share_card.dart';
 import 'tafsir_sheet.dart';
 
@@ -33,8 +35,8 @@ class AyahActionsSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) =>
-          AyahActionsSheet(verse: verse, onPlayFromHere: onPlayFromHere),
+      builder:
+          (_) => AyahActionsSheet(verse: verse, onPlayFromHere: onPlayFromHere),
     );
   }
 
@@ -99,27 +101,28 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
     final controller = TextEditingController(text: _bookmark?.note ?? '');
     final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(dialogContext.tr('add_note')),
-        content: TextField(
-          controller: controller,
-          maxLines: 4,
-          maxLength: 500,
-          decoration: InputDecoration(
-            hintText: dialogContext.tr('note_hint'),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text(dialogContext.tr('add_note')),
+            content: TextField(
+              controller: controller,
+              maxLines: 4,
+              maxLength: 500,
+              decoration: InputDecoration(
+                hintText: dialogContext.tr('note_hint'),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(dialogContext.tr('cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(dialogContext.tr('save')),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(dialogContext.tr('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(dialogContext.tr('save')),
-          ),
-        ],
-      ),
     );
 
     if (saved == true) {
@@ -142,33 +145,34 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
     final style = await showModalBottomSheet<AyahCardStyle>(
       context: context,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                sheetContext.tr('choose_card_style'),
-                style: Theme.of(sheetContext).textTheme.titleLarge,
-              ),
-            ),
-            for (final style in AyahCardStyle.values)
-              ListTile(
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    gradient: _previewGradient(style),
+      builder:
+          (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    sheetContext.tr('choose_card_style'),
+                    style: Theme.of(sheetContext).textTheme.titleLarge,
                   ),
                 ),
-                title: Text(sheetContext.tr('card_style_${style.name}')),
-                onTap: () => Navigator.of(sheetContext).pop(style),
-              ),
-          ],
-        ),
-      ),
+                for (final style in AyahCardStyle.values)
+                  ListTile(
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: _previewGradient(style),
+                      ),
+                    ),
+                    title: Text(sheetContext.tr('card_style_${style.name}')),
+                    onTap: () => Navigator.of(sheetContext).pop(style),
+                  ),
+              ],
+            ),
+          ),
     );
 
     if (style == null) {
@@ -269,9 +273,7 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
                     },
                   ),
                   _action(
-                    icon: isBookmarked
-                        ? Icons.bookmark
-                        : Icons.bookmark_border,
+                    icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
                     labelKey: isBookmarked ? 'remove_bookmark' : 'add_bookmark',
                     onTap: _loading ? null : _toggleBookmark,
                   ),
@@ -279,6 +281,41 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
                     icon: Icons.edit_note,
                     labelKey: 'add_note',
                     onTap: _editNote,
+                  ),
+                  _action(
+                    icon: Icons.mic_none,
+                    labelKey: 'recite_title',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder:
+                              (_) => RecitationPage(
+                                surahNumber: verse.surahNumber,
+                                fromAyah: verse.numberInSurah,
+                                toAyah: verse.numberInSurah,
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                  _action(
+                    icon: Icons.psychology_alt_outlined,
+                    labelKey: 'hifz_add_verse',
+                    onTap: () async {
+                      final message = context.tr('hifz_added');
+                      await ref
+                          .read(hifzProvider.notifier)
+                          .add(
+                            surahNumber: verse.surahNumber,
+                            fromAyah: verse.numberInSurah,
+                            toAyah: verse.numberInSurah,
+                          );
+                      if (!mounted) {
+                        return;
+                      }
+                      _toast(message);
+                    },
                   ),
                   _action(
                     icon: Icons.copy,
