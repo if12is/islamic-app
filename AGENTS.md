@@ -162,6 +162,15 @@ assembled from parts:
 Neither fetches anything at run time — an app that promises to work offline must not download its
 own icons.
 
+### Adhan sounds
+
+The three bundled recordings live **twice**: in `android/app/src/main/res/raw/` for the
+notification channels (a channel's sound is frozen when the channel is created, hence one channel
+per sound) and in `assets/audio/` so Dart can play them. A raw resource is not reachable from
+Flutter, and the in-app preview has to be. `AdhanPreviewPlayer` plays the file directly through
+`just_audio` — never by posting a notification and hoping the channel sounds it, which is silent in
+the foreground and impossible for a sound the OS owns.
+
 ### Seasonal artwork
 
 `SeasonalHeroArt` (`core/widgets/seasonal_art.dart`) is the big illustration: an arabesque rosette,

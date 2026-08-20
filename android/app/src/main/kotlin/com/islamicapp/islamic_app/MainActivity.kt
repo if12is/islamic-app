@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.provider.Settings
+import android.speech.RecognizerIntent
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -38,8 +40,41 @@ class MainActivity : AudioServiceActivity() {
             "importAudioFile" -> startImport(result)
             "pickSystemSound" -> startSystemPicker(result)
             "soundTitle" -> result.success(titleFor(call.argument<String>("uri")))
+            "openSpeechSettings" -> result.success(openSpeechSettings())
             else -> result.notImplemented()
         }
+    }
+
+    /**
+     * Open wherever this device lets someone add an offline voice pack.
+     *
+     * There is no single Android screen for it: some builds expose voice input
+     * settings, some only the Google app's own speech settings, and some
+     * neither. So the candidates are tried in order of usefulness and the
+     * first one that resolves wins; the plain Settings app is the last resort,
+     * which is still better than a dead button.
+     */
+    private fun openSpeechSettings(): Boolean {
+        val candidates = listOf(
+            Intent("com.android.settings.TTS_SETTINGS"),
+            Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
+            Intent(RecognizerIntent.ACTION_VOICE_SEARCH_HANDS_FREE),
+            Intent(Settings.ACTION_INPUT_METHOD_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS),
+        )
+
+        for (intent in candidates) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent.resolveActivity(packageManager) != null) {
+                return try {
+                    startActivity(intent)
+                    true
+                } catch (error: Exception) {
+                    continue
+                }
+            }
+        }
+        return false
     }
 
     private fun startImport(result: MethodChannel.Result) {

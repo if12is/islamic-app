@@ -462,6 +462,7 @@ class _QuranPageState extends State<QuranPage> {
                 _buildSearchBar(),
                 const SizedBox(height: AppSpacing.lg),
                 const LastReadCard(),
+                const SizedBox(height: AppSpacing.md),
                 const KhatmahCard(),
                 const SizedBox(height: AppSpacing.lg),
                 _buildSurahIndexHeader(),

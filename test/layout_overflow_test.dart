@@ -81,6 +81,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the arc gauge shows the remaining time', (tester) async {
+      await pumpTight(
+        tester,
+        host(
+          const Center(
+            child: ArcGauge(
+              progress: 0.5,
+              headline: '٥:٤٨',
+              caption: 'المغرب',
+              remaining: '٤٢ د',
+              startLabel: 'العصر',
+              endLabel: 'المغرب',
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      // The gap between the two feet is where it belongs, and it has to be
+      // on screen — it was wired up once and silently never rendered.
+      expect(find.text('٤٢ د'), findsOneWidget);
+    });
+
     testWidgets('the arc gauge, in both directions', (tester) async {
       for (final direction in TextDirection.values) {
         await pumpTight(

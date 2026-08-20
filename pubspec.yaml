@@ -61,6 +61,7 @@ flutter:
     - assets/data/
     - assets/images/
     - assets/icons/
+    - assets/audio/
     - assets/video/
   fonts:
     - family: Cairo

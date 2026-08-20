@@ -182,6 +182,44 @@ class ArcGauge extends StatelessWidget {
                 ),
               ),
 
+              // The gap between the two feet was dead space, and the one
+              // number people came for was not on screen. It goes there.
+              if (remaining != null && remaining!.isNotEmpty)
+                Positioned(
+                  bottom: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md + 2,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tokens.gold.withValues(alpha: 0.14),
+                      borderRadius: AppRadii.pillAll,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.hourglass_bottom_rounded,
+                          size: 13,
+                          color:
+                              tokens.isDark ? tokens.goldBright : tokens.gold,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          remaining!,
+                          style: AppTextStyles.display(
+                            context,
+                            fontSize: 14,
+                            color:
+                                tokens.isDark ? tokens.goldBright : tokens.gold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               // The two feet sit under the ends of the arc, in reading order:
               // what has passed first, what is coming last.
               PositionedDirectional(
@@ -321,6 +359,14 @@ class _ArcPainter extends CustomPainter {
       return;
     }
 
+    // A soft foot where the fill begins, so it grows out of the track rather
+    // than appearing as a cut half-circle.
+    canvas.drawCircle(
+      Offset(centre.dx + radius * (rightToLeft ? 1 : -1), centre.dy),
+      stroke / 2,
+      Paint()..color = Color.lerp(track, from, 0.55)!,
+    );
+
     // In Arabic the sweep runs backwards from the right-hand foot.
     final sweep = math.pi * progress * (rightToLeft ? -1 : 1);
     final start = rightToLeft ? 2 * math.pi : math.pi;
@@ -344,10 +390,14 @@ class _ArcPainter extends CustomPainter {
         sweep,
         false,
         Paint()
-          ..shader = SweepGradient(
-            startAngle: math.pi,
-            endAngle: 2 * math.pi,
-            colors: rightToLeft ? [to, from] : [from, to],
+          // Linear across the arc's box, not swept: a sweep gradient measured
+          // in absolute angles leaves the right-to-left arc outside its range,
+          // so it clamps to one colour and shows a hard seam at the start.
+          ..shader = LinearGradient(
+            begin: rightToLeft ? Alignment.centerRight : Alignment.centerLeft,
+            end: rightToLeft ? Alignment.centerLeft : Alignment.centerRight,
+            colors: [from, to, head],
+            stops: const [0.0, 0.62, 1.0],
           ).createShader(rect)
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke

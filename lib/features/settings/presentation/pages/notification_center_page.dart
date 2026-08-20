@@ -5,6 +5,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/models/adhan_sound.dart';
 import '../../../../core/models/notification_preferences.dart';
+import '../../../../core/services/adhan_preview_player.dart';
 import '../../../../core/services/adhan_sound_service.dart';
 import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/notification_service.dart';
@@ -468,7 +469,15 @@ class _NotificationCenterPageState
                           ? null
                           : IconButton(
                             tooltip: context.tr('preview_sound'),
-                            icon: const Icon(Icons.play_circle_outline),
+                            icon: Icon(
+                              AdhanPreviewPlayer.playingId == sound.id
+                                  ? Icons.stop_circle_outlined
+                                  : Icons.play_circle_outline,
+                              color:
+                                  AdhanPreviewPlayer.playingId == sound.id
+                                      ? Theme.of(context).colorScheme.primary
+                                      : null,
+                            ),
                             onPressed:
                                 () => _previewSound(
                                   AdhanSoundSelection(id: sound.id),
@@ -487,7 +496,15 @@ class _NotificationCenterPageState
                   subtitle: Text(context.tr('adhan_sound_custom_desc')),
                   secondary: IconButton(
                     tooltip: context.tr('preview_sound'),
-                    icon: const Icon(Icons.play_circle_outline),
+                    icon: Icon(
+                      AdhanPreviewPlayer.playingId == selection.id
+                          ? Icons.stop_circle_outlined
+                          : Icons.play_circle_outline,
+                      color:
+                          AdhanPreviewPlayer.playingId == selection.id
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                    ),
                     onPressed: () => _previewSound(selection),
                   ),
                 ),
@@ -556,14 +573,23 @@ class _NotificationCenterPageState
 
   /// Fire a one-off notification on that sound's channel — the only honest
   /// preview, because it is exactly what the adhan will sound like.
+  /// Play it out loud, here and now.
+  ///
+  /// This used to post a notification and rely on the channel's sound. That
+  /// silently does nothing in the foreground, and nothing at all for a sound
+  /// the OS owns — so the file is played directly instead.
   Future<void> _previewSound(AdhanSoundSelection selection) async {
-    await NotificationService.showNow(
-      title: context.tr('adhan_notifications'),
-      body: context.tr('preview_sound'),
-      kind: NotificationKind.prayer,
-      mode: PrayerAlertMode.adhan,
-      adhanSound: selection,
-    );
+    final played = await AdhanPreviewPlayer.toggle(selection);
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+
+    if (!played) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('preview_unavailable'))),
+      );
+    }
   }
 
   Widget _timingCard(NotificationPreferences prefs) {

@@ -7,6 +7,7 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/recitation_service.dart';
 import '../../domain/entities/recitation_match.dart';
+import '../widgets/recitation_locale_sheet.dart';
 
 /// Recite out loud and see, word by word, what came out.
 ///
@@ -104,6 +105,20 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
     setState(() => _listening = true);
   }
 
+  /// Pick, switch, or download a voice pack.
+  Future<void> _openLocalePicker() async {
+    await _service.stop();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _listening = false);
+
+    final changed = await RecitationLocaleSheet.show(context, _service);
+    if (changed == true && mounted) {
+      setState(() => _errorKey = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -115,6 +130,13 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
         context.tr('recite_title'),
         style: AppTextStyles.display(context, fontSize: 18),
       ),
+      actions: [
+        IconButton(
+          tooltip: context.tr('recite_voice_pack'),
+          icon: const Icon(Icons.record_voice_over_outlined, size: 20),
+          onPressed: _openLocalePicker,
+        ),
+      ],
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _toggleListening,
@@ -189,6 +211,12 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
               ),
             ),
           ),
+          // Naming the problem is not enough when the fix is two taps away.
+          if (_errorKey == 'recite_no_arabic')
+            TextButton(
+              onPressed: _openLocalePicker,
+              child: Text(context.tr('recite_download_pack')),
+            ),
         ],
       ),
     );

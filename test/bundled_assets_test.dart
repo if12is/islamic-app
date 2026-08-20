@@ -15,6 +15,9 @@ void main() {
     'assets/video/eid_adha_intro.mp4': 2000000,
     'assets/data/cities.json': 300000,
     'assets/data/azkar.json': 100000,
+    'assets/audio/adhan_rifat.mp3': 300000,
+    'assets/audio/adhan_mustafa_ismail.mp3': 600000,
+    'assets/audio/adhan_fajr_abu_rahiq.mp3': 2000000,
   };
 
   for (final entry in minimumBytes.entries) {
