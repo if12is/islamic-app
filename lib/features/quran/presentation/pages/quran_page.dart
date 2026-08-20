@@ -17,6 +17,7 @@ import '../providers/quran_audio_provider.dart';
 import 'downloads_page.dart';
 import '../widgets/khatmah_card.dart';
 import '../widgets/last_read_card.dart';
+import 'recitation_page.dart';
 import 'surah_reader_page.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -500,6 +501,15 @@ class _QuranPageState extends State<QuranPage> {
   Widget _buildSearchBar() {
     return GlassSearchField(
       controller: _searchController,
+      // Someone who half-remembers a verse cannot type it. The mic goes where
+      // they are already looking for it.
+      voiceTooltip: context.tr('recite_mode_identify'),
+      onVoiceSearch:
+          () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const RecitationPage.identify(),
+            ),
+          ),
       hintText: switch (_mode) {
         QuranIndexMode.surahs => context.tr('search_surah_or_number_hint'),
         QuranIndexMode.juz => context.tr('search_juz_hint'),

@@ -27,6 +27,7 @@ import '../../../prayer_times/presentation/pages/qibla_page.dart';
 import '../../../prayer_times/presentation/providers/prayer_times_providers.dart';
 import '../../../quran/data/services/quran_local_service.dart';
 import '../../../quran/presentation/pages/quran_page.dart';
+import '../../../quran/presentation/pages/recitation_page.dart';
 import '../../../quran/presentation/pages/surah_reader_page.dart';
 import '../../../quran/presentation/providers/bookmarks_provider.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
@@ -543,6 +544,16 @@ class _DashboardRail extends ConsumerWidget {
           icon: Icons.radio_button_checked,
           label: context.tr('tasbeeh_counter'),
           onTap: () => onOpenTab(2),
+        ),
+        StoryItem(
+          icon: Icons.mic_none,
+          label: context.tr('recite_mode_identify'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const RecitationPage.identify(),
+                ),
+              ),
         ),
         StoryItem(
           icon: Icons.calendar_month_outlined,

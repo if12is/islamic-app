@@ -83,12 +83,18 @@ class GlassSearchField extends StatelessWidget {
     required this.hintText,
     this.onChanged,
     this.onClear,
+    this.onVoiceSearch,
+    this.voiceTooltip,
   });
 
   final TextEditingController controller;
   final String hintText;
   final ValueChanged<String>? onChanged;
   final VoidCallback? onClear;
+
+  /// Shown as a mic at the end of the field when given.
+  final VoidCallback? onVoiceSearch;
+  final String? voiceTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -106,17 +112,26 @@ class GlassSearchField extends StatelessWidget {
           hintText: hintText,
           hintStyle: TextStyle(color: tokens.inkFaint, fontSize: 14),
           prefixIcon: Icon(Icons.search, color: tokens.inkFaint, size: 20),
-          suffixIcon:
-              controller.text.isEmpty
-                  ? null
-                  : IconButton(
-                    icon: Icon(Icons.close, color: tokens.inkFaint, size: 18),
-                    onPressed: () {
-                      controller.clear();
-                      onChanged?.call('');
-                      onClear?.call();
-                    },
-                  ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (controller.text.isNotEmpty)
+                IconButton(
+                  icon: Icon(Icons.close, color: tokens.inkFaint, size: 18),
+                  onPressed: () {
+                    controller.clear();
+                    onChanged?.call('');
+                    onClear?.call();
+                  },
+                ),
+              if (onVoiceSearch != null)
+                IconButton(
+                  tooltip: voiceTooltip,
+                  icon: Icon(Icons.mic_none, color: tokens.brand, size: 20),
+                  onPressed: onVoiceSearch,
+                ),
+            ],
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,

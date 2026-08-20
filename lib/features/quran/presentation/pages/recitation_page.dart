@@ -25,11 +25,23 @@ class RecitationPage extends ConsumerStatefulWidget {
     required this.surahNumber,
     required this.fromAyah,
     required this.toAyah,
-  });
+  }) : startInIdentifyMode = false;
+
+  /// Open straight into "which verse is this?", with no passage in mind.
+  ///
+  /// This is the door from the search field: someone who half-remembers a
+  /// verse has nothing to check themselves against, so asking them to pick a
+  /// surah first would defeat the point.
+  const RecitationPage.identify({super.key})
+    : surahNumber = 1,
+      fromAyah = 1,
+      toAyah = 1,
+      startInIdentifyMode = true;
 
   final int surahNumber;
   final int fromAyah;
   final int toAyah;
+  final bool startInIdentifyMode;
 
   @override
   ConsumerState<RecitationPage> createState() => _RecitationPageState();
@@ -57,6 +69,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   @override
   void initState() {
     super.initState();
+    _identify = widget.startInIdentifyMode;
     _result = RecitationMatcher.compare(expected: _expected, heard: '');
   }
 
@@ -158,12 +171,13 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: [
-          Text(
-            '${context.tr('surah_word')} ${surah.nameAr} · '
-            '${widget.fromAyah}-${widget.toAyah}',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.display(context, fontSize: 17),
-          ),
+          if (!widget.startInIdentifyMode)
+            Text(
+              '${context.tr('surah_word')} ${surah.nameAr} · '
+              '${widget.fromAyah}-${widget.toAyah}',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.display(context, fontSize: 17),
+            ),
           const SizedBox(height: 6),
           Text(
             context.tr('recite_experimental'),
@@ -171,29 +185,30 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
             style: AppTextStyles.caption(context),
           ),
           const SizedBox(height: 16),
-          Center(
-            child: PillSelector<bool>(
-              compact: true,
-              scrollable: false,
-              value: _identify,
-              onChanged:
-                  (value) => setState(() {
-                    _identify = value;
-                    _matches = const [];
-                    _heard = '';
-                  }),
-              options: [
-                PillOption(
-                  value: false,
-                  label: context.tr('recite_mode_check'),
-                ),
-                PillOption(
-                  value: true,
-                  label: context.tr('recite_mode_identify'),
-                ),
-              ],
+          if (!widget.startInIdentifyMode)
+            Center(
+              child: PillSelector<bool>(
+                compact: true,
+                scrollable: false,
+                value: _identify,
+                onChanged:
+                    (value) => setState(() {
+                      _identify = value;
+                      _matches = const [];
+                      _heard = '';
+                    }),
+                options: [
+                  PillOption(
+                    value: false,
+                    label: context.tr('recite_mode_check'),
+                  ),
+                  PillOption(
+                    value: true,
+                    label: context.tr('recite_mode_identify'),
+                  ),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 16),
           if (_errorKey != null) _error(context, colorScheme),
           if (_identify) ...[
