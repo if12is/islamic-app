@@ -78,6 +78,7 @@ class AppLocalizations {
           'The endless count is kept forever and never resets on its own. Clearing it cannot be undone.',
       'preview_unavailable':
           'This sound belongs to the system and cannot be played here — it will still sound at prayer time.',
+      'preview_failed': 'Could not play the sound. Try again.',
       'recite_voice_pack': 'Voice pack',
       'recite_voice_pack_desc':
           'Which installed pack listens to your recitation. Any Arabic pack works — pick whichever hears you best.',
@@ -798,6 +799,7 @@ class AppLocalizations {
           'العدّاد المطلق محفوظ لك دائماً ولا يُصفَّر من تلقاء نفسه. التصفير لا رجعة فيه.',
       'preview_unavailable':
           'هذا الصوت مملوك للنظام ولا يمكن تشغيله هنا — لكنه سيُؤذَّن به في وقته.',
+      'preview_failed': 'تعذّر تشغيل الصوت. حاول مرة أخرى.',
       'recite_voice_pack': 'حزمة التعرّف',
       'recite_voice_pack_desc':
           'أي حزمة مثبَّتة تستمع لتلاوتك. أي حزمة عربية تعمل — اختر التي تسمعك أفضل.',

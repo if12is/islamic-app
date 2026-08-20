@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -38,7 +40,21 @@ class _NotificationCenterPageState
   @override
   void initState() {
     super.initState();
+    AdhanPreviewPlayer.playing.addListener(_onPreviewChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _refreshStatus());
+  }
+
+  void _onPreviewChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    AdhanPreviewPlayer.playing.removeListener(_onPreviewChanged);
+    unawaited(AdhanPreviewPlayer.stop());
+    super.dispose();
   }
 
   Future<void> _refreshStatus() async {
@@ -579,16 +595,18 @@ class _NotificationCenterPageState
   /// silently does nothing in the foreground, and nothing at all for a sound
   /// the OS owns — so the file is played directly instead.
   Future<void> _previewSound(AdhanSoundSelection selection) async {
-    final played = await AdhanPreviewPlayer.toggle(selection);
+    final result = await AdhanPreviewPlayer.toggle(selection);
     if (!mounted) {
       return;
     }
-    setState(() {});
 
-    if (!played) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.tr('preview_unavailable'))),
-      );
+    final message = switch (result) {
+      AdhanPreviewResult.unavailable => context.tr('preview_unavailable'),
+      AdhanPreviewResult.failed => context.tr('preview_failed'),
+      AdhanPreviewResult.started || AdhanPreviewResult.stopped => null,
+    };
+    if (message != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 

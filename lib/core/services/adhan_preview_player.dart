@@ -1,7 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 import '../models/adhan_sound.dart';
 import '../utils/app_logger.dart';
+
+/// Outcome of tapping preview, so the screen can tell silence from a real miss.
+enum AdhanPreviewResult { started, stopped, unavailable, failed }
 
 /// Plays an adhan out loud, right now, so it can be heard before it is chosen.
 ///
@@ -10,15 +17,18 @@ import '../utils/app_logger.dart';
 /// the channel is created, foreground notifications are often silenced by the
 /// system, and on the web there is no channel at all. Picking a call to prayer
 /// you have never heard is not a choice — so the preview plays the file itself.
+///
+/// `just_audio_background` is initialized for Quran playback, so every source
+/// here carries a [MediaItem] or the plugin throws and the screen used to
+/// pretend the file belonged to the OS.
 class AdhanPreviewPlayer {
   AdhanPreviewPlayer._();
 
   static final AudioPlayer _player = AudioPlayer();
+  static final ValueNotifier<String?> playing = ValueNotifier(null);
+  static StreamSubscription<PlayerState>? _completionSub;
 
-  /// The id currently sounding, so the button can show stop instead of play.
-  static String? _playingId;
-
-  static String? get playingId => _playingId;
+  static String? get playingId => playing.value;
 
   /// Bundled recordings, as Flutter assets. They are the same files Android
   /// notification channels use from `res/raw`, kept in both places because a
@@ -32,54 +42,63 @@ class AdhanPreviewPlayer {
   static Stream<PlayerState> get stateStream => _player.playerStateStream;
 
   /// Start [selection], or stop it if it is the one already playing.
-  ///
-  /// Returns false when there is nothing to play — the system default, for
-  /// instance, which belongs to the OS and cannot be read back.
-  static Future<bool> toggle(AdhanSoundSelection selection) async {
-    if (_playingId == selection.id) {
+  static Future<AdhanPreviewResult> toggle(
+    AdhanSoundSelection selection,
+  ) async {
+    if (playing.value == selection.id) {
       await stop();
-      return true;
+      return AdhanPreviewResult.stopped;
     }
 
     final source = _sourceFor(selection);
     if (source == null) {
-      return false;
+      return AdhanPreviewResult.unavailable;
     }
 
     try {
       await _player.stop();
-      if (source.startsWith('assets/')) {
-        await _player.setAsset(source);
-      } else {
-        await _player.setUrl(source);
-      }
-      _playingId = selection.id;
+      await _player.setAudioSource(_audioSource(selection, source));
+      playing.value = selection.id;
+      _listenForCompletion();
       await _player.play();
-
-      // Clear the flag when it finishes on its own.
-      _player.playerStateStream
-          .firstWhere(
-            (state) => state.processingState == ProcessingState.completed,
-          )
-          .then((_) => _playingId = null);
-
-      return true;
+      return AdhanPreviewResult.started;
     } catch (e, stack) {
       AppLogger.error('Could not preview the adhan', e, stack);
-      _playingId = null;
-      return false;
+      playing.value = null;
+      return AdhanPreviewResult.failed;
     }
   }
 
   static Future<void> stop() async {
-    _playingId = null;
+    playing.value = null;
     await _player.stop();
+  }
+
+  static void _listenForCompletion() {
+    _completionSub?.cancel();
+    _completionSub = _player.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        playing.value = null;
+      }
+    });
+  }
+
+  static AudioSource _audioSource(AdhanSoundSelection selection, String source) {
+    final tag = MediaItem(
+      id: 'adhan_preview_${selection.id}',
+      album: 'Adhan',
+      title: selection.title ?? selection.id,
+      artist: 'الفجر',
+    );
+    if (source.startsWith('assets/')) {
+      return AudioSource.asset(source, tag: tag);
+    }
+    return AudioSource.uri(Uri.parse(source), tag: tag);
   }
 
   /// Where the audio for a selection lives, or null if it cannot be played.
   static String? _sourceFor(AdhanSoundSelection selection) {
     if (selection.uri != null && selection.uri!.isNotEmpty) {
-      // An imported file or a system sound: a content:// or file:// URI.
       return selection.uri;
     }
     return assets[selection.id];
