@@ -39,11 +39,18 @@ Future<void> _bootstrap() async {
     try {
       await JustAudioBackground.init(
         androidNotificationChannelId: 'com.islamicapp.islamic_app.audio',
-        androidNotificationChannelName: 'Quran playback',
-        androidNotificationOngoing: true,
-        androidStopForegroundOnPause: true,
-        androidNotificationIcon: 'mipmap/launcher_icon',
-      ).timeout(const Duration(seconds: 5));
+        androidNotificationChannelName: 'تشغيل القرآن',
+        androidNotificationChannelDescription:
+            'التلاوة من الجزيرة وشاشة القفل',
+        androidNotificationOngoing: false,
+        androidStopForegroundOnPause: false,
+        androidNotificationIcon: 'drawable/ic_stat_quran',
+        androidShowNotificationBadge: true,
+        notificationColor: const Color(0xFF003527),
+        preloadArtwork: true,
+        artDownscaleWidth: 256,
+        artDownscaleHeight: 256,
+      ).timeout(const Duration(seconds: 20));
     } catch (e, stack) {
       AppLogger.error('Background audio init failed', e, stack);
     }

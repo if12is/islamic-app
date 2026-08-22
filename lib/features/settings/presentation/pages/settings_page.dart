@@ -9,6 +9,9 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/models/notification_preferences.dart';
 import '../../../../core/services/backup_service.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/update_service.dart';
+import '../../../../shared/providers/app_update_provider.dart';
+import '../widgets/app_update_dialog.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../prayer_times/presentation/pages/prayer_settings_page.dart';
 import 'notification_center_page.dart';
@@ -404,6 +407,19 @@ class SettingsPage extends ConsumerWidget {
                           title: context.tr('backup'),
                           subtitle: context.tr('backup_desc'),
                           onTap: () => _openBackupSheet(context),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.system_update_alt_outlined,
+                          color: accentColor,
+                          title: context.tr('app_update'),
+                          subtitle: _updateSubtitle(context, ref),
+                          onTap:
+                              () => AppUpdateDialog.present(
+                                context,
+                                ref,
+                                forceCheck: true,
+                              ),
                         ),
                       ],
                     ),
@@ -896,6 +912,38 @@ class SettingsPage extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.tr('profile_saved'))));
+    }
+  }
+
+  String _updateSubtitle(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(appUpdateProvider);
+    final language = Localizations.localeOf(context).languageCode;
+    switch (state.status) {
+      case AppUpdateStatus.checking:
+        return context.tr('app_update_checking');
+      case AppUpdateStatus.available:
+        return AppLocalizations.translate(
+          language,
+          'app_update_available',
+          replacements: {
+            'version': state.release?.label ?? '',
+            'size': UpdateService.formatBytes(state.release?.apkBytes ?? 0),
+          },
+        );
+      case AppUpdateStatus.downloading:
+        return AppLocalizations.translate(
+          language,
+          'app_update_downloading',
+          replacements: {'percent': '${state.progress?.percent ?? 0}'},
+        );
+      case AppUpdateStatus.installing:
+        return context.tr('app_update_installing');
+      case AppUpdateStatus.failed:
+        return context.tr('app_update_failed');
+      case AppUpdateStatus.current:
+        return context.tr('app_update_current');
+      case AppUpdateStatus.idle:
+        return context.tr('app_update_desc');
     }
   }
 

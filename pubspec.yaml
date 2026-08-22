@@ -74,13 +74,6 @@ flutter:
     - family: Cairo
       fonts:
         - asset: assets/fonts/Cairo-Variable.ttf
-          weight: 300
-        - asset: assets/fonts/Cairo-Variable.ttf
-          weight: 400
-        - asset: assets/fonts/Cairo-Variable.ttf
-          weight: 600
-        - asset: assets/fonts/Cairo-Variable.ttf
-          weight: 700
     # Quran text faces, bundled so the reader works with no network (OFL 1.1).
     - family: AmiriQuran
       fonts:
@@ -92,13 +85,6 @@ flutter:
     - family: ReemKufi
       fonts:
         - asset: assets/fonts/ReemKufi.ttf
-          weight: 400
-        - asset: assets/fonts/ReemKufi.ttf
-          weight: 500
-        - asset: assets/fonts/ReemKufi.ttf
-          weight: 600
-        - asset: assets/fonts/ReemKufi.ttf
-          weight: 700
 
 flutter_launcher_icons:
   android: "launcher_icon"

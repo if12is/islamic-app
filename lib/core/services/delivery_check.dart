@@ -131,6 +131,18 @@ class DeliveryCheck {
     );
   }
 
+  /// CPU ABIs this phone accepts, most preferred first (e.g. arm64-v8a).
+  static Future<List<String>> deviceAbis() async {
+    final raw = await _invoke<List<dynamic>>('deviceAbis');
+    if (raw == null) {
+      return const [];
+    }
+    return raw
+        .map((entry) => entry.toString())
+        .where((abi) => abi.isNotEmpty)
+        .toList();
+  }
+
   static Future<bool> requestBatteryExemption() async =>
       await _invoke<bool>('requestIgnoreBatteryOptimizations') ?? false;
 

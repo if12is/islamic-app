@@ -31,6 +31,8 @@ import '../../../quran/presentation/pages/recitation_page.dart';
 import '../../../quran/presentation/pages/surah_reader_page.dart';
 import '../../../quran/presentation/providers/bookmarks_provider.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../settings/presentation/widgets/app_update_dialog.dart';
+import '../../../../shared/providers/app_update_provider.dart';
 import '../providers/ayah_provider.dart';
 import '../providers/daily_wird_provider.dart';
 import '../widgets/daily_wird_card.dart';
@@ -59,6 +61,24 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final Set<int> _openedTabs = {0};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_offerUpdateIfDue());
+    });
+  }
+
+  Future<void> _offerUpdateIfDue() async {
+    await ref.read(appUpdateProvider.notifier).checkIfDue();
+    if (!mounted) {
+      return;
+    }
+    if (ref.read(appUpdateProvider).status == AppUpdateStatus.available) {
+      await AppUpdateDialog.present(context, ref);
+    }
+  }
 
   void _onTabTapped(int index) {
     setState(() {

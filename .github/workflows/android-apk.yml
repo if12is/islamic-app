@@ -106,15 +106,15 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build apk --release --obfuscate --split-debug-info=build/app/outputs/symbols
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --obfuscate --split-debug-info=build/app/outputs/symbols
 
       - name: Verify the APK is signed with the expected key
         if: steps.signing.outputs.signed == 'true'
         run: |
           set -euo pipefail
           APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name apksigner | sort -V | tail -1)"
-          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk \
-            | tee signer.txt
+          SAMPLE="$(ls build/app/outputs/flutter-apk/app-*-release.apk | head -1)"
+          "$APKSIGNER" verify --print-certs "$SAMPLE" | tee signer.txt
           # A digest that changes between releases is exactly the failure this
           # whole step exists to catch, so it is printed into the build log.
           grep -i 'SHA-256 digest' signer.txt || true
@@ -127,21 +127,23 @@ jobs:
           # "+" is legal in a filename but ugly in a download URL.
           FILE="${{ steps.version.outputs.name }}-build${{ steps.version.outputs.code }}"
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk "dist/islamic-app-${FILE}.apk"
-          cp build/app/outputs/flutter-apk/app-release.apk dist/islamic-app-latest.apk
+          shopt -s nullglob
+          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
+            abi="${apk##*/app-}"
+            abi="${abi%-release.apk}"
+            cp "$apk" "dist/islamic-app-${FILE}-${abi}.apk"
+            cp "$apk" "dist/islamic-app-latest-${abi}.apk"
+          done
+          ls -lh dist
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "file=${FILE}" >> "$GITHUB_OUTPUT"
-          echo "apk_versioned=dist/islamic-app-${FILE}.apk" >> "$GITHUB_OUTPUT"
-          echo "apk_latest=dist/islamic-app-latest.apk" >> "$GITHUB_OUTPUT"
-          echo "Prepared islamic-app-${FILE}.apk"
+          echo "Prepared per-ABI APKs for ${FILE}"
 
       - name: Upload APK (Actions artifact)
         uses: actions/upload-artifact@v4
         with:
           name: islamic-app-${{ steps.meta.outputs.file }}
-          path: |
-            dist/islamic-app-${{ steps.meta.outputs.file }}.apk
-            dist/islamic-app-latest.apk
+          path: dist/*.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -180,8 +182,7 @@ jobs:
           git push origin :refs/tags/apk-latest || true
 
           gh release create apk-latest \
-            "${{ steps.meta.outputs.apk_latest }}" \
-            "${{ steps.meta.outputs.apk_versioned }}" \
+            dist/*.apk \
             --title "Latest development APK (${{ steps.meta.outputs.version }})" \
             --notes "$(cat <<EOF
           Rolling development APK. This release is replaced on every push to \`master\`.
@@ -191,7 +192,8 @@ jobs:
           - Commit: \`${{ github.sha }}\`
           - Branch: \`${{ github.ref_name }}\`
 
-          Install: download \`islamic-app-latest.apk\` on an Android device (debug-signed for testing).
+          Install the APK that matches the phone CPU (Honor 600 is \`arm64-v8a\`).
+          The in-app updater downloads that file only — not the old 150 MB universal package.
 
           To keep a version forever, create a versioned release (see AGENTS.md).
           EOF
@@ -213,12 +215,12 @@ jobs:
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; uploading APK onto it."
-            gh release upload "$TAG" "${{ steps.meta.outputs.apk_versioned }}" --clobber
+            gh release upload "$TAG" dist/islamic-app-${{ steps.meta.outputs.file }}-*.apk --clobber
             exit 0
           fi
 
           gh release create "$TAG" \
-            "${{ steps.meta.outputs.apk_versioned }}" \
+            dist/islamic-app-${{ steps.meta.outputs.file }}-*.apk \
             --title "Islamic App ${VERSION}" \
             --notes "$(cat <<EOF
           Versioned release \`${VERSION}\`. This release is kept; it is not deleted by later pushes.

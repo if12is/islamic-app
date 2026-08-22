@@ -9,6 +9,7 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/custom_loader.dart';
+import '../../../../core/services/quran_media.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
@@ -23,7 +24,6 @@ import '../widgets/reciter_picker_sheet.dart';
 import 'recitation_page.dart';
 import 'surah_reader_page.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 
 /// What the index is listing right now.
 enum QuranIndexMode { surahs, juz, hizb, pages, sajdah }
@@ -438,10 +438,10 @@ class _QuranPageState extends ConsumerState<QuranPage> {
         _selectedReciterCode,
         surahId,
       );
+      await QuranMedia.prepareSession();
       final reciter = QuranReciter.byCode(_selectedReciterCode);
-      final tag = MediaItem(
+      final tag = await QuranMedia.item(
         id: 'surah_${surahId}_$_selectedReciterCode',
-        album: 'القرآن الكريم',
         title: 'سورة $surahName',
         artist: reciter.nameAr,
       );

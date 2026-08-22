@@ -1,6 +1,9 @@
 package com.islamicapp.islamic_app
 
 import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -9,6 +12,7 @@ import android.os.PowerManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -31,6 +35,13 @@ class MainActivity : AudioServiceActivity() {
 
     private var pendingResult: MethodChannel.Result? = null
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Honor Magic Capsule ignores the LOW-importance channel audio_service
+        // would create. Pre-create it louder so the plugin reuses ours.
+        ensureMediaNotificationChannel()
+        super.onCreate(savedInstanceState)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -52,6 +63,7 @@ class MainActivity : AudioServiceActivity() {
                 result.success(openAppNotificationSettings())
             "openAutostartSettings" -> result.success(openAutostartSettings())
             "deviceManufacturer" -> result.success(Build.MANUFACTURER ?: "")
+            "deviceAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
             else -> result.notImplemented()
         }
     }
@@ -96,6 +108,34 @@ class MainActivity : AudioServiceActivity() {
      * alarms for apps they consider idle. Nothing in the app can override that;
      * it can only ask, and then say plainly whether the answer was yes.
      */
+    /**
+     * Honor's Magic Capsule (and several other OEM islands) only promote a
+     * media session whose notification channel is DEFAULT or higher.
+     * `audio_service` hard-codes IMPORTANCE_LOW, but it reuses a channel that
+     * already exists — so we create the same id first, louder, silent.
+     */
+    private fun ensureMediaNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = getSystemService(NotificationManager::class.java) ?: return
+        val id = MEDIA_CHANNEL_ID
+        val existing = manager.getNotificationChannel(id)
+        if (existing != null && existing.importance < NotificationManager.IMPORTANCE_DEFAULT) {
+            manager.deleteNotificationChannel(id)
+        }
+        if (manager.getNotificationChannel(id) != null) return
+        val channel = NotificationChannel(
+            id,
+            getString(R.string.quran_playback_channel),
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        channel.description = getString(R.string.quran_playback_channel_desc)
+        channel.setShowBadge(true)
+        channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        channel.setSound(null, null)
+        channel.enableVibration(false)
+        manager.createNotificationChannel(channel)
+    }
+
     private fun isIgnoringBatteryOptimizations(): Boolean {
         val power = getSystemService(Context.POWER_SERVICE) as? PowerManager
             ?: return false
@@ -388,6 +428,7 @@ class MainActivity : AudioServiceActivity() {
 
     companion object {
         private const val CHANNEL = "islamic_app/adhan_sound"
+        private const val MEDIA_CHANNEL_ID = "com.islamicapp.islamic_app.audio"
         private const val REQUEST_IMPORT = 4201
         private const val REQUEST_PICK = 4202
     }

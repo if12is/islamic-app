@@ -69,6 +69,19 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // sherpa_onnx ships ~25 MB of ONNX per CPU. x86 / x86_64 are only
+            // for emulators and were the jump from ~65 MB to ~150 MB when the
+            // four ABIs were packed into one APK. Phones stay on arm*.
+            ndk {
+                abiFilters.clear()
+                abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

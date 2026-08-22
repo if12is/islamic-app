@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 import '../../../../core/services/app_audio.dart';
+import '../../../../core/services/quran_media.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/quran_local_service.dart';
 
@@ -329,7 +330,10 @@ class QuranAudioController extends Notifier<QuranAudioState> {
         reciterCode: reciterCode,
       );
 
+      await QuranMedia.prepareSession();
+      final art = await QuranMedia.coverUri();
       final verseCode = QuranReciter.verseAudioCode(reciterCode);
+      final reciterName = QuranReciter.byCode(verseCode).nameAr;
       final sources = [
         for (final verse in verses)
           AudioSource.uri(
@@ -344,7 +348,8 @@ class QuranAudioController extends Notifier<QuranAudioState> {
               id: '${verseCode}_${verse.key}',
               album: verse.surahNameAr,
               title: 'الآية ${verse.numberInSurah}',
-              artist: QuranReciter.byCode(verseCode).nameAr,
+              artist: reciterName,
+              artUri: art,
             ),
           ),
       ];
