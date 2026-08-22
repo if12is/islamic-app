@@ -13,8 +13,29 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# Homebrew's gh / Java are often missing from a non-login PATH.
+export PATH="/opt/homebrew/opt/openjdk@17/bin:/opt/homebrew/opt/openjdk/bin:/opt/homebrew/bin:/usr/local/bin:${PATH}"
+
+if [ -z "${JAVA_HOME:-}" ]; then
+  for home in \
+    /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
+    /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
+  do
+    if [ -x "${home}/bin/keytool" ]; then
+      export JAVA_HOME="$home"
+      break
+    fi
+  done
+fi
+
+if ! command -v keytool >/dev/null; then
+  echo "Java is not installed. On this Mac: brew install openjdk@17"
+  exit 1
+fi
+
 if ! command -v gh >/dev/null; then
-  echo "gh is not installed. https://cli.github.com/"
+  echo "gh is not installed. On this Mac: brew install gh"
+  echo "Then: gh auth login"
   exit 1
 fi
 
@@ -28,6 +49,8 @@ echo "Writing signing secrets to ${REPO}"
 
 STORE_PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 28)"
 KEYSTORE="$(mktemp /tmp/islamic-app-XXXXXX.jks)"
+# keytool refuses an existing empty file that mktemp just created.
+rm -f "$KEYSTORE"
 cleanup() { rm -f "$KEYSTORE"; }
 trap cleanup EXIT
 
