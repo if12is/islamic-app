@@ -6,6 +6,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 
 import '../models/adhan_sound.dart';
 import '../utils/app_logger.dart';
+import 'app_audio.dart';
 
 /// Outcome of tapping preview, so the screen can tell silence from a real miss.
 enum AdhanPreviewResult { started, stopped, unavailable, failed }
@@ -21,10 +22,14 @@ enum AdhanPreviewResult { started, stopped, unavailable, failed }
 /// `just_audio_background` is initialized for Quran playback, so every source
 /// here carries a [MediaItem] or the plugin throws and the screen used to
 /// pretend the file belonged to the OS.
+///
+/// It runs on [AppAudio.player], the app's only player. It used to hold one of
+/// its own, and since the background plugin supports exactly one, previewing an
+/// adhan could take the notification hostage and leave the Quran silent.
 class AdhanPreviewPlayer {
   AdhanPreviewPlayer._();
 
-  static final AudioPlayer _player = AudioPlayer();
+  static AudioPlayer get _player => AppAudio.player;
   static final ValueNotifier<String?> playing = ValueNotifier(null);
   static StreamSubscription<PlayerState>? _completionSub;
 

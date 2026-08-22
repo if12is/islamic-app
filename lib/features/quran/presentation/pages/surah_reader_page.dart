@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:screen_brightness/screen_brightness.dart';
@@ -82,6 +83,15 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
   Ticker? _autoScrollTicker;
   bool _autoScrolling = false;
+
+  /// Elapsed time at the previous tick, so movement follows the clock.
+  Duration _lastTick = Duration.zero;
+
+  /// True while a finger is driving the scroll.
+  bool _userIsScrolling = false;
+
+  /// Pixels a second at speed 1.0 — a comfortable reading pace.
+  static const double _pixelsPerSecond = 42;
 
   PageController? _pageController;
   List<int> _pages = const [];
@@ -368,27 +378,62 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       return;
     }
 
+    _lastTick = Duration.zero;
     _autoScrollTicker ??= createTicker(_onAutoScrollTick);
     _autoScrollTicker!.start();
     setState(() => _autoScrolling = true);
   }
 
+  /// Advance the page by the time that has passed, not by a fixed step.
+  ///
+  /// Two things were wrong before. It moved a constant number of pixels per
+  /// frame, so the speed depended on the refresh rate and the top of the range
+  /// was still a crawl. And it called jumpTo on every frame, which cancels
+  /// whatever scroll the reader has started — so the page could not be moved
+  /// by hand at all while it was running. Now a drag simply wins, and the
+  /// scroll picks up from wherever the reader let go, at the same pace.
   void _onAutoScrollTick(Duration elapsed) {
     if (!_scrollController.hasClients) {
       return;
     }
 
-    final speed = ref.read(readerSettingsProvider).autoScrollSpeed;
-    final next = _scrollController.offset + speed * 0.6;
+    final delta =
+        _lastTick == Duration.zero ? Duration.zero : elapsed - _lastTick;
+    _lastTick = elapsed;
 
-    if (next >= _scrollController.position.maxScrollExtent) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    // A hand on the glass outranks the timer.
+    if (_userIsScrolling) {
+      return;
+    }
+
+    final position = _scrollController.position;
+    final speed = ref.read(readerSettingsProvider).autoScrollSpeed;
+    final next =
+        position.pixels +
+        _pixelsPerSecond * speed * delta.inMicroseconds / 1000000;
+
+    if (next >= position.maxScrollExtent) {
+      _scrollController.jumpTo(position.maxScrollExtent);
       _autoScrollTicker?.stop();
       setState(() => _autoScrolling = false);
       return;
     }
 
     _scrollController.jumpTo(next);
+  }
+
+  /// Notice when the reader takes over, and stand aside until they let go.
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollStartNotification) {
+      if (notification.dragDetails != null) {
+        _userIsScrolling = true;
+      }
+    } else if (notification is ScrollEndNotification ||
+        notification is UserScrollNotification &&
+            notification.direction == ScrollDirection.idle) {
+      _userIsScrolling = false;
+    }
+    return false;
   }
 
   Future<void> _playFrom(QuranVerse verse) async {
@@ -556,10 +601,14 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   }
 
   /// The pages this passage covers, in order.
-  List<int> _pageRangeFor(List<QuranVerse> verses) {
-    final pages = verses.map((verse) => verse.page).toSet().toList()..sort();
-    return pages;
-  }
+  /// Every page of the Mushaf, so a swipe carries on past the last verse of
+  /// the surah the way turning a page does.
+  ///
+  /// This used to be only the pages the open surah touches, which meant the
+  /// reader hit a wall at both ends of it — no next page, no previous one.
+  /// [verses] is kept for the caller's convenience; the range is the book.
+  List<int> _pageRangeFor(List<QuranVerse> verses) =>
+      List<int>.generate(QuranLocalService.pageCount, (index) => index + 1);
 
   TapGestureRecognizer _recognizerFor(QuranVerse verse) {
     return _tapRecognizers.putIfAbsent(verse.key, () {
@@ -699,27 +748,30 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       audio,
     );
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: EdgeInsets.fromLTRB(
-        settings.horizontalPadding,
-        24,
-        settings.horizontalPadding,
-        140,
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: palette.surface,
-          borderRadius: BorderRadius.circular(20),
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: SingleChildScrollView(
+        controller: _scrollController,
+        padding: EdgeInsets.fromLTRB(
+          settings.horizontalPadding,
+          24,
+          settings.horizontalPadding,
+          140,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ...blocks,
-            const SizedBox(height: 24),
-            _nextSurahButton(palette),
-          ],
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: palette.surface,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ...blocks,
+              const SizedBox(height: 24),
+              _nextSurahButton(palette),
+            ],
+          ),
         ),
       ),
     );

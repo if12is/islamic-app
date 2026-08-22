@@ -309,6 +309,10 @@ class ReadingStatsPage extends ConsumerWidget {
       children: [
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
+          // 53 weeks is far wider than any phone, and the columns run oldest
+          // first — so the view opened on a year of empty squares while every
+          // day actually read sat off the far edge. Start at the recent end.
+          reverse: true,
           child: Row(
             children: [
               for (var week = 0; week < 53; week++)
@@ -325,6 +329,10 @@ class ReadingStatsPage extends ConsumerWidget {
                           final pages =
                               byDay[ReadingProgressStore.keyFor(date)] ?? 0;
                           final isFuture = date.isAfter(today);
+                          final isToday =
+                              date.year == today.year &&
+                              date.month == today.month &&
+                              date.day == today.day;
 
                           return Container(
                             width: 11,
@@ -336,6 +344,15 @@ class ReadingStatsPage extends ConsumerWidget {
                                       ? Colors.transparent
                                       : _heatColor(pages, colorScheme),
                               borderRadius: BorderRadius.circular(2),
+                              // A ring on today, so the eye has somewhere to
+                              // land in a field of identical squares.
+                              border:
+                                  isToday
+                                      ? Border.all(
+                                        color: colorScheme.secondary,
+                                        width: 1.4,
+                                      )
+                                      : null,
                             ),
                           );
                         },

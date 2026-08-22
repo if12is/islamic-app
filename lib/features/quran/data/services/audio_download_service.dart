@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/utils/app_logger.dart';
@@ -32,6 +33,14 @@ class AudioDownloadService {
 
   static const String _folder = 'quran_audio';
 
+  /// Whether this platform can keep files at all.
+  ///
+  /// It cannot in a browser: path_provider has no web implementation, so the
+  /// very first call throws MissingPluginException. That call sat inside
+  /// [sourceFor], which meant playback died before it ever reached the network
+  /// — the error looked like a broken connection when nothing had been tried.
+  static bool get isSupported => !kIsWeb;
+
   Future<Directory> _reciterDirectory(String reciterCode) async {
     final root = await getApplicationDocumentsDirectory();
     final directory = Directory('${root.path}/$_folder/$reciterCode');
@@ -51,8 +60,17 @@ class AudioDownloadService {
     String reciterCode,
     int surahNumber,
   ) async {
-    final path = await filePathFor(reciterCode, surahNumber);
-    return File(path).existsSync() ? path : null;
+    if (!isSupported) {
+      return null;
+    }
+    try {
+      final path = await filePathFor(reciterCode, surahNumber);
+      return File(path).existsSync() ? path : null;
+    } catch (e) {
+      // Storage that will not answer is a reason to stream, not to fail.
+      AppLogger.warning('Local audio lookup failed: $e');
+      return null;
+    }
   }
 
   /// What to play: the local file if it exists, otherwise the CDN URL.
@@ -65,13 +83,24 @@ class AudioDownloadService {
         );
   }
 
-  /// Download a surah, reporting progress from 0 to 1.
+  /// Download a surah, reporting bytes as they arrive.
+  ///
+  /// [onProgress] receives the bytes received and the total, where the total
+  /// is -1 whenever the server declines to state one. That happens on every
+  /// chunked response, which is most of them — so a caller that only reports a
+  /// received/total ratio shows nothing at all for the whole download and then
+  /// jumps to finished.
   Future<bool> download({
     required String reciterCode,
     required int surahNumber,
-    void Function(double progress)? onProgress,
+    void Function(int received, int total)? onProgress,
     CancelToken? cancelToken,
   }) async {
+    if (!isSupported) {
+      AppLogger.info('Offline downloads are not available in a browser');
+      return false;
+    }
+
     final url = QuranLocalService.audioUrlForSurah(
       surahNumber,
       reciterCode: reciterCode,
@@ -85,9 +114,7 @@ class AudioDownloadService {
         temporary,
         cancelToken: cancelToken,
         onReceiveProgress: (received, total) {
-          if (total > 0) {
-            onProgress?.call(received / total);
-          }
+          onProgress?.call(received, total);
         },
       );
 
@@ -109,6 +136,9 @@ class AudioDownloadService {
   }
 
   Future<void> delete(String reciterCode, int surahNumber) async {
+    if (!isSupported) {
+      return;
+    }
     final path = await filePathFor(reciterCode, surahNumber);
     final file = File(path);
     if (file.existsSync()) {
@@ -118,6 +148,9 @@ class AudioDownloadService {
 
   /// Everything downloaded, across reciters.
   Future<List<DownloadedSurah>> listDownloads() async {
+    if (!isSupported) {
+      return const [];
+    }
     try {
       final root = await getApplicationDocumentsDirectory();
       final directory = Directory('${root.path}/$_folder');

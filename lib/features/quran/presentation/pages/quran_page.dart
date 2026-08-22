@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -85,23 +86,36 @@ class AyahSearchResult {
   }
 }
 
-class QuranPage extends StatefulWidget {
+class QuranPage extends ConsumerStatefulWidget {
   const QuranPage({super.key});
 
   @override
-  State<QuranPage> createState() => _QuranPageState();
+  ConsumerState<QuranPage> createState() => _QuranPageState();
 }
 
-class _QuranPageState extends State<QuranPage> {
+class _QuranPageState extends ConsumerState<QuranPage> {
   // Constants & Colors
   Color get _primaryDarkGreen => context.tokens.brand;
 
   // States
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  //
+  // The one player the whole app shares. A second AudioPlayer used to live
+  // here, and just_audio_background only ever attaches its notification to the
+  // first player created — so whichever screen was built first won the media
+  // controls and the other played with none, while both fought over the same
+  // audio session.
+  AudioPlayer get _audioPlayer => ref.read(quranAudioPlayerProvider);
 
   /// Same reciter list as the verse player, so a choice made in one place
   /// holds everywhere.
   String _selectedReciterCode = QuranReciter.all.first.code;
+  StreamSubscription<PlayerState>? _playerSub;
+
+  /// Guards against two reciter switches loading at once.
+  int _switchToken = 0;
+
+  /// Never seek exactly onto the end; players treat that as "finished".
+  static const Duration _seekTailGuard = Duration(seconds: 2);
   final AudioDownloadService _downloadService = AudioDownloadService();
   List<Surah> _allSurahs = [];
   List<Surah> _filteredSurahs = [];
@@ -146,7 +160,7 @@ class _QuranPageState extends State<QuranPage> {
     _fetchSurahs();
     _searchController.addListener(_onSearchChanged);
 
-    _audioPlayer.playerStateStream.listen((state) {
+    _playerSub = _audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         if (mounted) {
           setState(() {
@@ -349,27 +363,51 @@ class _QuranPageState extends State<QuranPage> {
     _onSearchChanged();
   }
 
-  /// Change voice on a playing surah: stop, reload the new source, and pick
-  /// up where the recitation was.
+  /// Change voice on a playing surah, resuming as close to the same place as
+  /// the new recording allows.
+  ///
+  /// Two reciters never record a surah at the same length, so the old position
+  /// is a hint rather than an instruction: seeking straight to it landed past
+  /// the end of a shorter recitation, which the player reports as "completed"
+  /// — the surah went silent the moment the voice was changed.
   Future<void> _switchReciter(String reciterCode, int surahId) async {
+    final token = ++_switchToken;
     final wasPlaying = _audioPlayer.playing;
     final position = _audioPlayer.position;
+    final previousDuration = _audioPlayer.duration;
 
     setState(() => _selectedReciterCode = reciterCode);
 
     await _audioPlayer.stop();
     _currentlyPlayingSurahId = null;
-    await _togglePlayPause(surahId);
 
-    if (position > Duration.zero) {
-      await _audioPlayer.seek(position);
+    final loaded = await _togglePlayPause(surahId);
+    // Tapping through voices faster than they load used to leave two loads
+    // racing, and the loser would overwrite the winner.
+    if (!loaded || token != _switchToken || !mounted) {
+      return;
     }
+
+    final duration = _audioPlayer.duration;
+    if (position > Duration.zero && duration != null) {
+      // Keep the same fraction of the recitation rather than the same second:
+      // it lands on roughly the same verse whatever the pace of the reciter.
+      final target =
+          (previousDuration != null && previousDuration > Duration.zero)
+              ? duration *
+                  (position.inMilliseconds / previousDuration.inMilliseconds)
+              : position;
+      final safe = target < duration ? target : duration - _seekTailGuard;
+      await _audioPlayer.seek(safe > Duration.zero ? safe : Duration.zero);
+    }
+
     if (!wasPlaying) {
       await _audioPlayer.pause();
     }
   }
 
-  Future<void> _togglePlayPause(int surahId) async {
+  /// Returns true when a source is loaded and playing.
+  Future<bool> _togglePlayPause(int surahId) async {
     try {
       if (_currentlyPlayingSurahId == surahId) {
         if (_audioPlayer.playing) {
@@ -378,7 +416,7 @@ class _QuranPageState extends State<QuranPage> {
           await _audioPlayer.play();
         }
         setState(() {});
-        return;
+        return true;
       }
 
       setState(() {
@@ -411,16 +449,73 @@ class _QuranPageState extends State<QuranPage> {
             : AudioSource.file(source, tag: tag),
       );
       await _audioPlayer.play();
-    } catch (e) {
-      AppLogger.warning('Error playing audio: $e');
+      return true;
+    } catch (e, stack) {
+      AppLogger.error('Error playing audio', e, stack);
+      // Silence with the play button still lit reads as a broken app. Say what
+      // actually went wrong — "check your connection" is useless advice to
+      // someone whose connection is fine.
+      if (mounted) {
+        setState(() => _currentlyPlayingSurahId = null);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(_playbackMessage(context, e)),
+              action: SnackBarAction(
+                label: context.tr('retry'),
+                onPressed: () => _togglePlayPause(surahId),
+              ),
+            ),
+          );
+      }
+      return false;
     }
+  }
+
+  /// Turn the exception into something the listener can act on.
+  String _playbackMessage(BuildContext context, Object error) {
+    // just_audio wraps the platform's own failure, and its code is the HTTP
+    // status when the source was refused. Reading it beats guessing from a
+    // stringified class name.
+    if (error is PlayerException) {
+      final status = error.code;
+      if (status == 403 || status == 404) {
+        return context.tr('audio_not_available');
+      }
+      return '${context.tr('audio_play_failed')} ($status)';
+    }
+
+    final text = error.toString().toLowerCase();
+
+    if (text.contains('socket') ||
+        text.contains('host') ||
+        text.contains('network') ||
+        text.contains('connection')) {
+      return context.tr('audio_no_network');
+    }
+    if (text.contains('403') ||
+        text.contains('404') ||
+        text.contains('not found')) {
+      return context.tr('audio_not_available');
+    }
+    // A plugin that is not there is a platform gap, not a user problem, and
+    // telling someone to check a working connection wastes their time.
+    if (text.contains('missingplugin')) {
+      return context.tr('audio_platform_unsupported');
+    }
+    // Anything else is worth showing verbatim: an unexplained failure that
+    // names itself can be reported, and one that does not cannot.
+    return '${context.tr('audio_play_failed')} (${error.runtimeType})';
   }
 
   @override
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
-    _audioPlayer.dispose();
+    _playerSub?.cancel();
+    // The player belongs to the provider, which disposes it. Stopping here
+    // would cut off a recitation the listener left running on purpose.
     super.dispose();
   }
 
@@ -559,6 +654,17 @@ class _QuranPageState extends State<QuranPage> {
           icon: Icons.my_location,
           tooltip: context.tr('jump_to'),
           onTap: _openJumpSheet,
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        // Offline downloads were three taps deep behind a card, which is a
+        // long way to walk for the screen you want before a flight.
+        GhostIconButton(
+          icon: Icons.download_for_offline_outlined,
+          tooltip: context.tr('offline_downloads'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const DownloadsPage()),
+              ),
         ),
       ],
     );

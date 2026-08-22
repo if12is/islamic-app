@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
+import '../../../../core/services/app_audio.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/quran_local_service.dart';
 
@@ -63,6 +64,10 @@ class QuranReciter {
       orElse: () => all.first,
     );
   }
+
+  /// Whether this voice has whole-surah recordings, as opposed to verse audio.
+  static bool hasSurahAudio(String code) =>
+      QuranLocalService.hasSurahAudio(code);
 }
 
 /// What the reader needs to know about playback right now.
@@ -162,11 +167,13 @@ class QuranAudioState {
 
 /// One shared player for the whole app, so background playback and the
 /// lock-screen controls always refer to the same session.
-final quranAudioPlayerProvider = Provider<AudioPlayer>((ref) {
-  final player = AudioPlayer();
-  ref.onDispose(player.dispose);
-  return player;
-});
+///
+/// It is not disposed with the provider: the adhan preview and the media
+/// notification hold the same instance, and tearing it down when a Quran screen
+/// closes would take those with it.
+final quranAudioPlayerProvider = Provider<AudioPlayer>(
+  (ref) => AppAudio.player,
+);
 
 /// Verse-by-verse recitation that the reader can follow along with.
 ///

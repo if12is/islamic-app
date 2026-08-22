@@ -39,6 +39,15 @@ class LocationService {
     return prefs.getString(AppConstants.userCityKey) ?? '';
   }
 
+  /// Forget the cached name, so the next lookup describes the new place.
+  ///
+  /// Moving without this leaves the old city on screen next to the new city's
+  /// prayer times, which is worse than showing neither.
+  static Future<void> clearLabel([SharedPreferences? preferences]) async {
+    final prefs = preferences ?? await SharedPreferences.getInstance();
+    await prefs.remove(AppConstants.userCityKey);
+  }
+
   /// Name a point: nearest bundled city first, platform geocoder second.
   ///
   /// The bundled table wins because it is the only one that always answers —

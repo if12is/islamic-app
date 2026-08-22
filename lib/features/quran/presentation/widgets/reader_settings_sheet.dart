@@ -172,8 +172,9 @@ class ReaderSettingsSheet extends ConsumerWidget {
                 labelKey: 'auto_scroll_speed',
                 value: settings.autoScrollSpeed,
                 min: 0.2,
-                max: 3.0,
-                divisions: 14,
+                // The top of the old range was still a crawl on a long surah.
+                max: 8.0,
+                divisions: 39,
                 display: '${settings.autoScrollSpeed.toStringAsFixed(1)}×',
                 onChanged: notifier.setAutoScrollSpeed,
               ),

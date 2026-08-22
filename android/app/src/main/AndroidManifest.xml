@@ -9,6 +9,13 @@
     <!-- Recitation check listens through the device's own recognizer. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Asking to be left out of doze. Without it the system drops the alarm
+         that plays the adhan while the phone is idle. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Installing an update fetched from the project's own GitHub release.
+         Android still shows its own confirmation, and still refuses an APK
+         whose signature does not match the installed one. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <!-- Background Quran playback (just_audio_background / audio_service) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />

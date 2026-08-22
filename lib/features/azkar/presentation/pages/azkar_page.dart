@@ -434,20 +434,29 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
 }
 
 class SmartTasbeehWidget extends StatefulWidget {
-  const SmartTasbeehWidget({super.key});
+  const SmartTasbeehWidget({super.key, this.onRoundsChanged});
+
+  /// Fired when a round moves, so the daily wird can re-read it.
+  final VoidCallback? onRoundsChanged;
 
   @override
   State<SmartTasbeehWidget> createState() => _SmartTasbeehWidgetState();
 }
 
 class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
-  static const int _target = 33;
+  static const int _target = TasbeehStore.roundTarget;
+
+  /// Kept in step with [_azkarList].
+  static const int _phraseCount = 6;
 
   TasbeehMode _mode = TasbeehMode.rounds;
   int _tasbeehCount = 0;
   int _currentZekrIndex = 0;
 
-  /// The lifetime total, in endless mode.
+  /// The lifetime total for the phrase on screen — the big number.
+  int _phraseTotal = 0;
+
+  /// Every phrase added together — the small number underneath.
   int _total = 0;
   int _today = 0;
 
@@ -469,10 +478,25 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
       _mode = TasbeehStore.mode(prefs);
       _total = TasbeehStore.total(prefs);
       _today = TasbeehStore.today(prefs);
-      if (_mode == TasbeehMode.endless) {
-        _currentZekrIndex = TasbeehStore.phraseIndex(prefs);
-      }
+      _currentZekrIndex = TasbeehStore.phraseIndex(prefs);
+      _phraseTotal = TasbeehStore.totalFor(prefs, _currentZekrIndex);
+      // Rounds survive leaving the screen and stepping between phrases now,
+      // so read today's count back rather than starting from nothing.
+      _tasbeehCount = TasbeehStore.roundCount(prefs, _currentZekrIndex);
     });
+  }
+
+  /// Counts read in the digits of the language on screen.
+  static String _formatCount(BuildContext context, int value) {
+    if (!context.isAppRtl) {
+      return '$value';
+    }
+    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return value
+        .toString()
+        .split('')
+        .map((char) => digits[int.parse(char)])
+        .join();
   }
 
   List<String> _azkarList(BuildContext context) {
@@ -490,37 +514,46 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
 
   Future<void> _setMode(TasbeehMode mode) async {
     HapticFeedback.selectionClick();
-    setState(() {
-      _mode = mode;
-      _tasbeehCount = 0;
-    });
+    setState(() => _mode = mode);
+
     final prefs = _prefs;
-    if (prefs != null) {
-      await TasbeehStore.setMode(prefs, mode);
-      if (mode == TasbeehMode.endless) {
-        setState(() {
-          _currentZekrIndex = TasbeehStore.phraseIndex(prefs);
-          _total = TasbeehStore.total(prefs);
-          _today = TasbeehStore.today(prefs);
-        });
-      }
+    if (prefs == null) {
+      return;
     }
+    await TasbeehStore.setMode(prefs, mode);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _currentZekrIndex = TasbeehStore.phraseIndex(prefs);
+      _total = TasbeehStore.total(prefs);
+      _today = TasbeehStore.today(prefs);
+      _phraseTotal = TasbeehStore.totalFor(prefs, _currentZekrIndex);
+      _tasbeehCount = TasbeehStore.roundCount(prefs, _currentZekrIndex);
+    });
   }
 
   Future<void> _increment(int phrasesLength) async {
     HapticFeedback.lightImpact();
 
+    final prefs = _prefs;
+
     if (_isEndless) {
-      final prefs = _prefs;
       // Written on every tap: a lifetime count lost to a force-quit is a
       // count nobody trusts again.
       final next =
-          prefs == null ? _total + 1 : await TasbeehStore.increment(prefs);
+          prefs == null
+              ? _phraseTotal + 1
+              : await TasbeehStore.increment(
+                prefs,
+                phraseIndex: _currentZekrIndex,
+              );
       if (!mounted) {
         return;
       }
       setState(() {
-        _total = next;
+        _phraseTotal = next;
+        _total++;
         _today++;
       });
       if (next % 100 == 0) {
@@ -529,23 +562,39 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
       return;
     }
 
-    setState(() {
-      _tasbeehCount++;
-      if (_tasbeehCount > _target) {
-        _tasbeehCount = 1;
-        _currentZekrIndex = (_currentZekrIndex + 1) % phrasesLength;
-        HapticFeedback.heavyImpact();
-      }
-    });
+    // Rounds are per phrase and per day, and they are written down — so the
+    // count is still there after stepping to the next phrase and back, and the
+    // daily wird reads the same numbers.
+    final next =
+        prefs == null
+            ? (_tasbeehCount + 1).clamp(0, _target)
+            : await TasbeehStore.incrementRound(prefs, _currentZekrIndex);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _tasbeehCount = next);
+
+    if (next >= _target) {
+      HapticFeedback.heavyImpact();
+    }
+    widget.onRoundsChanged?.call();
   }
 
-  void _reset() {
+  Future<void> _reset() async {
     if (_isEndless) {
-      _confirmClearTotal();
+      await _confirmClearTotal();
       return;
     }
     HapticFeedback.mediumImpact();
-    setState(() => _tasbeehCount = 0);
+    final prefs = _prefs;
+    if (prefs != null) {
+      await TasbeehStore.resetRounds(prefs, phraseIndex: _currentZekrIndex);
+    }
+    if (mounted) {
+      setState(() => _tasbeehCount = 0);
+      widget.onRoundsChanged?.call();
+    }
   }
 
   /// The lifetime total only goes away on purpose, and only after saying so.
@@ -577,7 +626,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     }
     final prefs = _prefs;
     if (prefs != null) {
-      await TasbeehStore.clearTotal(prefs);
+      await TasbeehStore.clearTotal(prefs, phraseCount: _phraseCount);
     }
     if (!mounted) {
       return;
@@ -585,6 +634,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     HapticFeedback.heavyImpact();
     setState(() {
       _total = 0;
+      _phraseTotal = 0;
       _today = 0;
     });
   }
@@ -592,16 +642,18 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   Future<void> _changePhrase(int phrasesLength, int step) async {
     HapticFeedback.lightImpact();
     final next = (_currentZekrIndex + step + phrasesLength) % phrasesLength;
+    final prefs = _prefs;
+
+    // Every phrase carries its own numbers, in both modes. Stepping away used
+    // to zero the round, so thirty-three of سبحان الله vanished on the way to
+    // الحمد لله and back.
     setState(() {
       _currentZekrIndex = next;
-      if (!_isEndless) {
-        _tasbeehCount = 0;
-      }
+      _phraseTotal = prefs == null ? 0 : TasbeehStore.totalFor(prefs, next);
+      _tasbeehCount = prefs == null ? 0 : TasbeehStore.roundCount(prefs, next);
     });
-    final prefs = _prefs;
-    if (prefs != null && _isEndless) {
-      // The endless counter keeps its total across phrases; only the phrase
-      // itself is remembered.
+
+    if (prefs != null) {
       await TasbeehStore.setPhraseIndex(prefs, next);
     }
   }
@@ -634,7 +686,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     final currentZekr = azkarList[_currentZekrIndex];
     final progress =
         _isEndless
-            ? ((_total % 100) / 100)
+            ? ((_phraseTotal % 100) / 100)
             : (_tasbeehCount / _target).clamp(0.0, 1.0);
 
     return AppCard(
@@ -714,11 +766,24 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          if (_isEndless)
+          if (_isEndless) ...[
+            // Below the string, above today's line — clear of the artwork.
             Text(
-              '${context.tr('tasbeeh_today')}: $_today',
+              '${context.tr('tasbeeh_grand_total')}: '
+              '${_formatCount(context, _total)}',
+              style: AppTextStyles.caption(
+                context,
+                color: tokens.inkMuted,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${context.tr('tasbeeh_today')}: '
+              '${_formatCount(context, _today)}',
               style: AppTextStyles.caption(context, color: tokens.inkFaint),
             ),
+          ],
           GhostIconButton(
             icon: _isEndless ? Icons.restart_alt : Icons.refresh_rounded,
             onTap: _reset,
@@ -775,7 +840,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  '$_tasbeehCount',
+                  _formatCount(context, _tasbeehCount),
                   style: const TextStyle(
                     fontFamily: AppTextStyles.displayFamily,
                     fontSize: 48,
@@ -786,7 +851,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  '$remaining ${context.tr('count')}',
+                  '${_formatCount(context, remaining)} ${context.tr('count')}',
                   style: TextStyle(
                     fontFamily: AppTextStyles.bodyFamily,
                     fontSize: 11.5,
@@ -822,8 +887,11 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
               ),
             ),
           ),
+          // Lifted well clear of the arc. The number used to sit low enough
+          // that the beads ran through it, and the total underneath crossed
+          // the string entirely.
           Padding(
-            padding: const EdgeInsets.only(bottom: 34),
+            padding: const EdgeInsets.only(bottom: 62),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -835,10 +903,13 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                     fontSize: 11,
                   ),
                 ),
+                // The phrase on screen, not every phrase added together —
+                // someone who has said سبحان الله four thousand times wants
+                // that number, and the sum goes below the beads.
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    '$_total',
+                    _formatCount(context, _phraseTotal),
                     style: TextStyle(
                       fontFamily: AppTextStyles.displayFamily,
                       fontSize: 54,

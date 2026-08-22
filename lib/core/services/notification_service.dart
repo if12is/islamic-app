@@ -497,6 +497,75 @@ class NotificationService {
     await _plugin.cancelAll();
   }
 
+  /// Drop one scheduled notification, leaving the rest of the plan alone.
+  static Future<void> cancelOne(int id) async {
+    await initialize();
+    await _plugin.cancel(id: id);
+  }
+
+  /// Whether the user has allowed notifications at all.
+  ///
+  /// Everything else is moot when this is false, and Android 13+ makes it easy
+  /// to end up here by dismissing one dialog on first launch.
+  static Future<bool> areNotificationsEnabled() async {
+    await initialize();
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return true;
+    }
+    final android =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+    return await android?.areNotificationsEnabled() ?? true;
+  }
+
+  /// Schedule a real prayer-style alert, to prove background delivery works.
+  ///
+  /// It deliberately goes down the same path as an actual prayer — the alarm
+  /// manager, the adhan channel, exact-while-idle — because a notification
+  /// posted immediately from a running app proves only that the app is
+  /// running, which was never the thing in doubt.
+  static Future<bool> scheduleDeliveryTest({
+    required int id,
+    required DateTime at,
+    AdhanSoundSelection adhanSound = AdhanSoundSelection.system,
+    String title = 'اختبار التنبيه',
+    String body = 'وصل التنبيه في وقته والتطبيق مغلق.',
+  }) async {
+    await initialize();
+    if (adhanSound.isCustom) {
+      await ensureAdhanChannel(adhanSound);
+    }
+
+    final exact = await canScheduleExactAlarms();
+    final when = tz.TZDateTime.from(at, tz.local);
+
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: when,
+        notificationDetails: detailsFor(
+          kind: NotificationKind.prayer,
+          mode: PrayerAlertMode.adhan,
+          body: body,
+          adhanSound: adhanSound,
+        ),
+        androidScheduleMode:
+            exact
+                ? AndroidScheduleMode.exactAllowWhileIdle
+                : AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+      AppLogger.info('Delivery test scheduled for $when (exact: $exact)');
+      return true;
+    } catch (e, stack) {
+      AppLogger.error('Could not schedule the delivery test', e, stack);
+      return false;
+    }
+  }
+
   /// How many notifications the platform currently holds for us.
   static Future<int> pendingCount() async {
     await initialize();

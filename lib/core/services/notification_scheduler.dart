@@ -8,6 +8,7 @@ import '../localization/app_localizations.dart';
 import '../models/notification_preferences.dart';
 import '../utils/app_logger.dart';
 import 'hijri_service.dart';
+import 'surah_virtues.dart';
 import 'notification_service.dart';
 import 'prayer_calculation_service.dart';
 import 'prayer_settings_store.dart';
@@ -55,6 +56,7 @@ class NotificationPlanner {
   static const int _wirdIdBase = 6000;
   static const int _eventIdBase = 7000;
   static const int _fridayIdBase = 7100;
+  static const int _surahIdBase = 7200;
   static const int _fastingIdBase = 7200;
 
   static List<ScheduledNotification> build({
@@ -308,6 +310,43 @@ class NotificationPlanner {
             ),
             body: AppLocalizations.translate(languageCode, 'notif_friday_body'),
             payload: 'quran:verse:18:1',
+            actions: [
+              NotificationActionSpec(
+                id: 'open_ayah',
+                label: AppLocalizations.translate(languageCode, 'open'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // A surah worth reading today, and the narration that says why.
+      if (prefs.surahRemindersEnabled) {
+        final virtue = SurahVirtues.suggestionFor(day.date);
+        final time = DateTime(
+          day.date.year,
+          day.date.month,
+          day.date.day,
+          prefs.surahReminderHour,
+        );
+        _add(
+          items,
+          now,
+          ScheduledNotification(
+            id: _surahIdBase + dayIndex,
+            kind: NotificationKind.dailyAyah,
+            time: time,
+            mode: _quietAware(prefs, time),
+            title: AppLocalizations.translate(
+              languageCode,
+              'notif_surah_title',
+              replacements: {'surah': virtue.nameAr},
+            ),
+            // The grade rides along with the text; a virtue quoted bare is a
+            // virtue the reader has no way to weigh.
+            body: virtue.virtueWithGradeAr,
+            payload:
+                'quran:verse:${virtue.surahNumber}:${virtue.fromAyah ?? 1}',
             actions: [
               NotificationActionSpec(
                 id: 'open_ayah',

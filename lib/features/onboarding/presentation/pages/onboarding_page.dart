@@ -8,7 +8,6 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/motif_icon.dart';
 import '../../../../core/widgets/seasonal_art.dart';
 import '../../../../core/services/seasonal_theme.dart';
-import '../../../../core/widgets/islamic_icon.dart';
 import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -158,21 +157,21 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       children: [
                         _buildFeaturePage(
                           context,
-                          icon: IslamicIcon.crescentStars,
+                          icon: Icons.nightlight_round,
                           titleKey: 'onboarding_welcome_title',
                           bodyKey: 'onboarding_welcome_body',
                           showMedallion: season == SeasonalEvent.none,
                         ),
                         _buildFeaturePage(
                           context,
-                          icon: IslamicIcon.compass,
+                          icon: Icons.explore_outlined,
                           titleKey: 'onboarding_location_title',
                           bodyKey: 'onboarding_location_body',
                           showMedallion: season == SeasonalEvent.none,
                         ),
                         _buildFeaturePage(
                           context,
-                          icon: IslamicIcon.bell,
+                          icon: Icons.notifications_none_rounded,
                           titleKey: 'onboarding_notifications_title',
                           bodyKey: 'onboarding_notifications_body',
                           showMedallion: season == SeasonalEvent.none,
@@ -272,7 +271,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   Widget _buildFeaturePage(
     BuildContext context, {
-    required IslamicIcon icon,
+    required IconData icon,
     required String titleKey,
     required String bodyKey,
     bool showMedallion = true,
@@ -284,35 +283,35 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       child: Column(
         children: [
           const Spacer(flex: 3),
-          // The motif behind the icon, big and faint: decoration that does not
-          // compete with the sentence it sits above. In a season the artwork
-          // overhead already does this job, so it steps aside.
+          // A quiet mark above the sentence, not a poster. The heavy filled
+          // glyph in a large disc drew every eye to itself and away from the
+          // words, which are the point of the page.
           if (showMedallion)
             SizedBox(
-              width: 190,
-              height: 190,
+              width: 132,
+              height: 132,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   CustomPaint(
-                    size: const Size.square(190),
+                    size: const Size.square(132),
                     painter: MotifPainter(
                       motif: Motif.star8,
-                      color: tokens.goldBright.withValues(alpha: 0.14),
+                      color: tokens.goldBright.withValues(alpha: 0.12),
                     ),
                   ),
                   Container(
-                    width: 96,
-                    height: 96,
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.07),
+                      color: Colors.white.withValues(alpha: 0.06),
                       border: Border.all(
-                        color: tokens.goldBright.withValues(alpha: 0.35),
+                        color: tokens.goldBright.withValues(alpha: 0.30),
                       ),
                     ),
                     child: Center(
-                      child: AppIcon(icon, size: 44, color: tokens.goldBright),
+                      child: Icon(icon, size: 26, color: tokens.goldBright),
                     ),
                   ),
                 ],

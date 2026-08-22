@@ -119,7 +119,7 @@ class ReaderSettings {
           (horizontalPadding ?? this.horizontalPadding).clamp(8, 48).toDouble(),
       theme: theme ?? this.theme,
       autoScrollSpeed:
-          (autoScrollSpeed ?? this.autoScrollSpeed).clamp(0.2, 3.0).toDouble(),
+          (autoScrollSpeed ?? this.autoScrollSpeed).clamp(0.2, 8.0).toDouble(),
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       brightnessOverride:
           clearBrightnessOverride

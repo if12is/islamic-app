@@ -66,7 +66,11 @@ class ImsakiyaPoster extends StatelessWidget {
               child: CustomPaint(painter: const _PosterFramePainter()),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(64, 210, 64, 56),
+              // The inner gold arch sits 46px inside the outer frame, which
+              // starts 28px from the edge — so anything closer than 74px to a
+              // side is drawn on top of that border rather than inside it.
+              // The footer used to land 18px past it, straddling the line.
+              padding: const EdgeInsets.fromLTRB(92, 210, 92, 104),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -119,14 +123,29 @@ class ImsakiyaPoster extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
                   _table(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
                   Text(
                     labels.footer,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: AppTextStyles.bodyFamily,
-                      fontSize: 20,
-                      color: _ink,
+                      fontSize: 19,
+                      height: 1.5,
+                      color: _ink.withValues(alpha: 0.72),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // The name reads as a signature on the poster rather than
+                  // as the tail of a sentence about how the times were worked
+                  // out — which is what it was.
+                  Text(
+                    labels.appName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: AppTextStyles.displayFamily,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: _gold,
                     ),
                   ),
                 ],
@@ -275,6 +294,7 @@ class ImsakiyaPosterLabels {
     required this.fajr,
     required this.iftar,
     required this.footer,
+    required this.appName,
   });
 
   final String title;
@@ -285,6 +305,9 @@ class ImsakiyaPosterLabels {
   final String fajr;
   final String iftar;
   final String footer;
+
+  /// Shown on its own line as the poster's signature.
+  final String appName;
 }
 
 /// The arch, the lattice inside it, and the hanging lanterns.

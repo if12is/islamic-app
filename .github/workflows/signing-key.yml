@@ -1,0 +1,88 @@
+name: Signing key
+
+# Run this once, by hand, then never again.
+#
+# Without a fixed signing key every CI machine mints its own throwaway debug
+# key, so each APK is signed by a different signer and Android refuses to
+# install it over the previous one. This mints one key, stores it as repository
+# secrets, and the APK workflow picks it up from then on.
+#
+# The key never appears in the logs and is never committed: it is written
+# straight into the repository's secrets through the API.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: >-
+          Type CREATE to mint a new key. This invalidates every APK signed with
+          the old key: testers will have to uninstall before installing again.
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  mint:
+    name: Mint and store the signing key
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the confirmation
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event.inputs.confirm }}" != "CREATE" ]; then
+            echo "::error::Type CREATE to confirm. Nothing was changed."
+            exit 1
+          fi
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Generate the keystore
+        run: |
+          set -euo pipefail
+          # Random passwords: nobody needs to memorise them, and they only ever
+          # live in this repository's secrets.
+          STORE_PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 28)"
+          echo "::add-mask::${STORE_PASS}"
+
+          keytool -genkeypair -v \
+            -keystore islamic-app.jks \
+            -storetype JKS \
+            -storepass "${STORE_PASS}" \
+            -keypass "${STORE_PASS}" \
+            -alias islamic-app \
+            -keyalg RSA -keysize 2048 \
+            -validity 10950 \
+            -dname "CN=Islamic App, OU=Releases, O=if12is, L=Cairo, C=EG"
+
+          {
+            echo "STORE_PASS<<EOF"
+            echo "${STORE_PASS}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+          base64 -w0 islamic-app.jks > keystore.b64
+
+      - name: Store it as repository secrets
+        env:
+          GH_TOKEN: ${{ secrets.SIGNING_KEY_ADMIN_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          gh secret set ANDROID_KEYSTORE_BASE64 \
+            --repo "${{ github.repository }}" < keystore.b64
+          gh secret set ANDROID_KEYSTORE_PASSWORD \
+            --repo "${{ github.repository }}" --body "${STORE_PASS}"
+          gh secret set ANDROID_KEY_PASSWORD \
+            --repo "${{ github.repository }}" --body "${STORE_PASS}"
+          gh secret set ANDROID_KEY_ALIAS \
+            --repo "${{ github.repository }}" --body "islamic-app"
+          echo "Stored. Re-run the Android APK workflow and the next build is signed."
+
+      - name: Shred the local copies
+        if: always()
+        run: rm -f islamic-app.jks keystore.b64

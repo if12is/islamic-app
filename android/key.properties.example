@@ -1,0 +1,24 @@
+# Copy to android/key.properties and fill in, or set the same names as
+# environment variables. Never commit the filled-in file or the .jks itself.
+#
+# Why this exists: without a fixed key, every CI machine generates its own
+# throwaway debug key, so each APK is signed by a different signer and Android
+# refuses to install it over the last one ("App not installed"). One key, kept
+# in a GitHub secret, makes every build an upgrade of the one before it.
+#
+# Generate one with:
+#   keytool -genkeypair -v -keystore islamic-app.jks -storetype JKS \
+#     -keyalg RSA -keysize 2048 -validity 10950 -alias islamic-app \
+#     -dname "CN=Islamic App, O=if12is, C=EG"
+#
+# Then, once:
+#   base64 -i islamic-app.jks | pbcopy
+#   gh secret set ANDROID_KEYSTORE_BASE64 --body "$(pbpaste)"
+#   gh secret set ANDROID_KEYSTORE_PASSWORD --body '...'
+#   gh secret set ANDROID_KEY_PASSWORD --body '...'
+#   gh secret set ANDROID_KEY_ALIAS --body 'islamic-app'
+
+storeFile=islamic-app.jks
+storePassword=CHANGE_ME
+keyAlias=islamic-app
+keyPassword=CHANGE_ME

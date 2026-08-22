@@ -110,10 +110,24 @@ class DailyWirdCard extends ConsumerWidget {
                       : colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(context.tr(task.titleKey))),
+            Expanded(
+              child: Text(
+                context.tr(task.titleKey),
+                style:
+                    task.dueNow
+                        ? null
+                        : TextStyle(color: colorScheme.onSurfaceVariant),
+              ),
+            ),
+            // What is not due yet is dimmed and labelled, rather than shown as
+            // a count someone is failing to reach.
             Text(
-              '${task.done}/${task.target}',
-              style: Theme.of(context).textTheme.labelSmall,
+              task.dueNow
+                  ? '${task.done}/${task.target}'
+                  : context.tr('wird_not_due'),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: task.dueNow ? null : colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(width: 6),
             Icon(

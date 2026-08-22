@@ -291,6 +291,7 @@ class ImsakiyaTable extends ConsumerWidget {
         fajr: context.tr('fajr'),
         iftar: context.tr('iftar'),
         footer: context.tr('imsakiya_footer'),
+        appName: context.tr('app_title'),
       ),
       entries: [
         for (final row in rows)

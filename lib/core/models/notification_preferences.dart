@@ -71,6 +71,8 @@ class NotificationPreferences {
     this.islamicEventsEnabled = false,
     this.fridayRemindersEnabled = false,
     this.fastingRemindersEnabled = false,
+    this.surahRemindersEnabled = false,
+    this.surahReminderHour = 20,
   });
 
   /// Master switch. When off, nothing is scheduled.
@@ -124,6 +126,10 @@ class NotificationPreferences {
 
   /// The night before Monday, Thursday, and the white days.
   final bool fastingRemindersEnabled;
+
+  /// A daily nudge towards a surah worth reading, with why it is worth it.
+  final bool surahRemindersEnabled;
+  final int surahReminderHour;
 
   /// The adhan a given prayer should play.
   AdhanSoundSelection soundForPrayer(String prayerId) {
@@ -189,6 +195,8 @@ class NotificationPreferences {
     bool? islamicEventsEnabled,
     bool? fridayRemindersEnabled,
     bool? fastingRemindersEnabled,
+    bool? surahRemindersEnabled,
+    int? surahReminderHour,
   }) {
     return NotificationPreferences(
       masterEnabled: masterEnabled ?? this.masterEnabled,
@@ -218,6 +226,12 @@ class NotificationPreferences {
           fridayRemindersEnabled ?? this.fridayRemindersEnabled,
       fastingRemindersEnabled:
           fastingRemindersEnabled ?? this.fastingRemindersEnabled,
+      surahRemindersEnabled:
+          surahRemindersEnabled ?? this.surahRemindersEnabled,
+      surahReminderHour: (surahReminderHour ?? this.surahReminderHour).clamp(
+        0,
+        23,
+      ),
     );
   }
 
@@ -246,6 +260,8 @@ class NotificationPreferences {
     'islamicEventsEnabled': islamicEventsEnabled,
     'fridayRemindersEnabled': fridayRemindersEnabled,
     'fastingRemindersEnabled': fastingRemindersEnabled,
+    'surahRemindersEnabled': surahRemindersEnabled,
+    'surahReminderHour': surahReminderHour,
   };
 
   String encode() => jsonEncode(toJson());
@@ -301,6 +317,8 @@ class NotificationPreferences {
       islamicEventsEnabled: json['islamicEventsEnabled'] == true,
       fridayRemindersEnabled: json['fridayRemindersEnabled'] == true,
       fastingRemindersEnabled: json['fastingRemindersEnabled'] == true,
+      surahRemindersEnabled: json['surahRemindersEnabled'] == true,
+      surahReminderHour: (json['surahReminderHour'] as num?)?.toInt() ?? 20,
     );
   }
 

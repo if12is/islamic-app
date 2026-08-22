@@ -36,7 +36,12 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Flexible(
+          // A text action belongs at the far edge of the row, not tucked
+          // against the title — so the title takes every pixel it is not
+          // using and pushes "see all" out to the margin. A pill selector is
+          // different: it needs to share the width, so it stays Flexible.
+          _TitleSlot(
+            expand: trailing == null && trailingLabel != null,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -68,11 +73,34 @@ class SectionHeader extends StatelessWidget {
             // otherwise demand its whole intrinsic width from the row.
             Flexible(child: trailing!)
           else if (trailingLabel != null)
-            TextButton(onPressed: onTrailingTap, child: Text(trailingLabel!)),
+            TextButton(
+              onPressed: onTrailingTap,
+              style: TextButton.styleFrom(
+                // Sit flush with the section's own margin rather than floating
+                // a button's worth of padding in from it.
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(trailingLabel!),
+            ),
         ],
       ),
     );
   }
+}
+
+/// Holds the title: greedy when a text action must be pushed to the edge,
+/// content-sized when a control has to share the row.
+class _TitleSlot extends StatelessWidget {
+  const _TitleSlot({required this.expand, required this.child});
+
+  final bool expand;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      expand ? Expanded(child: child) : Flexible(child: child);
 }
 
 /// One option in a [PillSelector].

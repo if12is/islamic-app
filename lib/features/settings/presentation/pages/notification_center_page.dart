@@ -9,6 +9,7 @@ import '../../../../core/models/adhan_sound.dart';
 import '../../../../core/models/notification_preferences.dart';
 import '../../../../core/services/adhan_preview_player.dart';
 import '../../../../core/services/adhan_sound_service.dart';
+import '../../../../core/services/delivery_check.dart';
 import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/prayer_calculation_service.dart';
@@ -34,6 +35,12 @@ class _NotificationCenterPageState
   int _pending = 0;
   bool _busy = false;
 
+  /// What the platform says about background delivery, once asked.
+  DeliveryReport? _delivery;
+  bool _checking = false;
+  DateTime? _testDueAt;
+  Timer? _testTimer;
+
   static const List<int> _minuteChoices = [0, 5, 10, 15, 20, 30];
   static const List<int> _azkarOffsets = [0, 15, 30, 45, 60];
 
@@ -54,6 +61,7 @@ class _NotificationCenterPageState
   void dispose() {
     AdhanPreviewPlayer.playing.removeListener(_onPreviewChanged);
     unawaited(AdhanPreviewPlayer.stop());
+    _testTimer?.cancel();
     super.dispose();
   }
 
@@ -137,6 +145,8 @@ class _NotificationCenterPageState
         children: [
           _statusCard(prefs),
           const SizedBox(height: 16),
+          _deliveryCard(),
+          const SizedBox(height: 16),
           _prayerModesCard(prefs),
           const SizedBox(height: 16),
           _adhanSoundCard(prefs),
@@ -203,6 +213,243 @@ class _NotificationCenterPageState
           ],
         ),
       ),
+    );
+  }
+
+  /// Does an alert actually arrive when the app is closed?
+  ///
+  /// Everything above this card describes intent; this one reports fact. The
+  /// settings can all be correct and the adhan still never sound, because the
+  /// system decides separately whether a sleeping app keeps its alarms.
+  Widget _deliveryCard() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final report = _delivery;
+
+    return _card(
+      title: context.tr('delivery_title'),
+      icon: Icons.verified_user_outlined,
+      subtitle: context.tr('delivery_subtitle'),
+      children: [
+        if (report == null)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.tonalIcon(
+              onPressed: _checking ? null : _runDeliveryCheck,
+              icon:
+                  _checking
+                      ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Icon(Icons.play_circle_outline, size: 18),
+              label: Text(context.tr('delivery_run')),
+            ),
+          )
+        else ...[
+          for (final condition in report.conditions)
+            _deliveryRow(condition, colorScheme),
+          if (report.vendorRestricts) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.translate(
+                      Localizations.localeOf(context).languageCode,
+                      'delivery_vendor_warning',
+                      replacements: {'brand': report.manufacturer},
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final opened =
+                            await DeliveryCheck.openAutostartSettings();
+                        if (!opened && mounted) {
+                          _say(context.tr('delivery_screen_missing'));
+                        }
+                      },
+                      icon: const Icon(Icons.launch, size: 16),
+                      label: Text(context.tr('delivery_open_autostart')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _testDueAt != null ? null : _startBackgroundTest,
+                  icon: const Icon(Icons.timer_outlined, size: 18),
+                  label: Text(
+                    _testDueAt == null
+                        ? context.tr('delivery_test')
+                        : context.tr('delivery_test_waiting'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: _checking ? null : _runDeliveryCheck,
+                child: const Icon(Icons.refresh, size: 18),
+              ),
+            ],
+          ),
+          if (_testDueAt != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              context.tr('delivery_test_hint'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _deliveryRow(DeliveryCondition condition, ColorScheme colorScheme) {
+    final ok = condition.ok;
+    final colour =
+        ok == true
+            ? colorScheme.primary
+            : ok == false
+            ? colorScheme.error
+            : colorScheme.onSurfaceVariant;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(
+            ok == true
+                ? Icons.check_circle
+                : ok == false
+                ? Icons.cancel
+                : Icons.help_outline,
+            size: 18,
+            color: colour,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr('delivery_${condition.id}'),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  condition.detail != null
+                      ? AppLocalizations.translate(
+                        Localizations.localeOf(context).languageCode,
+                        'delivery_${condition.id}_detail',
+                        replacements: {'count': condition.detail!},
+                      )
+                      : context.tr(
+                        ok == true
+                            ? 'delivery_ok'
+                            : ok == false
+                            ? 'delivery_blocked'
+                            : 'delivery_unknown',
+                      ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (condition.fixable)
+            TextButton(
+              onPressed: () => _fixCondition(condition.id),
+              child: Text(context.tr('delivery_fix')),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runDeliveryCheck() async {
+    setState(() => _checking = true);
+    final report = await DeliveryCheck.run();
+    if (mounted) {
+      setState(() {
+        _delivery = report;
+        _checking = false;
+      });
+    }
+  }
+
+  Future<void> _fixCondition(String id) async {
+    switch (id) {
+      case 'permission':
+        await NotificationService.requestPermissions();
+        await DeliveryCheck.openNotificationSettings();
+      case 'exact_alarms':
+        await NotificationService.requestExactAlarmPermission();
+      case 'battery':
+        await DeliveryCheck.requestBatteryExemption();
+    }
+    // The user is coming back from a system screen, so re-read rather than
+    // assume the change was made.
+    await _runDeliveryCheck();
+  }
+
+  /// Schedule a real alert twenty seconds out and ask the user to lock the
+  /// phone, which is the only way to observe what actually happens.
+  Future<void> _startBackgroundTest() async {
+    const delay = Duration(seconds: 20);
+    final ok = await DeliveryCheck.scheduleBackgroundTest(delay: delay);
+    if (!mounted) {
+      return;
+    }
+    if (!ok) {
+      _say(context.tr('delivery_test_failed'));
+      return;
+    }
+
+    setState(() => _testDueAt = DateTime.now().add(delay));
+    _testTimer?.cancel();
+    _testTimer = Timer(delay + const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() => _testDueAt = null);
+      }
+    });
+  }
+
+  void _say(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _pickSurahHour(NotificationPreferences prefs) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: prefs.surahReminderHour, minute: 0),
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    await _apply(
+      () => ref
+          .read(notificationPreferencesProvider.notifier)
+          .update(prefs.copyWith(surahReminderHour: picked.hour)),
     );
   }
 
@@ -819,6 +1066,33 @@ class _NotificationCenterPageState
       icon: Icons.event_available,
       subtitle: context.tr('occasion_reminders_desc'),
       children: [
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.surahRemindersEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(surahRemindersEnabled: value)),
+                  ),
+          title: Text(context.tr('surah_reminders')),
+          subtitle: Text(context.tr('surah_reminders_desc')),
+        ),
+        if (prefs.surahRemindersEnabled)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(child: Text(context.tr('reminder_time'))),
+                TextButton(
+                  onPressed: _busy ? null : () => _pickSurahHour(prefs),
+                  child: Text('${prefs.surahReminderHour}:00'),
+                ),
+              ],
+            ),
+          ),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: prefs.fridayRemindersEnabled,

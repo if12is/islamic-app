@@ -2,9 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/features/azkar/data/tasbeeh_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The endless counter is the one number in this app someone could spend years
-/// building. These tests exist because "it resets sometimes" would make it
-/// worthless.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -15,68 +12,124 @@ void main() {
     prefs = await SharedPreferences.getInstance();
   });
 
-  test('starts at zero and in rounds mode', () {
-    expect(TasbeehStore.total(prefs), 0);
-    expect(TasbeehStore.mode(prefs), TasbeehMode.rounds);
+  group('Endless counting', () {
+    test('starts at zero and in rounds mode', () {
+      expect(TasbeehStore.mode(prefs), TasbeehMode.rounds);
+      expect(TasbeehStore.total(prefs), 0);
+      expect(TasbeehStore.totalFor(prefs, 0), 0);
+    });
+
+    test('each phrase keeps its own total', () async {
+      for (var i = 0; i < 5; i++) {
+        await TasbeehStore.increment(prefs, phraseIndex: 0);
+      }
+      for (var i = 0; i < 3; i++) {
+        await TasbeehStore.increment(prefs, phraseIndex: 1);
+      }
+
+      expect(TasbeehStore.totalFor(prefs, 0), 5);
+      expect(TasbeehStore.totalFor(prefs, 1), 3);
+      expect(TasbeehStore.totalFor(prefs, 2), 0);
+    });
+
+    test('the grand total is every phrase added together', () async {
+      await TasbeehStore.increment(prefs, phraseIndex: 0);
+      await TasbeehStore.increment(prefs, phraseIndex: 3);
+      await TasbeehStore.increment(prefs, phraseIndex: 3);
+
+      expect(TasbeehStore.total(prefs), 3);
+    });
+
+    test('it never resets itself, however many days pass', () async {
+      await TasbeehStore.increment(
+        prefs,
+        phraseIndex: 0,
+        now: DateTime(2026, 1, 1),
+      );
+      expect(
+        TasbeehStore.totalFor(prefs, 0),
+        1,
+        reason: 'a year later it is still there',
+      );
+      expect(TasbeehStore.today(prefs, now: DateTime(2027, 1, 1)), 0);
+    });
+
+    test('clearing one phrase leaves the others alone', () async {
+      await TasbeehStore.increment(prefs, phraseIndex: 0);
+      await TasbeehStore.increment(prefs, phraseIndex: 1);
+
+      await TasbeehStore.clearTotal(prefs, phraseIndex: 0);
+
+      expect(TasbeehStore.totalFor(prefs, 0), 0);
+      expect(TasbeehStore.totalFor(prefs, 1), 1);
+      expect(TasbeehStore.total(prefs), 1);
+    });
   });
 
-  test('counts up and keeps the total', () async {
-    for (var i = 0; i < 5; i++) {
-      await TasbeehStore.increment(prefs);
-    }
+  group('Rounds', () {
+    // The bug: the round lived only in widget state, so stepping to the next
+    // phrase and back lost it, and the daily wird never saw it at all.
+    test('survive stepping between phrases', () async {
+      for (var i = 0; i < 10; i++) {
+        await TasbeehStore.incrementRound(prefs, 0);
+      }
+      await TasbeehStore.incrementRound(prefs, 1);
 
-    expect(TasbeehStore.total(prefs), 5);
+      expect(TasbeehStore.roundCount(prefs, 0), 10);
+      expect(TasbeehStore.roundCount(prefs, 1), 1);
+    });
 
-    // A fresh handle onto the same store: what a restart looks like.
-    final reopened = await SharedPreferences.getInstance();
-    expect(TasbeehStore.total(reopened), 5);
+    test('stop at thirty-three however many times it is tapped', () async {
+      for (var i = 0; i < 50; i++) {
+        await TasbeehStore.incrementRound(prefs, 0);
+      }
+      expect(TasbeehStore.roundCount(prefs, 0), TasbeehStore.roundTarget);
+    });
+
+    test('a new day starts them over', () async {
+      final today = DateTime(2026, 8, 22, 10);
+      final tomorrow = DateTime(2026, 8, 23, 10);
+
+      for (var i = 0; i < 33; i++) {
+        await TasbeehStore.incrementRound(prefs, 0, now: today);
+      }
+      expect(TasbeehStore.roundCount(prefs, 0, now: today), 33);
+      expect(TasbeehStore.roundCount(prefs, 0, now: tomorrow), 0);
+
+      await TasbeehStore.incrementRound(prefs, 0, now: tomorrow);
+      expect(TasbeehStore.roundCount(prefs, 0, now: tomorrow), 1);
+    });
+
+    test('completed rounds are what the daily wird counts', () async {
+      for (var i = 0; i < 33; i++) {
+        await TasbeehStore.incrementRound(prefs, 0);
+        await TasbeehStore.incrementRound(prefs, 1);
+      }
+      await TasbeehStore.incrementRound(prefs, 2);
+
+      expect(TasbeehStore.roundsCompleted(prefs, 6), 2);
+    });
+
+    test('a manual reset clears one phrase only', () async {
+      await TasbeehStore.incrementRound(prefs, 0);
+      await TasbeehStore.incrementRound(prefs, 1);
+
+      await TasbeehStore.resetRounds(prefs, phraseIndex: 0);
+
+      expect(TasbeehStore.roundCount(prefs, 0), 0);
+      expect(TasbeehStore.roundCount(prefs, 1), 1);
+    });
   });
 
-  test('today resets with the date, the lifetime total does not', () async {
-    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+  group('Settings', () {
+    test('the mode is remembered', () async {
+      await TasbeehStore.setMode(prefs, TasbeehMode.endless);
+      expect(TasbeehStore.mode(prefs), TasbeehMode.endless);
+    });
 
-    await TasbeehStore.increment(prefs, now: yesterday);
-    await TasbeehStore.increment(prefs, now: yesterday);
-    expect(TasbeehStore.today(prefs, now: yesterday), 2);
-
-    // A new day.
-    expect(TasbeehStore.today(prefs), 0);
-    expect(TasbeehStore.total(prefs), 2);
-
-    await TasbeehStore.increment(prefs);
-    expect(TasbeehStore.today(prefs), 1);
-    expect(TasbeehStore.total(prefs), 3);
-  });
-
-  test('changing the phrase does not touch the total', () async {
-    await TasbeehStore.increment(prefs);
-    await TasbeehStore.increment(prefs);
-
-    await TasbeehStore.setPhraseIndex(prefs, 3);
-
-    expect(TasbeehStore.phraseIndex(prefs), 3);
-    expect(TasbeehStore.total(prefs), 2);
-  });
-
-  test('the mode is remembered', () async {
-    await TasbeehStore.setMode(prefs, TasbeehMode.endless);
-    expect(TasbeehStore.mode(prefs), TasbeehMode.endless);
-
-    final reopened = await SharedPreferences.getInstance();
-    expect(TasbeehStore.mode(reopened), TasbeehMode.endless);
-  });
-
-  test('only an explicit clear empties it', () async {
-    for (var i = 0; i < 120; i++) {
-      await TasbeehStore.increment(prefs);
-    }
-    expect(TasbeehStore.total(prefs), 120);
-
-    await TasbeehStore.clearTotal(prefs);
-
-    expect(TasbeehStore.total(prefs), 0);
-    expect(TasbeehStore.today(prefs), 0);
-    // The chosen phrase survives a clear; it is not part of the count.
-    expect(TasbeehStore.phraseIndex(prefs), 0);
+    test('the phrase is remembered', () async {
+      await TasbeehStore.setPhraseIndex(prefs, 4);
+      expect(TasbeehStore.phraseIndex(prefs), 4);
+    });
   });
 }

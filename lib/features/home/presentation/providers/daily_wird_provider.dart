@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/services/azkar_data_service.dart';
 import '../../../azkar/data/azkar_progress_store.dart';
+import '../../../azkar/data/tasbeeh_store.dart';
 import '../../../azkar/data/models/azkar_models.dart';
 import '../../../quran/presentation/providers/reading_progress_provider.dart';
 
@@ -13,6 +15,7 @@ class WirdTask {
     required this.done,
     required this.target,
     this.category,
+    this.dueNow = true,
   });
 
   final String id;
@@ -22,6 +25,10 @@ class WirdTask {
 
   /// The azkar chapter this task opens, when it has one.
   final AzkarCategory? category;
+
+  /// Whether this portion is due at this hour. Evening azkar in the morning
+  /// are not late, they are simply not yet due.
+  final bool dueNow;
 
   bool get isComplete => target > 0 && done >= target;
 
@@ -35,18 +42,23 @@ class DailyWird {
 
   final List<WirdTask> tasks;
 
-  int get completed => tasks.where((task) => task.isComplete).length;
+  /// Only what is due at this hour counts towards the day's ring; the evening
+  /// azkar should not drag the morning's progress down.
+  List<WirdTask> get dueTasks => tasks.where((task) => task.dueNow).toList();
 
-  int get total => tasks.length;
+  int get completed => dueTasks.where((task) => task.isComplete).length;
+
+  int get total => dueTasks.length;
 
   bool get isComplete => total > 0 && completed == total;
 
   double get progress {
-    if (tasks.isEmpty) {
+    final due = dueTasks;
+    if (due.isEmpty) {
       return 0;
     }
-    final sum = tasks.fold<double>(0, (value, task) => value + task.progress);
-    return sum / tasks.length;
+    final sum = due.fold<double>(0, (value, task) => value + task.progress);
+    return sum / due.length;
   }
 
   static const DailyWird empty = DailyWird(tasks: []);
@@ -54,6 +66,9 @@ class DailyWird {
 
 /// Pages a day when no khatmah plan is running — a gentle default.
 const int _defaultDailyPages = 4;
+
+/// How many phrases make up a full round of tasbeeh; matches the counter.
+const int _tasbeehPhrases = 6;
 
 /// Builds today's wird from the reading log and the azkar progress.
 final dailyWirdProvider = FutureProvider<DailyWird>((ref) async {
@@ -85,9 +100,15 @@ final dailyWirdProvider = FutureProvider<DailyWird>((ref) async {
       WirdTask(
         id: 'morning',
         titleKey: 'wird_morning_azkar',
-        done: isMorning ? progress.completedCount : progress.totalCount,
+        // This used to report the full total once the clock passed noon,
+        // whatever the user had actually recited — so the card read 31/31
+        // while the chapter itself held two or three ticks. Report what was
+        // done; the hour decides whether it is still due, not whether it
+        // counts as finished.
+        done: progress.completedCount,
         target: progress.totalCount,
         category: morning,
+        dueNow: isMorning,
       ),
     );
   }
@@ -99,26 +120,28 @@ final dailyWirdProvider = FutureProvider<DailyWird>((ref) async {
       WirdTask(
         id: 'evening',
         titleKey: 'wird_evening_azkar',
-        done: isMorning ? 0 : progress.completedCount,
+        done: progress.completedCount,
         target: progress.totalCount,
         category: evening,
+        dueNow: !isMorning,
       ),
     );
   }
 
-  final tasbeeh = _findCategory(categories, 'tasbeeh', 'تسبيح');
-  if (tasbeeh != null) {
-    final progress = await AzkarProgressStore.progressFor(tasbeeh);
-    tasks.add(
-      WirdTask(
-        id: 'tasbeeh',
-        titleKey: 'wird_tasbeeh',
-        done: progress.completedCount,
-        target: progress.totalCount,
-        category: tasbeeh,
-      ),
-    );
-  }
+  // The tasbeeh line reads the counter itself, so counting on the beads and
+  // counting in the wird are the same act. They used to be two separate
+  // stores, and thirty-three on one showed as nothing on the other.
+  final prefs = await SharedPreferences.getInstance();
+  final tasbeehDone = TasbeehStore.roundsCompleted(prefs, _tasbeehPhrases);
+  tasks.add(
+    WirdTask(
+      id: 'tasbeeh',
+      titleKey: 'wird_tasbeeh',
+      done: tasbeehDone,
+      target: _tasbeehPhrases,
+      category: _findCategory(categories, 'tasbeeh', 'تسبيح'),
+    ),
+  );
 
   return DailyWird(tasks: tasks);
 });

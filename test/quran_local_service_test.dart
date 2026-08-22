@@ -180,10 +180,10 @@ void main() {
         QuranLocalService.audioUrlForVerse(2, 255, reciterCode: 'ar.husary'),
         'https://cdn.islamic.network/quran/audio/128/ar.husary/262.mp3',
       );
-      expect(
-        QuranLocalService.audioUrlForSurah(18),
-        contains('/audio-surah/128/ar.alafasy/18.mp3'),
-      );
+      // Whole surahs come from mp3quran, not the CDN: the CDN serves them for
+      // ar.alafasy alone and returns 403 for every other reciter.
+      expect(QuranLocalService.audioUrlForSurah(18), endsWith('/018.mp3'));
+      expect(QuranLocalService.audioUrlForSurah(18), contains('mp3quran.net'));
     });
   });
 }

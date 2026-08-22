@@ -2,7 +2,10 @@ package com.islamicapp.islamic_app
 
 import android.app.Activity
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.PowerManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -41,6 +44,14 @@ class MainActivity : AudioServiceActivity() {
             "pickSystemSound" -> startSystemPicker(result)
             "soundTitle" -> result.success(titleFor(call.argument<String>("uri")))
             "openSpeechSettings" -> result.success(openSpeechSettings())
+            "isIgnoringBatteryOptimizations" ->
+                result.success(isIgnoringBatteryOptimizations())
+            "requestIgnoreBatteryOptimizations" ->
+                result.success(requestIgnoreBatteryOptimizations())
+            "openAppNotificationSettings" ->
+                result.success(openAppNotificationSettings())
+            "openAutostartSettings" -> result.success(openAutostartSettings())
+            "deviceManufacturer" -> result.success(Build.MANUFACTURER ?: "")
             else -> result.notImplemented()
         }
     }
@@ -75,6 +86,148 @@ class MainActivity : AudioServiceActivity() {
             }
         }
         return false
+    }
+
+    /**
+     * Whether the system has stopped putting this app to sleep.
+     *
+     * This is the single biggest reason a scheduled adhan never sounds: Android
+     * doze, and the far more aggressive vendor layers on top of it, drop exact
+     * alarms for apps they consider idle. Nothing in the app can override that;
+     * it can only ask, and then say plainly whether the answer was yes.
+     */
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        val power = getSystemService(Context.POWER_SERVICE) as? PowerManager
+            ?: return false
+        return power.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun requestIgnoreBatteryOptimizations(): Boolean {
+        if (isIgnoringBatteryOptimizations()) return true
+        return try {
+            startActivity(
+                Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:$packageName")
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            true
+        } catch (error: Exception) {
+            // Some builds hide this dialog; the settings list is the fallback.
+            openIntent(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        }
+    }
+
+    private fun openAppNotificationSettings(): Boolean {
+        return openIntent(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        ) || openIntent(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.parse("package:$packageName"))
+        )
+    }
+
+    /**
+     * Open the vendor screen that decides whether this app may start itself.
+     *
+     * Xiaomi, Oppo, Vivo, Huawei and Samsung each keep their own list, none of
+     * them reachable through a documented Android intent. An app left off that
+     * list is force-stopped, and a force-stopped app has no alarms at all — so
+     * these are worth trying even though every one of them is a guess.
+     */
+    private fun openAutostartSettings(): Boolean {
+        val candidates = listOf(
+            // Honor, since it split from Huawei: its own system manager, with
+            // the startup list under a package of its own.
+            Intent().setClassName(
+                "com.hihonor.systemmanager",
+                "com.hihonor.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+            ),
+            Intent().setClassName(
+                "com.hihonor.systemmanager",
+                "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+            ),
+            Intent().setClassName(
+                "com.hihonor.systemmanager",
+                "com.hihonor.systemmanager.optimize.process.ProtectActivity"
+            ),
+            // Huawei, and older Honor builds that still ship Huawei's manager.
+            Intent().setClassName(
+                "com.huawei.systemmanager",
+                "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+            ),
+            Intent().setClassName(
+                "com.huawei.systemmanager",
+                "com.huawei.systemmanager.optimize.process.ProtectActivity"
+            ),
+            // OnePlus: OxygenOS calls it "chain launch". Newer builds fold it
+            // into the Oppo security centre, since the two now share a base.
+            Intent().setClassName(
+                "com.oneplus.security",
+                "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"
+            ),
+            Intent().setClassName(
+                "com.oneplus.security",
+                "com.oneplus.security.chainlaunch.view.ChainLaunchAppListAlarmActivity"
+            ),
+            // Xiaomi / Redmi / POCO
+            Intent().setClassName(
+                "com.miui.securitycenter",
+                "com.miui.permcenter.autostart.AutoStartManagementActivity"
+            ),
+            // Oppo / Realme — also the fallback for recent OnePlus.
+            Intent().setClassName(
+                "com.coloros.safecenter",
+                "com.coloros.safecenter.startupapp.StartupAppListActivity"
+            ),
+            Intent().setClassName(
+                "com.coloros.safecenter",
+                "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+            ),
+            Intent().setClassName(
+                "com.oppo.safe",
+                "com.oppo.safe.permission.startup.StartupAppListActivity"
+            ),
+            // Vivo
+            Intent().setClassName(
+                "com.vivo.permissionmanager",
+                "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"
+            ),
+            Intent().setClassName(
+                "com.iqoo.secure",
+                "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager"
+            ),
+            // Samsung
+            Intent().setClassName(
+                "com.samsung.android.lool",
+                "com.samsung.android.sm.ui.battery.BatteryActivity"
+            ),
+            // Letv, Asus and friends fall back to the app's own settings page.
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.parse("package:$packageName")),
+        )
+
+        for (intent in candidates) {
+            if (openIntent(intent)) return true
+        }
+        return false
+    }
+
+    /** Start [intent] if anything on this device can handle it. */
+    private fun openIntent(intent: Intent): Boolean {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val resolved = packageManager.queryIntentActivities(
+            intent,
+            PackageManager.MATCH_DEFAULT_ONLY
+        )
+        if (resolved.isEmpty()) return false
+        return try {
+            startActivity(intent)
+            true
+        } catch (error: Exception) {
+            false
+        }
     }
 
     private fun startImport(result: MethodChannel.Result) {

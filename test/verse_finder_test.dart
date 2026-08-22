@@ -53,15 +53,18 @@ void main() {
     });
 
     test('ranks the best answer first', () {
-      final matches = VerseFinder.search(
-        'الحمد لله رب العالمين الرحمن الرحيم مالك يوم الدين',
-      );
+      // A phrase that lives inside one verse. The search is per verse, so a
+      // recitation spanning several of them has no single best home — and
+      // now that the basmala is no longer glued onto every first verse, the
+      // words of one surah's opening no longer bleed across the whole Mushaf.
+      final matches = VerseFinder.search('اهدنا الصراط المستقيم');
 
-      expect(matches.length, greaterThan(1));
+      expect(matches, isNotEmpty);
       for (var i = 1; i < matches.length; i++) {
         expect(matches[i - 1].score, greaterThanOrEqualTo(matches[i].score));
       }
       expect(matches.first.surahNumber, 1);
+      expect(matches.first.verseNumber, 6);
     });
   });
 }

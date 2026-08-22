@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/azkar/data/tasbeeh_store.dart';
 import '../constants/app_constants.dart';
 import '../utils/app_logger.dart';
 
@@ -17,6 +18,7 @@ class RestoreSummary {
     required this.readingDays,
     required this.hifzItems,
     required this.settingsRestored,
+    this.tasbeehTotal = 0,
   });
 
   final int bookmarks;
@@ -24,6 +26,10 @@ class RestoreSummary {
   final int readingDays;
   final int hifzItems;
   final bool settingsRestored;
+
+  /// The lifetime tasbeeh count that came across, so the user can see with
+  /// their own eyes that the number they have been building survived.
+  final int tasbeehTotal;
 
   static const RestoreSummary empty = RestoreSummary(
     bookmarks: 0,
@@ -42,7 +48,9 @@ class RestoreSummary {
 class BackupService {
   BackupService._();
 
-  static const int formatVersion = 1;
+  /// 2 adds the tasbeeh counts, the azkar sessions, and the daily wird
+  /// targets. Version 1 files still restore; see [_migrateTasbeeh].
+  static const int formatVersion = 2;
 
   /// Hive boxes carried in the backup.
   static const List<String> _boxes = [
@@ -51,8 +59,22 @@ class BackupService {
     'hifz_items',
   ];
 
+  /// Whole families of keys, carried by prefix.
+  ///
+  /// The tasbeeh counters are per phrase, so listing them by name means a
+  /// seventh phrase would silently stop being backed up. They were left out
+  /// entirely before this: a lifetime count someone had spent years building
+  /// was the one thing in the app that could not be exported.
+  static const List<String> _preferencePrefixes = [
+    'tasbeeh_',
+    'azkar_',
+    'seasonal_intro_',
+  ];
+
   /// Preference keys carried in the backup.
   static const List<String> _preferenceKeys = [
+    AppConstants.dailyWirdTargetsKey,
+    AppConstants.lastAzkarCategoryIdKey,
     AppConstants.themeModeKey,
     AppConstants.localeKey,
     AppConstants.prayerMethodKey,
@@ -71,14 +93,26 @@ class BackupService {
     'last_read_verse_num',
     'last_read_scroll_offset',
     'last_read_surah_nameAr',
+    'location_is_manual',
+    'recitation_locale_id',
+    'stt_selected_model',
   ];
+
+  /// Whether a key belongs in the backup.
+  static bool _isCarried(String key) =>
+      _preferenceKeys.contains(key) || _preferencePrefixes.any(key.startsWith);
 
   /// Build the backup payload.
   static Future<Map<String, dynamic>> buildPayload() async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Walk what is actually stored rather than a fixed list, so every phrase
+    // counter and every azkar session comes along without being named.
     final settings = <String, dynamic>{};
-    for (final key in _preferenceKeys) {
+    for (final key in prefs.getKeys()) {
+      if (!_isCarried(key)) {
+        continue;
+      }
       final value = prefs.get(key);
       if (value != null) {
         settings[key] = value;
@@ -170,7 +204,7 @@ class BackupService {
     if (settings is Map) {
       for (final entry in settings.entries) {
         final key = entry.key.toString();
-        if (!_preferenceKeys.contains(key)) {
+        if (!_isCarried(key)) {
           continue;
         }
         final value = entry.value;
@@ -216,13 +250,45 @@ class BackupService {
       counts[name] = data.length;
     }
 
+    await _migrateTasbeeh(prefs);
+
     return RestoreSummary(
       bookmarks: counts['quran_bookmarks'] ?? 0,
       notes: notes,
       readingDays: counts['reading_progress'] ?? 0,
       hifzItems: counts['hifz_items'] ?? 0,
       settingsRestored: settingsRestored,
+      tasbeehTotal: TasbeehStore.total(prefs),
     );
+  }
+
+  /// Give a pre-split backup's tasbeeh total somewhere to live.
+  ///
+  /// Counts used to be one running number for every phrase; they are now kept
+  /// per phrase, with the sum shown underneath. A backup written before that
+  /// carries the sum and nothing else, so the beads would read zero while the
+  /// total underneath read four thousand — which looks exactly like loss.
+  ///
+  /// The only thing an old file says about which phrase the count belongs to
+  /// is the phrase that was open when it was written, so the whole total goes
+  /// there. It is an assumption, and it keeps the number the user earned.
+  static Future<void> _migrateTasbeeh(SharedPreferences prefs) async {
+    final total = TasbeehStore.total(prefs);
+    if (total <= 0) {
+      return;
+    }
+
+    final alreadySplit = List.generate(
+      TasbeehStore.phraseCount,
+      (index) => TasbeehStore.totalFor(prefs, index),
+    ).any((value) => value > 0);
+    if (alreadySplit) {
+      return;
+    }
+
+    final phrase = TasbeehStore.phraseIndex(prefs);
+    await TasbeehStore.seedPhraseTotal(prefs, phrase, total);
+    AppLogger.info('Migrated $total tasbeeh onto phrase $phrase');
   }
 
   static Future<Box<Map>> _openBox(String name) async {

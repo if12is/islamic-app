@@ -108,6 +108,50 @@ class QuranLocalService {
     return surahs()[surahNumber - 1];
   }
 
+  /// The basmala exactly as the bundled text writes it.
+  ///
+  /// Taken from al-Fatihah, where it is a verse in its own right, so it always
+  /// matches the spelling used elsewhere — the package writes الرَّحْمَـٰنِ with a
+  /// dagger alef, which does not match the more common ٱلرَّحْمَٰنِ character for
+  /// character. Comparing against a hand-typed constant would silently fail.
+  static String get basmala => _basmala ??= quran.getVerse(1, 1).trim();
+  static String? _basmala;
+
+  /// The text of one verse as the app shows it.
+  ///
+  /// Every reader of the bundled text goes through here, so the page, the
+  /// search, and the corpus all agree on what a verse says.
+  static String verseText(int surahNumber, int verseNumber) =>
+      stripLeadingBasmala(
+        quran.getVerse(surahNumber, verseNumber),
+        surahNumber: surahNumber,
+        verseNumber: verseNumber,
+      );
+
+  /// The verse text without the basmala the source glues onto it.
+  ///
+  /// Every surah's first verse arrives with the basmala prepended, except
+  /// al-Fatihah (where it is verse 1) and at-Tawbah (which has none). The
+  /// reader draws the basmala itself as a centred line above the text, so it
+  /// appeared twice — once in the header and again at the head of verse 1.
+  ///
+  /// Only the very start of a first verse is touched. An-Naml 30 quotes the
+  /// basmala inside the verse — «إِنَّهُ مِنْ سُلَيْمَانَ وَإِنَّهُ بِسْمِ اللَّهِ...» — and
+  /// stripping it from anywhere but the front would delete revelation.
+  static String stripLeadingBasmala(
+    String text, {
+    required int surahNumber,
+    required int verseNumber,
+  }) {
+    if (verseNumber != 1 || surahNumber == 1 || surahNumber == 9) {
+      return text;
+    }
+    if (!text.startsWith(basmala)) {
+      return text;
+    }
+    return text.substring(basmala.length).trimLeft();
+  }
+
   static QuranVerse verse(int surahNumber, int verseNumber) {
     _assertSurah(surahNumber);
     final count = quran.getVerseCount(surahNumber);
@@ -123,7 +167,7 @@ class QuranLocalService {
       surahNumber: surahNumber,
       numberInSurah: verseNumber,
       globalNumber: globalVerseNumber(surahNumber, verseNumber),
-      text: quran.getVerse(surahNumber, verseNumber),
+      text: verseText(surahNumber, verseNumber),
       juz: quran.getJuzNumber(surahNumber, verseNumber),
       page: quran.getPageNumber(surahNumber, verseNumber),
       hizbQuarter: hizbQuarterOf(surahNumber, verseNumber),
@@ -339,7 +383,7 @@ class QuranLocalService {
     for (var surah = 1; surah <= surahCount; surah++) {
       final count = quran.getVerseCount(surah);
       for (var ayah = 1; ayah <= count; ayah++) {
-        final text = normalizeArabic(quran.getVerse(surah, ayah));
+        final text = normalizeArabic(verseText(surah, ayah));
         if (text.contains(needle)) {
           results.add(verse(surah, ayah));
           if (results.length >= limit) {
@@ -378,12 +422,58 @@ class QuranLocalService {
   }
 
   /// Whole-surah audio from the same CDN.
+  /// Where each reciter's whole-surah recordings live, on mp3quran.net.
+  ///
+  /// Verse-by-verse audio comes from the islamic.network CDN, which carries
+  /// every edition. Whole surahs there are a different matter: only ar.alafasy
+  /// answers and every other edition returns 403, which reached the player as
+  /// a bare PlayerException. So the surah player worked on the default voice
+  /// and failed on all the rest — the error was real, but it was the address
+  /// that was wrong, not the player.
+  static const Map<String, String> surahAudioHosts = {
+    'ar.alafasy': 'https://server8.mp3quran.net/afs',
+    'ar.mahermuaiqly': 'https://server12.mp3quran.net/maher',
+    'ar.husary': 'https://server13.mp3quran.net/husr',
+    'ar.minshawi': 'https://server10.mp3quran.net/minsh',
+    'ar.abdurrahmaansudais': 'https://server11.mp3quran.net/sds',
+    'ar.shaatree': 'https://server11.mp3quran.net/shatri',
+    'ar.ahmedajamy': 'https://server10.mp3quran.net/ajm',
+  };
+
+  /// Hosts learned at runtime from the full reciter catalogue.
+  ///
+  /// The bundled seven are a floor, not the whole list: the catalogue fetches
+  /// every recording mp3quran publishes and registers them here, so a voice
+  /// chosen from it resolves the same way a bundled one does.
+  static final Map<String, String> _registeredHosts = {};
+
+  static void registerSurahHost(String reciterCode, String server) {
+    if (reciterCode.isEmpty || !server.startsWith('https://')) {
+      return;
+    }
+    _registeredHosts[reciterCode] = server;
+  }
+
+  /// Whether this voice has whole-surah recordings at all.
+  static bool hasSurahAudio(String reciterCode) =>
+      surahAudioHosts.containsKey(reciterCode) ||
+      _registeredHosts.containsKey(reciterCode);
+
+  /// The whole-surah recording, from whichever host actually serves it.
   static String audioUrlForSurah(
     int surahNumber, {
     String reciterCode = 'ar.alafasy',
     int bitrate = 128,
   }) {
     _assertSurah(surahNumber);
+
+    final host = _registeredHosts[reciterCode] ?? surahAudioHosts[reciterCode];
+    if (host != null) {
+      final base = host.endsWith('/') ? host : '$host/';
+      return '$base${surahNumber.toString().padLeft(3, '0')}.mp3';
+    }
+    // A voice this build has never heard of: try the CDN and let the caller
+    // report what comes back.
     return 'https://cdn.islamic.network/quran/audio-surah/$bitrate/$reciterCode/$surahNumber.mp3';
   }
 
@@ -406,7 +496,7 @@ class QuranLocalService {
         // Single space between verses, so a quotation that runs across two
         // verses still matches.
         buffer
-          ..write(normalizeArabic(quran.getVerse(surah, ayah)))
+          ..write(normalizeArabic(verseText(surah, ayah)))
           ..write(' ');
       }
     }
@@ -432,7 +522,7 @@ class QuranLocalService {
     for (var surah = 1; surah <= surahCount; surah++) {
       final count = quran.getVerseCount(surah);
       for (var ayah = 1; ayah <= count; ayah++) {
-        words.addAll(skeleton(quran.getVerse(surah, ayah)).split(' '));
+        words.addAll(skeleton(verseText(surah, ayah)).split(' '));
       }
     }
     words.removeWhere((word) => word.isEmpty);

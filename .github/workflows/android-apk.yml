@@ -62,31 +62,85 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
+      - name: Restore signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret. This APK is signed"
+            echo "::warning::with a throwaway debug key, so it CANNOT be installed over"
+            echo "::warning::a previous build. Run the 'Signing key' workflow once to fix."
+            exit 0
+          fi
+          echo "${KEYSTORE_BASE64}" | base64 -d > android/islamic-app.jks
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Compute version
+        id: version
+        run: |
+          set -euo pipefail
+          OVERRIDE="${{ github.event.inputs.version }}"
+          if [ -n "${OVERRIDE}" ]; then
+            BASE="${OVERRIDE%%+*}"
+          else
+            BASE="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+            BASE="${BASE%%+*}"
+          fi
+          # Every build gets a strictly higher versionCode than the one before,
+          # so Android always treats the new APK as an upgrade. run_number only
+          # ever increases for this repository.
+          CODE="${{ github.run_number }}"
+          echo "name=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "code=${CODE}" >> "$GITHUB_OUTPUT"
+          echo "full=${BASE}+${CODE}" >> "$GITHUB_OUTPUT"
+          echo "Building ${BASE} (versionCode ${CODE})"
+
       - name: Build release APK
+        env:
+          ANDROID_VERSION_CODE: ${{ steps.version.outputs.code }}
+          ANDROID_VERSION_NAME: ${{ steps.version.outputs.name }}
+          ANDROID_KEYSTORE_PATH: islamic-app.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: flutter build apk --release --obfuscate --split-debug-info=build/app/outputs/symbols
+
+      - name: Verify the APK is signed with the expected key
+        if: steps.signing.outputs.signed == 'true'
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name apksigner | sort -V | tail -1)"
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk \
+            | tee signer.txt
+          # A digest that changes between releases is exactly the failure this
+          # whole step exists to catch, so it is printed into the build log.
+          grep -i 'SHA-256 digest' signer.txt || true
 
       - name: Prepare APK artifacts
         id: meta
         run: |
           set -euo pipefail
-          VERSION="${{ github.event.inputs.version }}"
-          if [ -z "${VERSION}" ]; then
-            VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
-          fi
+          VERSION="${{ steps.version.outputs.full }}"
+          # "+" is legal in a filename but ugly in a download URL.
+          FILE="${{ steps.version.outputs.name }}-build${{ steps.version.outputs.code }}"
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk "dist/islamic-app-${VERSION}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/islamic-app-${FILE}.apk"
           cp build/app/outputs/flutter-apk/app-release.apk dist/islamic-app-latest.apk
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "apk_versioned=dist/islamic-app-${VERSION}.apk" >> "$GITHUB_OUTPUT"
+          echo "file=${FILE}" >> "$GITHUB_OUTPUT"
+          echo "apk_versioned=dist/islamic-app-${FILE}.apk" >> "$GITHUB_OUTPUT"
           echo "apk_latest=dist/islamic-app-latest.apk" >> "$GITHUB_OUTPUT"
-          echo "Prepared islamic-app-${VERSION}.apk"
+          echo "Prepared islamic-app-${FILE}.apk"
 
       - name: Upload APK (Actions artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: islamic-app-${{ steps.meta.outputs.version }}
+          name: islamic-app-${{ steps.meta.outputs.file }}
           path: |
-            dist/islamic-app-${{ steps.meta.outputs.version }}.apk
+            dist/islamic-app-${{ steps.meta.outputs.file }}.apk
             dist/islamic-app-latest.apk
           if-no-files-found: error
           retention-days: 30
@@ -132,7 +186,8 @@ jobs:
             --notes "$(cat <<EOF
           Rolling development APK. This release is replaced on every push to \`master\`.
 
-          - Version: \`${{ steps.meta.outputs.version }}\`
+          - Version: \`${{ steps.meta.outputs.version }}\` (versionCode \`${{ steps.version.outputs.code }}\`)
+          - Signed with the project key: \`${{ steps.signing.outputs.signed }}\`
           - Commit: \`${{ github.sha }}\`
           - Branch: \`${{ github.ref_name }}\`
 

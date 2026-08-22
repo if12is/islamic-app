@@ -80,12 +80,43 @@ class UserCoordinates {
   final double latitude;
   final double longitude;
 
-  const UserCoordinates({required this.latitude, required this.longitude});
+  /// Where the number came from, so the screen can admit when it is guessing.
+  final LocationSource source;
+
+  const UserCoordinates({
+    required this.latitude,
+    required this.longitude,
+    this.source = LocationSource.saved,
+  });
+
+  bool get isGuess => source == LocationSource.fallback;
 }
 
+/// How a set of coordinates was arrived at.
+enum LocationSource {
+  /// A fresh fix from the device.
+  gps,
+
+  /// The last fix the OS still remembers — instant, and good enough for
+  /// prayer times, which do not change over a few hundred metres.
+  lastKnown,
+
+  /// A place the user pinned by hand.
+  manual,
+
+  /// What was stored from an earlier session.
+  saved,
+
+  /// Nothing was available. The times shown are for somewhere else.
+  fallback,
+}
+
+/// Damanhour. Last resort only — anyone actually seeing these numbers is
+/// being shown another city's prayer times, and the screen should say so.
 const UserCoordinates _fallbackCoordinates = UserCoordinates(
   latitude: 31.0345728,
   longitude: 30.4676864,
+  source: LocationSource.fallback,
 );
 
 /// Provider for the best available user location.
@@ -109,13 +140,26 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
   // A pinned place wins over GPS until the user switches back to automatic.
   if (_globalPrefs.getBool(LocationService.manualKey) == true &&
       savedCoordinates != null) {
-    return savedCoordinates;
+    return UserCoordinates(
+      latitude: savedCoordinates.latitude,
+      longitude: savedCoordinates.longitude,
+      source: LocationSource.manual,
+    );
+  }
+
+  Future<UserCoordinates> giveUp(String why) async {
+    // This used to be a bare `catch (_)`, so every failure looked identical to
+    // success with an old value — the app showed Damanhour forever and never
+    // said why. Now the reason is logged and the caller can tell a guess from
+    // a fix.
+    AppLogger.warning('Location unavailable: $why');
+    return savedCoordinates ?? _fallbackCoordinates;
   }
 
   try {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      return savedCoordinates ?? _fallbackCoordinates;
+      return await giveUp('location services are switched off');
     }
 
     var permission = await Geolocator.checkPermission();
@@ -125,15 +169,38 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      return savedCoordinates ?? _fallbackCoordinates;
+      return await giveUp('permission is $permission');
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-        timeLimit: Duration(seconds: 8),
-      ),
-    );
+    // Ask the OS what it already knows before asking the hardware. A cold GPS
+    // fix indoors regularly takes longer than any timeout worth waiting for,
+    // and the last known position is more than accurate enough for prayer
+    // times — which do not move over a few hundred metres.
+    Position? position;
+    try {
+      position = await Geolocator.getLastKnownPosition();
+    } catch (e) {
+      AppLogger.warning('No last known position: $e');
+    }
+
+    try {
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          // Eight seconds was not enough for a cold start, so the fix timed
+          // out, the exception was swallowed, and the fallback stood in.
+          timeLimit: Duration(seconds: 25),
+        ),
+      );
+    } catch (e) {
+      AppLogger.warning('No fresh fix: $e');
+    }
+
+    if (position == null) {
+      return await giveUp(
+        'neither a cached nor a fresh position was available',
+      );
+    }
 
     final movedFar =
         savedCoordinates == null ||
@@ -152,14 +219,17 @@ final currentLocationCoordinatesProvider = FutureProvider<UserCoordinates>((
     // A new city means new prayer times, so re-arm the week's reminders.
     if (movedFar) {
       unawaited(NotificationScheduler.refresh(preferences: _globalPrefs));
+      // The cached place name belongs to the old coordinates.
+      unawaited(LocationService.clearLabel(_globalPrefs));
     }
 
     return UserCoordinates(
       latitude: position.latitude,
       longitude: position.longitude,
+      source: LocationSource.gps,
     );
-  } catch (_) {
-    return savedCoordinates ?? _fallbackCoordinates;
+  } catch (e) {
+    return giveUp('$e');
   }
 });
 

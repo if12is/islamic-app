@@ -996,11 +996,15 @@ class SettingsPage extends ConsumerWidget {
       }
       messenger.showSnackBar(
         SnackBar(
+          // The tasbeeh total is named because it is the number people are
+          // most afraid of losing, and seeing it come back is the proof.
           content: Text(
             '$restoredMessage — '
             '${summary.bookmarks} · ${summary.readingDays} · '
-            '${summary.hifzItems}',
+            '${summary.hifzItems}'
+            '${summary.tasbeehTotal > 0 ? ' · ${summary.tasbeehTotal}' : ''}',
           ),
+          duration: const Duration(seconds: 6),
         ),
       );
     } on BackupException catch (error) {

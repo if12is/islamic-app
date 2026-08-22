@@ -161,6 +161,50 @@ class AppLocalizations {
       'recite_no_arabic':
           'No Arabic speech pack on this device. Install one from the system settings, or download an offline engine that needs none.',
       'recite_engine_device': 'Device recogniser',
+      'delivery_title': 'Will the adhan actually arrive?',
+      'delivery_subtitle':
+          'The settings above say what should happen. This says what the system will really allow while your phone is asleep.',
+      'delivery_run': 'Check now',
+      'delivery_fix': 'Fix',
+      'delivery_ok': 'Allowed',
+      'delivery_blocked': 'Blocked — the alert will not arrive',
+      'delivery_unknown': 'This device will not say',
+      'delivery_permission': 'Notifications allowed',
+      'delivery_exact_alarms': 'Alerts to the minute',
+      'delivery_battery': 'Exempt from battery saving',
+      'delivery_scheduled': 'Alerts queued with the system',
+      'delivery_scheduled_detail': '{count} waiting',
+      'delivery_vendor_warning':
+          '{brand} phones keep their own list of apps allowed to wake themselves. An app left off it is force-stopped overnight, and a force-stopped app has no alarms at all — this is the usual reason a prayer alert never sounds.',
+      'delivery_open_autostart': 'Open the autostart list',
+      'delivery_screen_missing': 'This device has no such screen.',
+      'delivery_test': 'Test in 20 seconds',
+      'delivery_test_waiting': 'Waiting…',
+      'delivery_test_hint':
+          'Lock the phone now and put it down. A real prayer alert is queued the same way a real one is; if it does not sound while the screen is off, the problem is above and not in the settings.',
+      'delivery_test_failed': 'The test could not be scheduled.',
+      'wird_not_due': 'Later today',
+      'download_queued': 'Waiting its turn…',
+      'tasbeeh_grand_total': 'All phrases',
+      'notif_surah_title': 'Worth reading today: {surah}',
+      'surah_reminders': 'Surah of the day',
+      'reminder_time': 'Reminder time',
+      'offline_downloads': 'Offline recitations',
+      'reciter_count': '{count} recordings',
+      'reciter_search_hint': 'Search by name…',
+      'reciter_refresh': 'Refresh the list',
+      'downloads_web_unsupported':
+          'A browser cannot keep recitations on the device. Everything streams here; install the app to listen offline.',
+      'audio_no_network': 'No connection to the recitation server.',
+      'audio_platform_unsupported':
+          'Playback is not supported here. Try the installed app rather than the browser.',
+      'audio_not_available':
+          'This reciter has no recording for that surah. Try another voice.',
+      'surah_reminders_desc':
+          'One surah a day with the narration behind it, and whether that narration is established. Friday is always al-Kahf.',
+      'download_all_visible': 'Download all shown',
+      'audio_play_failed':
+          'That recitation would not play. Check your connection, or download it first.',
       'recite_engine_offline': 'Offline',
       'recite_unavailable':
           'Speech recognition is not available on this device.',
@@ -752,7 +796,7 @@ class AppLocalizations {
       'weekday_friday': 'الجمعة',
       'weekday_saturday': 'السبت',
       'ramadan_month': 'رمضان',
-      'imsakiya_footer': 'محسوبة على جهازك حسب موقعك — تطبيق الفجر.',
+      'imsakiya_footer': 'مواقيت محسوبة على جهازك حسب موقعك.',
       // Seasonal theme, qibla compass, location picking.
       'last_read_position': 'الآية {verse} من {total} · صفحة {page}',
       'season_ramadan_greeting': 'رمضان كريم',
@@ -884,6 +928,50 @@ class AppLocalizations {
       'recite_no_arabic':
           'لا توجد حزمة تعرّف عربية على الجهاز. ثبّتها من إعدادات النظام، أو نزّل محركاً يعمل دون إنترنت لا يحتاج إليها.',
       'recite_engine_device': 'تعرّف الجهاز',
+      'delivery_title': 'هل يصل الأذان فعلاً؟',
+      'delivery_subtitle':
+          'الإعدادات فوق تقول ما ينبغي أن يحدث. هذا يقول ما سيسمح به النظام فعلاً والهاتف نائم.',
+      'delivery_run': 'افحص الآن',
+      'delivery_fix': 'أصلحها',
+      'delivery_ok': 'مسموح',
+      'delivery_blocked': 'ممنوع — لن يصل التنبيه',
+      'delivery_unknown': 'الجهاز لا يفصح',
+      'delivery_permission': 'الإشعارات مسموحة',
+      'delivery_exact_alarms': 'تنبيه في دقيقته',
+      'delivery_battery': 'مستثنى من توفير البطارية',
+      'delivery_scheduled': 'تنبيهات مسجَّلة لدى النظام',
+      'delivery_scheduled_detail': '{count} في الانتظار',
+      'delivery_vendor_warning':
+          'هواتف {brand} لها قائمتها الخاصة بالتطبيقات المسموح لها أن توقظ نفسها. التطبيق خارجها يُغلق قسراً أثناء الليل، والتطبيق المغلق قسراً لا تنبيهات له أصلاً — وهذا هو السبب المعتاد لعدم سماع الأذان.',
+      'delivery_open_autostart': 'افتح قائمة التشغيل التلقائي',
+      'delivery_screen_missing': 'لا توجد هذه الشاشة على هذا الجهاز.',
+      'delivery_test': 'اختبر بعد ٢٠ ثانية',
+      'delivery_test_waiting': 'في الانتظار…',
+      'delivery_test_hint':
+          'اقفل الهاتف الآن وضعه جانباً. سُجِّل تنبيه حقيقي بنفس طريقة تنبيه الصلاة تماماً؛ فإن لم يُسمع والشاشة مطفأة فالمشكلة فيما فوق لا في الإعدادات.',
+      'delivery_test_failed': 'تعذّر جدولة الاختبار.',
+      'wird_not_due': 'لاحقاً اليوم',
+      'download_queued': 'في انتظار دوره…',
+      'tasbeeh_grand_total': 'الإجمالي الكلي',
+      'notif_surah_title': 'سورة اليوم: {surah}',
+      'surah_reminders': 'سورة اليوم',
+      'reminder_time': 'وقت التذكير',
+      'offline_downloads': 'التلاوات المحفوظة',
+      'reciter_count': '{count} تسجيلاً',
+      'reciter_search_hint': 'ابحث بالاسم…',
+      'reciter_refresh': 'حدّث القائمة',
+      'downloads_web_unsupported':
+          'المتصفّح لا يحفظ التلاوات على الجهاز. كل شيء هنا يُبثّ مباشرة؛ ثبّت التطبيق للاستماع دون إنترنت.',
+      'audio_no_network': 'لا اتصال بخادم التلاوات.',
+      'audio_platform_unsupported':
+          'التشغيل غير مدعوم هنا. جرّب التطبيق المثبَّت بدل المتصفّح.',
+      'audio_not_available':
+          'هذا القارئ ليس له تسجيل لهذه السورة. جرّب صوتاً آخر.',
+      'surah_reminders_desc':
+          'سورة كل يوم ومعها الحديث في فضلها ودرجته. والجمعة للكهف دائماً.',
+      'download_all_visible': 'نزّل كل المعروض',
+      'audio_play_failed':
+          'تعذّر تشغيل التلاوة. تأكّد من الاتصال، أو نزّلها أولاً.',
       'recite_engine_offline': 'دون إنترنت',
       'recite_unavailable': 'خدمة التعرّف على الكلام غير متاحة على هذا الجهاز.',
       'recite_failed': 'تعذّر بدء الاستماع، حاول مرة أخرى.',
