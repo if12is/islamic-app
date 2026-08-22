@@ -6,6 +6,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../data/services/reciter_catalogue.dart';
+import '../providers/quran_audio_provider.dart';
 
 /// Choose from every reciter, not from a shortlist of seven.
 ///
@@ -190,6 +191,81 @@ class _ReciterPickerSheetState extends State<ReciterPickerSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Opens [ReciterPickerSheet] instead of a seven-item dropdown.
+///
+/// A dropdown of bundled voices cannot hold a catalogue id such as
+/// `mp3quran:92:92`, and Flutter asserts when the selected value is missing.
+class ReciterChooser extends StatelessWidget {
+  const ReciterChooser({
+    super.key,
+    required this.selectedId,
+    required this.onSelected,
+    this.compact = false,
+  });
+
+  final String selectedId;
+  final ValueChanged<ReciterVoice> onSelected;
+  final bool compact;
+
+  Future<void> _pick(BuildContext context) async {
+    final chosen = await ReciterPickerSheet.show(context, selectedId);
+    if (chosen != null) {
+      onSelected(chosen);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<ReciterVoice>>(
+      future: ReciterCatalogue.load(),
+      builder: (context, snapshot) {
+        final voices = snapshot.data ?? ReciterCatalogue.bundled;
+        final voice = ReciterCatalogue.byId(selectedId, voices);
+        final bundled = QuranReciter.byCode(selectedId);
+        final label =
+            voice?.label ??
+            (context.isAppRtl ? bundled.nameAr : bundled.nameEn);
+
+        if (compact) {
+          return InkWell(
+            onTap: () => _pick(context),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(context.tr('reciter')),
+          subtitle: Text(label),
+          trailing: const Icon(Icons.expand_more),
+          onTap: () => _pick(context),
+        );
+      },
     );
   }
 }

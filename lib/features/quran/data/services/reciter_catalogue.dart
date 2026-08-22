@@ -230,6 +230,7 @@ class ReciterCatalogue {
     }
 
     final voices = <ReciterVoice>[];
+    final seen = <String>{};
     for (final raw in reciters) {
       if (raw is! Map) {
         continue;
@@ -259,9 +260,14 @@ class ReciterCatalogue {
           continue;
         }
 
+        final id = 'mp3quran:$reciterId:${moshaf['id']}';
+        if (!seen.add(id)) {
+          continue;
+        }
+
         voices.add(
           ReciterVoice(
-            id: 'mp3quran:$reciterId:${moshaf['id']}',
+            id: id,
             nameAr: name,
             styleAr: (moshaf['name'] as String? ?? '').trim(),
             server: server,

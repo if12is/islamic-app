@@ -59,11 +59,22 @@ class QuranReciter {
   ];
 
   static QuranReciter byCode(String code) {
-    return all.firstWhere(
-      (reciter) => reciter.code == code,
-      orElse: () => all.first,
-    );
+    for (final reciter in all) {
+      if (reciter.code == code) {
+        return reciter;
+      }
+    }
+    return QuranReciter(code: code, nameAr: code, nameEn: code);
   }
+
+  /// Verse-by-verse files live on the islamic.network CDN, which only knows
+  /// the bundled edition codes. A catalogue id such as `mp3quran:92:92` is a
+  /// whole-surah recording and would 404 (and crash the reciter dropdown).
+  static bool hasVerseAudio(String code) =>
+      all.any((reciter) => reciter.code == code);
+
+  static String verseAudioCode(String code) =>
+      hasVerseAudio(code) ? code : all.first.code;
 
   /// Whether this voice has whole-surah recordings, as opposed to verse audio.
   static bool hasSurahAudio(String code) =>
@@ -318,6 +329,7 @@ class QuranAudioController extends Notifier<QuranAudioState> {
         reciterCode: reciterCode,
       );
 
+      final verseCode = QuranReciter.verseAudioCode(reciterCode);
       final sources = [
         for (final verse in verses)
           AudioSource.uri(
@@ -325,14 +337,14 @@ class QuranAudioController extends Notifier<QuranAudioState> {
               QuranLocalService.audioUrlForVerse(
                 verse.surahNumber,
                 verse.numberInSurah,
-                reciterCode: reciterCode,
+                reciterCode: verseCode,
               ),
             ),
             tag: MediaItem(
-              id: '${reciterCode}_${verse.key}',
+              id: '${verseCode}_${verse.key}',
               album: verse.surahNameAr,
               title: 'الآية ${verse.numberInSurah}',
-              artist: QuranReciter.byCode(reciterCode).nameAr,
+              artist: QuranReciter.byCode(verseCode).nameAr,
             ),
           ),
       ];

@@ -15,9 +15,11 @@ import '../../../../shared/widgets/shell_header_buttons.dart';
 import '../../data/services/audio_download_service.dart';
 import '../../data/services/quran_local_service.dart';
 import '../providers/quran_audio_provider.dart';
+import '../providers/reader_settings_provider.dart';
 import 'downloads_page.dart';
 import '../widgets/khatmah_card.dart';
 import '../widgets/last_read_card.dart';
+import '../widgets/reciter_picker_sheet.dart';
 import 'recitation_page.dart';
 import 'surah_reader_page.dart';
 import 'package:just_audio/just_audio.dart';
@@ -157,6 +159,7 @@ class _QuranPageState extends ConsumerState<QuranPage> {
   @override
   void initState() {
     super.initState();
+    _selectedReciterCode = ref.read(readerSettingsProvider).reciterCode;
     _fetchSurahs();
     _searchController.addListener(_onSearchChanged);
 
@@ -1336,38 +1339,15 @@ class _QuranPageState extends ConsumerState<QuranPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedReciterCode,
-                        isDense: true,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        icon: Icon(
-                          Icons.keyboard_arrow_down,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        items: [
-                          for (final reciter in QuranReciter.all)
-                            DropdownMenuItem(
-                              value: reciter.code,
-                              child: Text(
-                                context.isAppRtl
-                                    ? reciter.nameAr
-                                    : reciter.nameEn,
-                              ),
-                            ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null || value == _selectedReciterCode) {
-                            return;
-                          }
-                          _switchReciter(value, surah.id);
-                        },
-                      ),
+                    ReciterChooser(
+                      compact: true,
+                      selectedId: _selectedReciterCode,
+                      onSelected: (voice) {
+                        _switchReciter(voice.id, surah.id);
+                        ref
+                            .read(readerSettingsProvider.notifier)
+                            .setReciter(voice.id);
+                      },
                     ),
                     IconButton(
                       tooltip: context.tr('reciter_library'),

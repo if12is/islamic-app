@@ -155,4 +155,30 @@ void main() {
       expect(QuranLocalService.hasSurahAudio('bad'), isFalse);
     });
   });
+
+  test('duplicate moshaf ids are kept once', () {
+    final voices = ReciterCatalogue.parse({
+      'reciters': [
+        {
+          'id': 92,
+          'name': 'Test',
+          'moshaf': [
+            {
+              'id': 92,
+              'name': 'A',
+              'server': 'https://server1.mp3quran.net/a/',
+              'surah_list': '1',
+            },
+            {
+              'id': 92,
+              'name': 'B',
+              'server': 'https://server1.mp3quran.net/b/',
+              'surah_list': '1',
+            },
+          ],
+        },
+      ],
+    });
+    expect(voices.where((voice) => voice.id == 'mp3quran:92:92').length, 1);
+  });
 }

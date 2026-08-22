@@ -448,7 +448,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
         .playVerses(
           _verses,
           startIndex: index,
-          reciterCode: settings.reciterCode,
+          reciterCode: QuranReciter.verseAudioCode(settings.reciterCode),
         );
   }
 

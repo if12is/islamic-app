@@ -311,7 +311,7 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
 
               const Divider(height: 32),
               DropdownButtonFormField<String>(
-                initialValue: settings.reciterCode,
+                initialValue: QuranReciter.verseAudioCode(settings.reciterCode),
                 isExpanded: true,
                 decoration: InputDecoration(labelText: context.tr('reciter')),
                 items: [

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import 'reciter_picker_sheet.dart';
 
 /// The reading control panel: typography, surface, motion, and reciter.
 ///
@@ -180,25 +181,11 @@ class ReaderSettingsSheet extends ConsumerWidget {
               ),
 
               const SizedBox(height: 8),
-              _label(context, 'reciter'),
-              DropdownButtonFormField<String>(
-                initialValue: settings.reciterCode,
-                isExpanded: true,
-                items: [
-                  for (final reciter in QuranReciter.all)
-                    DropdownMenuItem(
-                      value: reciter.code,
-                      child: Text(
-                        context.isAppRtl ? reciter.nameAr : reciter.nameEn,
-                      ),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value == null) {
-                    return;
-                  }
-                  notifier.setReciter(value);
-                  ref.read(quranAudioProvider.notifier).setReciter(value);
+              ReciterChooser(
+                selectedId: settings.reciterCode,
+                onSelected: (voice) {
+                  notifier.setReciter(voice.id);
+                  ref.read(quranAudioProvider.notifier).setReciter(voice.id);
                 },
               ),
 

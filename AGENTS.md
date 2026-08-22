@@ -328,6 +328,8 @@ gh workflow run android-apk.yml -f update_latest=true -f create_versioned_releas
 
 Never delete versioned tags (`v1.x.x`) unless the user asks. Only `apk-latest` is deleted/recreated.
 
+The default `GITHUB_TOKEN` cannot write repository secrets. The **Signing key** workflow needs `SIGNING_KEY_ADMIN_TOKEN` (PAT with Secrets: Read and write), or run `./scripts/mint-signing-key.sh` locally.
+
 ## Do not
 
 - Do not change `origin` to another GitHub user.

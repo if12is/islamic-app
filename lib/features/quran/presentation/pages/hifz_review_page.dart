@@ -63,7 +63,7 @@ class _HifzReviewPageState extends ConsumerState<HifzReviewPage> {
           fromIndex: 0,
           toIndex: _verses.length - 1,
           repeatCount: 3,
-          reciterCode: settings.reciterCode,
+          reciterCode: QuranReciter.verseAudioCode(settings.reciterCode),
         );
   }
 
