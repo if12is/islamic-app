@@ -100,15 +100,13 @@ final dailyWirdProvider = FutureProvider<DailyWird>((ref) async {
       WirdTask(
         id: 'morning',
         titleKey: 'wird_morning_azkar',
-        // This used to report the full total once the clock passed noon,
-        // whatever the user had actually recited — so the card read 31/31
-        // while the chapter itself held two or three ticks. Report what was
-        // done; the hour decides whether it is still due, not whether it
-        // counts as finished.
+        // Morning azkar stay due until midnight. They used to drop off the
+        // card at noon, which read as "the window closed" and — with the
+        // old AM/PM session key — wiped the count when Dhuhr arrived.
         done: progress.completedCount,
         target: progress.totalCount,
         category: morning,
-        dueNow: isMorning,
+        dueNow: true,
       ),
     );
   }

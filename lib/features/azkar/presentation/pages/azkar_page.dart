@@ -661,19 +661,24 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   Widget _buildControlButton({
     required IconData icon,
     required VoidCallback onTap,
+    required String tooltip,
   }) {
     final tokens = context.tokens;
 
-    return Material(
-      color: tokens.groundAlt,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: 42,
-          height: 42,
-          child: Icon(icon, size: 18, color: tokens.inkMuted),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: tokens.groundAlt,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Icon(icon, size: 22, color: tokens.ink),
+          ),
         ),
       ),
     );
@@ -743,23 +748,32 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
           const SizedBox(height: AppSpacing.lg),
 
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildControlButton(
-                icon: Icons.chevron_right,
+                icon:
+                    context.isAppRtl
+                        ? Icons.chevron_right
+                        : Icons.chevron_left,
+                tooltip: context.tr('tasbeeh_prev_phrase'),
                 onTap: () => _changePhrase(azkarList.length, -1),
               ),
-              const SizedBox(width: AppSpacing.lg),
-              GestureDetector(
-                onTap: () => _increment(azkarList.length),
-                child:
-                    _isEndless
-                        ? _endlessDial(context, progress)
-                        : _roundsDial(context, progress),
+              Expanded(
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _increment(azkarList.length),
+                    child:
+                        _isEndless
+                            ? _endlessDial(context, progress)
+                            : _roundsDial(context, progress),
+                  ),
+                ),
               ),
-              const SizedBox(width: AppSpacing.lg),
               _buildControlButton(
-                icon: Icons.chevron_left,
+                icon:
+                    context.isAppRtl
+                        ? Icons.chevron_left
+                        : Icons.chevron_right,
+                tooltip: context.tr('tasbeeh_next_phrase'),
                 onTap: () => _changePhrase(azkarList.length, 1),
               ),
             ],
@@ -803,8 +817,8 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     final remaining = (_target - _tasbeehCount).clamp(0, _target);
 
     return SizedBox(
-      width: 190,
-      height: 190,
+      width: 168,
+      height: 168,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -813,8 +827,8 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
             duration: AppMotion.base,
             builder:
                 (context, value, _) => SizedBox(
-                  width: 190,
-                  height: 190,
+                  width: 168,
+                  height: 168,
                   child: CircularProgressIndicator(
                     value: value,
                     strokeWidth: 9,
@@ -825,8 +839,8 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                 ),
           ),
           Container(
-            width: 154,
-            height: 154,
+            width: 136,
+            height: 136,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -843,7 +857,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                   _formatCount(context, _tasbeehCount),
                   style: const TextStyle(
                     fontFamily: AppTextStyles.displayFamily,
-                    fontSize: 48,
+                    fontSize: 42,
                     height: 1,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
@@ -873,8 +887,8 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     final tokens = context.tokens;
 
     return SizedBox(
-      width: 210,
-      height: 190,
+      width: 168,
+      height: 176,
       child: Stack(
         alignment: Alignment.center,
         children: [

@@ -40,9 +40,8 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
 
     final categoryId = widget.category.id;
     final savedSession = _prefs!.getString('azkar_session_$categoryId');
-    final currentSession = _currentSessionKey;
 
-    if (savedSession == currentSession) {
+    if (AzkarProgressStore.sameSession(savedSession)) {
       // Same period, load saved counts
       final savedCountsStr = _prefs!.getString('azkar_counts_$categoryId');
       if (savedCountsStr != null) {

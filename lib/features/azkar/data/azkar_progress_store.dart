@@ -22,12 +22,23 @@ class AzkarProgressSnapshot {
 class AzkarProgressStore {
   AzkarProgressStore._();
 
-  /// Azkar reset twice a day: the morning set in the morning, the evening set
-  /// after noon. The key encodes both the day and the half.
+  /// Azkar reset at midnight, not at Dhuhr. Morning recited before noon
+  /// must still be there after the adhan.
   static String sessionKey([DateTime? now]) {
     final moment = now ?? DateTime.now();
-    final half = moment.hour < 12 ? 'AM' : 'PM';
-    return '${moment.year}-${moment.month}-${moment.day}_$half';
+    return '${moment.year}-${moment.month}-${moment.day}';
+  }
+
+  /// Whether [saved] is still today's session.
+  ///
+  /// Older builds stored `yyyy-m-d_AM` / `_PM`. Both halves of today count
+  /// as the same day so opening after Dhuhr does not wipe the morning set.
+  static bool sameSession(String? saved, [DateTime? now]) {
+    if (saved == null || saved.isEmpty) {
+      return false;
+    }
+    final today = sessionKey(now);
+    return saved == today || saved == '${today}_AM' || saved == '${today}_PM';
   }
 
   /// How many of a category's azkar are finished in the current session.
@@ -40,7 +51,7 @@ class AzkarProgressStore {
 
     // A stale session means the category starts over.
     final counts =
-        savedSession == sessionKey(now)
+        sameSession(savedSession, now)
             ? _countsFor(prefs, category.id)
             : const <int, int>{};
 
@@ -90,19 +101,7 @@ class AzkarProgressStore {
       return null;
     }
 
-    final counts = _countsFor(prefs, category.id);
-    var completed = 0;
-    for (final zekr in category.azkar) {
-      if ((counts[zekr.id] ?? 0) >= zekr.targetCount) {
-        completed++;
-      }
-    }
-
-    return AzkarProgressSnapshot(
-      category: category,
-      completedCount: completed,
-      totalCount: category.azkar.length,
-    );
+    return progressFor(category);
   }
 
   static Map<int, int> _countsFor(SharedPreferences prefs, String categoryId) {

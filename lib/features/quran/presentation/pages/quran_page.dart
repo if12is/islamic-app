@@ -1300,130 +1300,134 @@ class _QuranPageState extends ConsumerState<QuranPage> {
   }
 
   Widget _buildAudioPlayerBar() {
+    final tokens = context.tokens;
     final surah = _allSurahs.firstWhere(
       (s) => s.id == _currentlyPlayingSurahId,
       orElse: () => _allSurahs.first,
     );
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    return Material(
+      color: tokens.surfaceRaised,
+      elevation: 0,
+      borderRadius: AppRadii.lgAll,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: AppRadii.lgAll,
+          border: Border.all(color: tokens.line),
+          boxShadow: AppShadows.soft(tokens.ink),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        context.isAppRtl ? surah.nameAr : surah.nameEn,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    tooltip:
+                        _audioPlayer.playing
+                            ? context.tr('pause')
+                            : context.tr('play'),
+                    icon: Icon(
+                      _audioPlayer.playing
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.play_circle_fill_rounded,
+                      color: tokens.brand,
+                      size: 40,
                     ),
-                    ReciterChooser(
-                      compact: true,
-                      selectedId: _selectedReciterCode,
-                      onSelected: (voice) {
-                        _switchReciter(voice.id, surah.id);
-                        ref
-                            .read(readerSettingsProvider.notifier)
-                            .setReciter(voice.id);
-                      },
-                    ),
-                    IconButton(
-                      tooltip: context.tr('reciter_library'),
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        Icons.download_outlined,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      onPressed:
-                          () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const DownloadsPage(),
-                            ),
+                    onPressed: () {
+                      if (_audioPlayer.playing) {
+                        _audioPlayer.pause();
+                      } else {
+                        _audioPlayer.play();
+                      }
+                      setState(() {});
+                    },
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.isAppRtl ? surah.nameAr : surah.nameEn,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.display(
+                            context,
+                            fontSize: 15,
+                            color: tokens.ink,
                           ),
+                        ),
+                        ReciterChooser(
+                          compact: true,
+                          selectedId: _selectedReciterCode,
+                          onSelected: (voice) {
+                            _switchReciter(voice.id, surah.id);
+                            ref
+                                .read(readerSettingsProvider.notifier)
+                                .setReciter(voice.id);
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                StreamBuilder<Duration>(
+                  ),
+                  IconButton(
+                    tooltip: context.tr('reciter_library'),
+                    icon: Icon(
+                      Icons.download_outlined,
+                      size: 20,
+                      color: tokens.inkMuted,
+                    ),
+                    onPressed:
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const DownloadsPage(),
+                          ),
+                        ),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('close'),
+                    icon: Icon(Icons.close_rounded, color: tokens.inkMuted),
+                    onPressed: () {
+                      _audioPlayer.stop();
+                      setState(() {
+                        _currentlyPlayingSurahId = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: StreamBuilder<Duration>(
                   stream: _audioPlayer.positionStream,
                   builder: (context, snapshot) {
                     final position = snapshot.data ?? Duration.zero;
                     final duration = _audioPlayer.duration ?? Duration.zero;
                     final progress =
                         duration.inMilliseconds > 0
-                            ? position.inMilliseconds / duration.inMilliseconds
+                            ? position.inMilliseconds /
+                                duration.inMilliseconds
                             : 0.0;
-                    return LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor:
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
-                      valueColor: AlwaysStoppedAnimation(
-                        Theme.of(context).colorScheme.secondary,
+                    return ClipRRect(
+                      borderRadius: AppRadii.pillAll,
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 4,
+                        backgroundColor: tokens.groundAlt,
+                        valueColor: AlwaysStoppedAnimation(tokens.gold),
                       ),
                     );
                   },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          IconButton(
-            icon: Icon(
-              _audioPlayer.playing
-                  ? Icons.pause_circle_filled
-                  : Icons.play_circle_fill,
-              color: Theme.of(context).colorScheme.primary,
-              size: 36,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () {
-              if (_audioPlayer.playing) {
-                _audioPlayer.pause();
-              } else {
-                _audioPlayer.play();
-              }
-              setState(() {});
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.close,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () {
-              _audioPlayer.stop();
-              setState(() {
-                _currentlyPlayingSurahId = null;
-              });
-            },
-          ),
-        ],
+        ),
       ),
     );
   }

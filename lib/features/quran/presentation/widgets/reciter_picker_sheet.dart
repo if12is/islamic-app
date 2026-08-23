@@ -233,24 +233,24 @@ class ReciterChooser extends StatelessWidget {
         if (compact) {
           return InkWell(
             onTap: () => _pick(context),
+            borderRadius: AppRadii.smAll,
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Flexible(
+                Expanded(
                   child: Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTextStyles.caption(
+                      context,
                       color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                      fontSize: 12,
+                    ).copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
                 Icon(
-                  Icons.keyboard_arrow_down,
-                  size: 16,
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ],

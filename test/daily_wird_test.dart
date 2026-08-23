@@ -66,14 +66,11 @@ void main() {
   });
 
   group('Azkar sessions', () {
-    test('the morning and the afternoon are separate sessions', () {
-      final morning = AzkarProgressStore.sessionKey(
-        DateTime(2026, 8, 22, 7, 30),
+    test('Dhuhr does not start a new session', () {
+      expect(
+        AzkarProgressStore.sessionKey(DateTime(2026, 8, 22, 7, 30)),
+        AzkarProgressStore.sessionKey(DateTime(2026, 8, 22, 13, 0)),
       );
-      final afternoon = AzkarProgressStore.sessionKey(
-        DateTime(2026, 8, 22, 19, 0),
-      );
-      expect(morning, isNot(afternoon));
     });
 
     test('a new day starts a new session', () {
@@ -83,11 +80,19 @@ void main() {
       );
     });
 
-    test('the same half of the same day is one session', () {
+    test('the same calendar day is one session', () {
       expect(
         AzkarProgressStore.sessionKey(DateTime(2026, 8, 22, 6, 0)),
-        AzkarProgressStore.sessionKey(DateTime(2026, 8, 22, 11, 59)),
+        AzkarProgressStore.sessionKey(DateTime(2026, 8, 22, 23, 59)),
       );
+    });
+
+    test('an old AM or PM key still counts as today', () {
+      final noon = DateTime(2026, 8, 22, 13, 5);
+      expect(AzkarProgressStore.sameSession('2026-8-22_AM', noon), isTrue);
+      expect(AzkarProgressStore.sameSession('2026-8-22_PM', noon), isTrue);
+      expect(AzkarProgressStore.sameSession('2026-8-22', noon), isTrue);
+      expect(AzkarProgressStore.sameSession('2026-8-21_AM', noon), isFalse);
     });
   });
 }
