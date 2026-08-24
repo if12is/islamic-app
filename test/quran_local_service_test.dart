@@ -171,14 +171,21 @@ void main() {
       expect(morning.key, isNot(tomorrow.key));
     });
 
-    test('builds CDN audio URLs from the running verse number', () {
+    test('addresses one ayah by its surah and its number in it', () {
+      // The per-ayah host names files by surah and ayah, each padded to three
+      // digits, rather than by the running 1–6236 number the old CDN used.
       expect(
-        QuranLocalService.audioUrlForVerse(1, 1),
-        'https://cdn.islamic.network/quran/audio/128/ar.alafasy/1.mp3',
+        QuranLocalService.audioUrlForVerse(1, 1, small: false),
+        'https://everyayah.com/data/Alafasy_128kbps/001001.mp3',
       );
       expect(
-        QuranLocalService.audioUrlForVerse(2, 255, reciterCode: 'ar.husary'),
-        'https://cdn.islamic.network/quran/audio/128/ar.husary/262.mp3',
+        QuranLocalService.audioUrlForVerse(
+          2,
+          255,
+          reciterCode: 'ar.husary',
+          small: false,
+        ),
+        'https://everyayah.com/data/Husary_128kbps/002255.mp3',
       );
       // Whole surahs come from mp3quran, not the CDN: the CDN serves them for
       // ar.alafasy alone and returns 403 for every other reciter.

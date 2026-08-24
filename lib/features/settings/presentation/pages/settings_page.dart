@@ -13,6 +13,7 @@ import '../../../../core/services/update_service.dart';
 import '../../../../shared/providers/app_update_provider.dart';
 import '../widgets/app_update_dialog.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
+import '../../../broadcasts/presentation/pages/broadcasts_page.dart';
 import '../../../quran/presentation/pages/playlists_page.dart';
 import 'storage_page.dart';
 import 'zakat_page.dart';
@@ -416,6 +417,14 @@ class SettingsPage extends ConsumerWidget {
                                   builder: (_) => const ZakatPage(),
                                 ),
                               ),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.radio_rounded,
+                          color: accentColor,
+                          title: context.tr('broadcasts'),
+                          subtitle: context.tr('broadcasts_desc'),
+                          onTap: () => BroadcastsPage.open(context),
                         ),
                         _buildToolTile(
                           context,

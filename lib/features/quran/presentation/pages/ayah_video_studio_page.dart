@@ -17,7 +17,9 @@ import '../../data/services/video_export_result.dart';
 import '../../domain/ayah_video_spec.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import '../../data/services/verse_reciters.dart';
 import '../widgets/ayah_video_frame.dart';
+import '../widgets/verse_reciter_sheet.dart';
 
 /// Compose a passage into a video or a card, then share it.
 ///
@@ -426,7 +428,7 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
                 _chip(
                   tokens,
                   icon: Icons.record_voice_over_outlined,
-                  label: QuranReciter.byCode(_spec.reciterCode).nameAr,
+                  label: VerseReciters.byId(_spec.reciterCode).nameAr,
                   onTap: _pickReciter,
                 ),
               ],
@@ -618,15 +620,10 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
   }
 
   Future<void> _pickReciter() async {
-    final chosen = await _choose<String>(
-      titleKey: 'reciter',
-      options: [
-        for (final reciter in QuranReciter.all) (reciter.code, reciter.nameAr),
-      ],
-      selected: _spec.reciterCode,
-    );
+    final chosen = await VerseReciterSheet.show(context, _spec.reciterCode);
     if (chosen != null) {
-      _update(_spec.copyWith(reciterCode: chosen));
+      _update(_spec.copyWith(reciterCode: chosen.id));
+      ref.read(readerSettingsProvider.notifier).setReciter(chosen.id);
     }
   }
 

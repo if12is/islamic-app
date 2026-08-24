@@ -13,7 +13,13 @@ class SecureHttpClient {
     'api.quran.com',
     'api.alquran.cloud',
     'cdn.islamic.network',
+    // Per-ayah recitation. The video exporter downloads each verse through
+    // this client, so leaving it out breaks every export.
+    'everyayah.com',
     'api.github.com',
+    // The `www` matters: the bare domain answers 301, and this client does not
+    // follow redirects, so mp3quran.net would be rejected as a bad response.
+    'www.mp3quran.net',
   };
 
   static Dio create({String? baseUrl}) {

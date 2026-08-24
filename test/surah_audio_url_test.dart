@@ -70,13 +70,18 @@ void main() {
   });
 
   group('Verse audio is untouched', () {
-    test('still comes from the CDN, which carries every edition', () {
+    test('comes from the per-ayah host, not the whole-surah one', () {
+      // The two corpora are separate. The CDN that once served both turned out
+      // to answer 403 for most editions asked for a single ayah — including
+      // Sudais, who was in the app's own list — so verse audio moved to a host
+      // whose per-ayah files were checked, one voice at a time.
       final url = QuranLocalService.audioUrlForVerse(
         1,
         1,
         reciterCode: 'ar.husary',
       );
-      expect(url, contains('cdn.islamic.network'));
+      expect(url, contains('everyayah.com'));
+      expect(url, isNot(contains('cdn.islamic.network')));
     });
   });
 }

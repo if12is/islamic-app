@@ -1,6 +1,7 @@
 import 'package:quran/quran.dart' as quran;
 
 import '../../../../core/services/data_saver.dart';
+import 'verse_reciters.dart';
 import 'quran_meta_data.dart';
 
 /// A single verse with everything the reader needs to render and locate it.
@@ -411,20 +412,29 @@ class QuranLocalService {
     }).toList();
   }
 
-  /// Verse audio from the islamic.network CDN (used by the reader's player).
+  /// Per-ayah audio for the reader's player, the memorisation loop, the
+  /// ruqyah queue and the verse video.
   ///
-  /// The bitrate follows the data-saver setting unless a caller states one:
-  /// 64 kbps is half the bytes and, for a single voice reciting, close enough
-  /// that most listeners never notice on a phone speaker.
+  /// It used to come from the islamic.network CDN, which turned out to serve
+  /// only ten of its many editions per ayah and to answer 403 for the rest —
+  /// including Sudais, who was in the app's own list of seven, so the verse
+  /// player had been quietly broken on him. Every voice in [VerseReciters] was
+  /// requested and answered before it was written down.
+  ///
+  /// The data saver picks the smaller recording of the same voice where the
+  /// host publishes one — it stores each bitrate as its own directory rather
+  /// than as a parameter, so this is a different folder, not a smaller number
+  /// in the URL. [small] overrides the setting, for callers that know better.
   static String audioUrlForVerse(
     int surahNumber,
     int verseNumber, {
-    String reciterCode = 'ar.alafasy',
-    int? bitrate,
+    String reciterCode = VerseReciters.defaultId,
+    bool? small,
   }) {
-    final global = globalVerseNumber(surahNumber, verseNumber);
-    final rate = bitrate ?? DataSaver.audioBitrate;
-    return 'https://cdn.islamic.network/quran/audio/$rate/$reciterCode/$global.mp3';
+    _assertSurah(surahNumber);
+    return VerseReciters.byId(
+      reciterCode,
+    ).urlFor(surahNumber, verseNumber, small: small ?? DataSaver.isEnabled);
   }
 
   /// Whole-surah audio from the same CDN.

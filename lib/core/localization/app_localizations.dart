@@ -194,6 +194,7 @@ class AppLocalizations {
       'offline_downloads': 'Offline recitations',
       'reciter_count': '{count} recordings',
       'reciter_search_hint': 'Search by name…',
+      'verse_reciter_count': '{count} voices recorded verse by verse',
       'reciter_refresh': 'Refresh the list',
       'divine_names': 'The ninety-nine names',
       'divine_names_search_hint': 'Search a name or its meaning…',
@@ -245,6 +246,27 @@ class AppLocalizations {
       'wird_adaptive': 'At the time I usually read',
       'wird_adaptive_desc':
           'Moves the reminder to the hour you already read in. Worked out on this device from nothing but the hour — it holds the time you set until there is enough to go on.',
+      // Live radio and television.
+      'broadcasts': 'Live radio and TV',
+      'broadcasts_desc': 'Quran radio, and the Makkah and Sunnah channels',
+      'broadcasts_radio': 'Radio',
+      'broadcasts_tv': 'Channels',
+      'broadcasts_search_hint': 'Search for a station…',
+      'broadcast_live': 'Live now',
+      'broadcast_connecting': 'Connecting…',
+      'broadcast_none': 'Nothing matched that.',
+      'broadcast_list_failed':
+          'The station list could not be fetched. What was already saved still plays.',
+      'broadcast_failed': 'That station would not play.',
+      'broadcast_blocked':
+          'This station is served over an unencrypted address the app refuses.',
+      'broadcast_tv_note':
+          'The two channels come from the broadcaster. When one does not answer it is off air at their end, not a fault here.',
+      'broadcast_channel_down': 'The channel is not responding.',
+      'broadcast_channel_down_desc':
+          'The stream is published by the broadcaster, not by this app. It is worth trying again in a while.',
+      'mute': 'Mute',
+      'unmute': 'Unmute',
       // Storage and the data saver.
       'storage': 'Storage and data',
       'storage_desc': 'See what the app is keeping, and use less data',
@@ -1208,6 +1230,7 @@ class AppLocalizations {
       'offline_downloads': 'التلاوات المحفوظة',
       'reciter_count': '{count} تسجيلاً',
       'reciter_search_hint': 'ابحث بالاسم…',
+      'verse_reciter_count': '{count} صوتاً مسجَّلاً آيةً آية',
       'reciter_refresh': 'حدّث القائمة',
       'divine_names': 'أسماء الله الحسنى',
       'divine_names_search_hint': 'ابحث عن اسم أو معناه…',
@@ -1256,6 +1279,27 @@ class AppLocalizations {
       'wird_adaptive': 'في وقتي المعتاد للقراءة',
       'wird_adaptive_desc':
           'ينقل التذكير إلى الساعة التي تقرأ فيها فعلاً. يُحسب على جهازك من الساعة فقط، ويبقى على الوقت الذي اخترته حتى يجتمع ما يكفي.',
+      // البثوث والراديو.
+      'broadcasts': 'البثوث والراديو',
+      'broadcasts_desc': 'إذاعات القرآن، وقناتا القرآن الكريم والسنة النبوية',
+      'broadcasts_radio': 'الراديو',
+      'broadcasts_tv': 'القنوات',
+      'broadcasts_search_hint': 'ابحث عن إذاعة…',
+      'broadcast_live': 'مباشر الآن',
+      'broadcast_connecting': 'جارٍ الاتصال…',
+      'broadcast_none': 'لا نتيجة مطابقة.',
+      'broadcast_list_failed':
+          'تعذّر جلب قائمة الإذاعات. وما حُفظ من قبل ما زال يعمل.',
+      'broadcast_failed': 'تعذّر تشغيل هذه الإذاعة.',
+      'broadcast_blocked':
+          'هذه الإذاعة تُبَثّ على عنوان غير مشفَّر يرفضه التطبيق.',
+      'broadcast_tv_note':
+          'القناتان من جهة البثّ نفسها. إن لم تستجب إحداهما فالبثّ متوقّف عندهم لا خلل هنا.',
+      'broadcast_channel_down': 'القناة لا تستجيب.',
+      'broadcast_channel_down_desc':
+          'البثّ من جهة القناة لا من التطبيق. جرّب بعد قليل.',
+      'mute': 'كتم',
+      'unmute': 'إلغاء الكتم',
       // التخزين وتوفير البيانات.
       'storage': 'التخزين والبيانات',
       'storage_desc': 'اعرف ما يحتفظ به التطبيق، ووفّر في استهلاك البيانات',

@@ -8,6 +8,7 @@ import '../../../../core/services/app_audio.dart';
 import '../../../../core/services/quran_media.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../data/services/verse_reciters.dart';
 
 /// Reciters available for verse-by-verse playback (islamic.network CDN).
 class QuranReciter {
@@ -68,14 +69,13 @@ class QuranReciter {
     return QuranReciter(code: code, nameAr: code, nameEn: code);
   }
 
-  /// Verse-by-verse files live on the islamic.network CDN, which only knows
-  /// the bundled edition codes. A catalogue id such as `mp3quran:92:92` is a
-  /// whole-surah recording and would 404 (and crash the reciter dropdown).
-  static bool hasVerseAudio(String code) =>
-      all.any((reciter) => reciter.code == code);
+  /// Whether this id names a voice recorded ayah by ayah.
+  ///
+  /// A whole-surah catalogue id such as `mp3quran:92:92` is one file with no
+  /// seam at the ayah; asking for a verse of it would 404 every time.
+  static bool hasVerseAudio(String code) => VerseReciters.has(code);
 
-  static String verseAudioCode(String code) =>
-      hasVerseAudio(code) ? code : all.first.code;
+  static String verseAudioCode(String code) => VerseReciters.resolve(code);
 
   /// Whether this voice has whole-surah recordings, as opposed to verse audio.
   static bool hasSurahAudio(String code) =>
@@ -224,11 +224,26 @@ class QuranAudioController extends Notifier<QuranAudioState> {
       }
     });
 
+    // Radio or a whole surah taking the player leaves this controller showing
+    // a queue for audio that stopped.
+    final ownerSub = AppAudio.ownerChanges.listen((owner) {
+      if (owner != AudioOwner.verses && state.hasQueue) {
+        _sleepTimer?.cancel();
+        _queueVerses = const [];
+        state = QuranAudioState(
+          speed: state.speed,
+          reciterCode: state.reciterCode,
+          repeatVerse: state.repeatVerse,
+        );
+      }
+    });
+
     ref.onDispose(() {
       _sleepTimer?.cancel();
       playingSub.cancel();
       indexSub.cancel();
       stateSub.cancel();
+      ownerSub.cancel();
     });
 
     return const QuranAudioState();
@@ -330,6 +345,7 @@ class QuranAudioController extends Notifier<QuranAudioState> {
         reciterCode: reciterCode,
       );
 
+      AppAudio.claim(AudioOwner.verses);
       await QuranMedia.prepareSession();
       final art = await QuranMedia.coverUri();
       final verseCode = QuranReciter.verseAudioCode(reciterCode);

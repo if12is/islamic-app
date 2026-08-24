@@ -110,21 +110,29 @@ void main() {
       expect(DataSaver.allowsBackgroundRefresh, isTrue);
     });
 
-    test('on, verse audio is fetched at half the bitrate', () async {
+    test('on, verse audio comes from the smaller recording', () async {
       await DataSaver.setEnabled(true);
-      expect(DataSaver.audioBitrate, DataSaver.lowBitrate);
 
-      // And that reaches the URL the player actually asks for.
-      final url = QuranLocalService.audioUrlForVerse(2, 255);
-      expect(url, contains('/audio/64/'));
+      // The per-ayah host keeps each bitrate in its own directory, so saving
+      // data means a different folder rather than a smaller number in the URL.
+      final saving = QuranLocalService.audioUrlForVerse(2, 255);
+      final full = QuranLocalService.audioUrlForVerse(2, 255, small: false);
+
+      expect(saving, contains('Alafasy_64kbps'));
+      expect(full, contains('Alafasy_128kbps'));
+      expect(saving, isNot(full));
     });
 
-    test('an explicit bitrate still wins over the setting', () async {
+    test('a voice with only one recording is unaffected', () async {
       await DataSaver.setEnabled(true);
-      expect(
-        QuranLocalService.audioUrlForVerse(2, 255, bitrate: 128),
-        contains('/audio/128/'),
+      // Ghamadi is published at one bitrate; asking for the small version has
+      // to give the one that exists, not a folder that 404s.
+      final url = QuranLocalService.audioUrlForVerse(
+        2,
+        255,
+        reciterCode: 'ghamadi',
       );
+      expect(url, contains('Ghamadi_40kbps'));
     });
 
     test('it survives a restart', () async {

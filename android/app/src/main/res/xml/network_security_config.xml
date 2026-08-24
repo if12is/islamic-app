@@ -12,8 +12,21 @@
         <domain includeSubdomains="true">raw.githubusercontent.com</domain>
         <domain includeSubdomains="true">mp3quran.net</domain>
         <domain includeSubdomains="true">fonts.gstatic.com</domain>
+        <domain includeSubdomains="true">qurango.net</domain>
+        <domain includeSubdomains="true">win.holol.com</domain>
+        <domain includeSubdomains="true">everyayah.com</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
+    </domain-config>
+    <!--
+      Radiojar hands out an https address that always redirects to a plain-http
+      node: https://stream.radiojar.com/... answers 302 to http://n04.radiojar…
+      There is no https node to point at, so the choice is this narrow
+      exception or no live radio at all. It is scoped to the one host, and it
+      carries audio only — nothing here is a credential.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">radiojar.com</domain>
     </domain-config>
 </network-security-config>

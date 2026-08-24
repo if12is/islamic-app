@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../../../core/services/app_audio.dart';
 import '../../../../core/services/quran_media.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/audio_download_service.dart';
@@ -148,10 +149,23 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
       }
     });
 
+    // Radio or the adhan preview taking the player leaves this controller
+    // holding a bar with a pause button for audio that is no longer there.
+    final ownerSub = AppAudio.ownerChanges.listen((owner) {
+      if (owner != AudioOwner.surah && state.hasSurah) {
+        _sleepTimer?.cancel();
+        state = SurahPlaybackState(
+          reciterId: state.reciterId,
+          speed: state.speed,
+        );
+      }
+    });
+
     ref.onDispose(() {
       _sleepTimer?.cancel();
       playingSub.cancel();
       stateSub.cancel();
+      ownerSub.cancel();
     });
 
     return const SurahPlaybackState();
@@ -252,6 +266,7 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
     );
 
     try {
+      AppAudio.claim(AudioOwner.surah);
       final name = QuranLocalService.surahInfo(surahNumber).nameAr;
       // A downloaded surah plays from storage; otherwise stream it.
       final source = await _downloads.sourceFor(voice, surahNumber);
