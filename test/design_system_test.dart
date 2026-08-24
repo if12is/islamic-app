@@ -145,6 +145,10 @@ void main() {
         // theme. Tying it to the tokens would mean a card someone shared last
         // year quietly restyles itself the next time the palette is tuned.
         'lib/features/quran/presentation/widgets/ayah_video_frame.dart',
+        // The tajweed colours are a code to be learned, not decoration. Red
+        // has to still mean six counts after the app's palette is next tuned,
+        // so they are deliberately not tied to the tokens.
+        'lib/features/quran/domain/tajweed_palette.dart',
         'lib/features/prayer_times/presentation/widgets/imsakiya_poster.dart',
         'lib/core/theme/design_colors.dart',
       };

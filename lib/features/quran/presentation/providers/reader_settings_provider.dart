@@ -65,6 +65,7 @@ class ReaderSettings {
     this.showVerseNumbers = true,
     this.reciterCode = 'ar.alafasy',
     this.viewMode = ReaderViewMode.continuous,
+    this.showTajweed = false,
   });
 
   final ReaderFont font;
@@ -97,6 +98,9 @@ class ReaderSettings {
   /// Continuous scroll or page-by-page.
   final ReaderViewMode viewMode;
 
+  /// Colour the tajweed rules on the page.
+  final bool showTajweed;
+
   ReaderSettings copyWith({
     ReaderFont? font,
     double? fontSize,
@@ -110,6 +114,7 @@ class ReaderSettings {
     bool? showVerseNumbers,
     String? reciterCode,
     ReaderViewMode? viewMode,
+    bool? showTajweed,
   }) {
     return ReaderSettings(
       font: font ?? this.font,
@@ -128,6 +133,7 @@ class ReaderSettings {
       showVerseNumbers: showVerseNumbers ?? this.showVerseNumbers,
       reciterCode: reciterCode ?? this.reciterCode,
       viewMode: viewMode ?? this.viewMode,
+      showTajweed: showTajweed ?? this.showTajweed,
     );
   }
 
@@ -143,6 +149,7 @@ class ReaderSettings {
     'showVerseNumbers': showVerseNumbers,
     'reciterCode': reciterCode,
     'viewMode': viewMode.name,
+    'showTajweed': showTajweed,
   };
 
   factory ReaderSettings.fromJson(Map<dynamic, dynamic> json) {
@@ -179,6 +186,7 @@ class ReaderSettings {
         (mode) => mode.name == json['viewMode'],
         orElse: () => ReaderViewMode.continuous,
       ),
+      showTajweed: json['showTajweed'] == true,
     );
   }
 
@@ -318,6 +326,9 @@ class ReaderSettingsNotifier extends Notifier<ReaderSettings> {
 
   Future<void> setViewMode(ReaderViewMode mode) =>
       update(state.copyWith(viewMode: mode));
+
+  Future<void> setShowTajweed(bool value) =>
+      update(state.copyWith(showTajweed: value));
 
   Future<void> resetToDefaults() => update(const ReaderSettings());
 }

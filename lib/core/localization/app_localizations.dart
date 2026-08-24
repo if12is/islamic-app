@@ -197,6 +197,45 @@ class AppLocalizations {
       'reciter_refresh': 'Refresh the list',
       'divine_names': 'The ninety-nine names',
       'divine_names_search_hint': 'Search a name or its meaning…',
+      // Tajweed colouring.
+      'show_tajweed': 'Tajweed colours',
+      'show_tajweed_desc': 'Colour the rules on the page as you read.',
+      'tajweed_key': 'Colour key',
+      'tajweed_note':
+          'Worked out from the Mushaf text inside the app — nothing is fetched, and it works for every verse offline.',
+      'tajweed_limits':
+          'What is not coloured: anything that depends on where you stop, such as madd ʿarid li-s-sukoon, whose length is two, four or six counts according to the pause. The app does not know where you will pause, and colouring it would be inventing a ruling. Izhar and izhar shafawi are left plain because nothing changes in them. This is a help while reading, not a substitute for reciting to someone who knows.',
+      'tajweed_ghunnah': 'Ghunnah',
+      'tajweed_ghunnah_desc': 'A doubled noon or meem, held in the nose.',
+      'tajweed_idghamGhunnah': 'Idgham with ghunnah',
+      'tajweed_idghamGhunnah_desc':
+          'Silent noon or tanween before ي ن م و — merged, with a nasal hold.',
+      'tajweed_idghamNoGhunnah': 'Idgham without ghunnah',
+      'tajweed_idghamNoGhunnah_desc':
+          'Silent noon or tanween before ل ر — merged with no hold.',
+      'tajweed_iqlab': 'Iqlab',
+      'tajweed_iqlab_desc': 'Silent noon or tanween before ب — said as a meem.',
+      'tajweed_ikhfa': 'Ikhfa',
+      'tajweed_ikhfa_desc':
+          'Silent noon or tanween before the other fifteen letters — hidden, with a hold.',
+      'tajweed_ikhfaShafawi': 'Ikhfa shafawi',
+      'tajweed_ikhfaShafawi_desc': 'Silent meem before ب.',
+      'tajweed_idghamShafawi': 'Idgham shafawi',
+      'tajweed_idghamShafawi_desc': 'Silent meem before another meem.',
+      'tajweed_qalqalah': 'Qalqalah',
+      'tajweed_qalqalah_desc':
+          'ق ط ب ج د with a sukoon, and at the end of a verse where you stop.',
+      'tajweed_maddMuttasil': 'Madd muttasil',
+      'tajweed_maddMuttasil_desc':
+          'A long vowel followed by hamza in the same word.',
+      'tajweed_maddMunfasil': 'Madd munfasil',
+      'tajweed_maddMunfasil_desc':
+          'A long vowel at the end of a word whose next word opens with hamza.',
+      'tajweed_maddLazim': 'Madd lazim',
+      'tajweed_maddLazim_desc':
+          'A long vowel followed by a sukoon or a shadda.',
+      'tajweed_silent': 'Written, not said',
+      'tajweed_silent_desc': 'The lam of ال before a sun letter.',
       // Names for controls that were icons and nothing else.
       'clear': 'Clear',
       'previous': 'Previous',
@@ -1172,6 +1211,42 @@ class AppLocalizations {
       'reciter_refresh': 'حدّث القائمة',
       'divine_names': 'أسماء الله الحسنى',
       'divine_names_search_hint': 'ابحث عن اسم أو معناه…',
+      // تلوين التجويد.
+      'show_tajweed': 'تلوين التجويد',
+      'show_tajweed_desc': 'يلوّن الأحكام على الصفحة أثناء قراءتك.',
+      'tajweed_key': 'مفتاح الألوان',
+      'tajweed_note':
+          'محسوب من رسم المصحف داخل التطبيق — لا يُجلب من الشبكة، ويعمل في كل آية بلا إنترنت.',
+      'tajweed_limits':
+          'ما لا يُلوَّن: كل ما يتوقّف على موضع وقفك، كالمد العارض للسكون الذي يُمدّ حركتين أو أربعاً أو ستاً بحسب الوقف — والتطبيق لا يعرف أين ستقف، وتلوينه اختراع لحكم. والإظهار والإظهار الشفوي يُتركان بلا لون لأن شيئاً لا يتغيّر فيهما. وهذا عون على القراءة لا يغني عن التلقّي عمّن يُحسنه.',
+      'tajweed_ghunnah': 'الغنّة',
+      'tajweed_ghunnah_desc': 'نون أو ميم مشدّدة، تُمسك في الخيشوم.',
+      'tajweed_idghamGhunnah': 'إدغام بغنّة',
+      'tajweed_idghamGhunnah_desc':
+          'نون ساكنة أو تنوين قبل ي ن م و — تُدغم مع غنّة.',
+      'tajweed_idghamNoGhunnah': 'إدغام بغير غنّة',
+      'tajweed_idghamNoGhunnah_desc':
+          'نون ساكنة أو تنوين قبل ل ر — تُدغم بلا غنّة.',
+      'tajweed_iqlab': 'إقلاب',
+      'tajweed_iqlab_desc': 'نون ساكنة أو تنوين قبل الباء — تُنطق ميماً.',
+      'tajweed_ikhfa': 'إخفاء',
+      'tajweed_ikhfa_desc':
+          'نون ساكنة أو تنوين قبل بقية الحروف الخمسة عشر — تُخفى مع غنّة.',
+      'tajweed_ikhfaShafawi': 'إخفاء شفوي',
+      'tajweed_ikhfaShafawi_desc': 'ميم ساكنة قبل الباء.',
+      'tajweed_idghamShafawi': 'إدغام شفوي',
+      'tajweed_idghamShafawi_desc': 'ميم ساكنة قبل ميم.',
+      'tajweed_qalqalah': 'قلقلة',
+      'tajweed_qalqalah_desc': 'ق ط ب ج د بالسكون، وفي آخر الآية حيث تقف.',
+      'tajweed_maddMuttasil': 'مد واجب متصل',
+      'tajweed_maddMuttasil_desc': 'حرف مدّ بعده همزة في الكلمة نفسها.',
+      'tajweed_maddMunfasil': 'مد جائز منفصل',
+      'tajweed_maddMunfasil_desc':
+          'حرف مدّ في آخر الكلمة والكلمة التالية تبدأ بهمزة.',
+      'tajweed_maddLazim': 'مد لازم',
+      'tajweed_maddLazim_desc': 'حرف مدّ بعده سكون أو شدّة.',
+      'tajweed_silent': 'يُكتب ولا يُنطق',
+      'tajweed_silent_desc': 'لام «ال» قبل حرف شمسي.',
       // أسماء لأزرار كانت أيقونات بلا اسم.
       'clear': 'مسح',
       'previous': 'السابق',

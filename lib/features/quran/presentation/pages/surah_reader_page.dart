@@ -14,6 +14,7 @@ import '../../../../core/utils/app_logger.dart';
 import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../data/bookmark_store.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../domain/tajweed_palette.dart';
 import '../providers/bookmarks_provider.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
@@ -21,6 +22,7 @@ import '../providers/reading_progress_provider.dart';
 import '../widgets/ayah_actions_sheet.dart';
 import '../widgets/player_sheet.dart';
 import '../widgets/reader_settings_sheet.dart';
+import '../widgets/tajweed_text.dart';
 import 'bookmarks_page.dart';
 import 'hifz_page.dart';
 import 'notes_page.dart';
@@ -694,23 +696,41 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
         ),
       );
 
-      spans.add(
-        TextSpan(
-          text: '${verse.text} ',
-          style: TextStyle(
-            color: isPlaying ? palette.accent : palette.text,
-            backgroundColor:
-                isPlaying
-                    ? palette.highlight
-                    : isSelected
-                    ? palette.highlight.withValues(alpha: 0.5)
-                    : isBookmarked
-                    ? palette.accent.withValues(alpha: 0.12)
-                    : null,
-          ),
-          recognizer: recognizer,
-        ),
+      final background =
+          isPlaying
+              ? palette.highlight
+              : isSelected
+              ? palette.highlight.withValues(alpha: 0.5)
+              : isBookmarked
+              ? palette.accent.withValues(alpha: 0.12)
+              : null;
+
+      final verseStyle = TextStyle(
+        color: isPlaying ? palette.accent : palette.text,
+        backgroundColor: background,
       );
+
+      // Tajweed colouring gives way to the playing highlight: while a verse is
+      // being recited the reader is following the voice, and two colour
+      // systems fighting over the same letters helps with neither.
+      if (settings.showTajweed && !isPlaying) {
+        spans.addAll(
+          TajweedText.spansFor(
+            text: '${verse.text} ',
+            baseStyle: verseStyle,
+            palette: TajweedPalette.forGround(isDark: palette.isDark),
+            recognizer: recognizer,
+          ),
+        );
+      } else {
+        spans.add(
+          TextSpan(
+            text: '${verse.text} ',
+            style: verseStyle,
+            recognizer: recognizer,
+          ),
+        );
+      }
 
       if (settings.showVerseNumbers) {
         spans.add(

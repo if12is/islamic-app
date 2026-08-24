@@ -5,6 +5,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import 'reciter_picker_sheet.dart';
+import 'tajweed_text.dart';
 
 /// The reading control panel: typography, surface, motion, and reciter.
 ///
@@ -140,6 +141,26 @@ class ReaderSettingsSheet extends ConsumerWidget {
                 onChanged: notifier.setShowVerseNumbers,
                 title: Text(context.tr('show_verse_numbers')),
               ),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: settings.showTajweed,
+                onChanged: notifier.setShowTajweed,
+                title: Text(context.tr('show_tajweed')),
+                subtitle: Text(context.tr('show_tajweed_desc')),
+              ),
+              if (settings.showTajweed)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed:
+                        () => TajweedKeySheet.show(
+                          context,
+                          isDark: settings.paletteFor(context).isDark,
+                        ),
+                    icon: const Icon(Icons.palette_outlined, size: 18),
+                    label: Text(context.tr('tajweed_key')),
+                  ),
+                ),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 value: settings.keepScreenOn,
