@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../utils/app_logger.dart';
+import 'data_saver.dart';
 import 'nearest_city_service.dart';
 import 'notification_service.dart';
 import 'secure_http_client.dart';
@@ -19,6 +20,14 @@ class AppServices {
       );
     } catch (e, stack) {
       AppLogger.error('Notification service failed to initialize', e, stack);
+    }
+    // Awaited, unlike the rest: the audio URL builder reads it synchronously,
+    // so a recitation started in the first second must already know whether
+    // the listener asked for the smaller files.
+    try {
+      await DataSaver.load();
+    } catch (e, stack) {
+      AppLogger.error('Data saver preference unreadable', e, stack);
     }
     // Loaded up front so the first screen can name the user's city without
     // waiting on a network round trip that may never come.

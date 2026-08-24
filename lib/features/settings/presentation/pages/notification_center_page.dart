@@ -1027,34 +1027,50 @@ class _NotificationCenterPageState
           title: Text(context.tr('wird_reminder')),
           subtitle: Text(_formatHourMinute(prefs.wirdHour, prefs.wirdMinute)),
         ),
-        if (prefs.wirdEnabled)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
-              onPressed:
-                  _busy
-                      ? null
-                      : () => _pickTime(
-                        hour: prefs.wirdHour,
-                        minute: prefs.wirdMinute,
-                        onPicked:
-                            (hour, minute) => _apply(
-                              () => ref
-                                  .read(
-                                    notificationPreferencesProvider.notifier,
-                                  )
-                                  .update(
-                                    prefs.copyWith(
-                                      wirdHour: hour,
-                                      wirdMinute: minute,
+        if (prefs.wirdEnabled) ...[
+          if (!prefs.wirdAdaptive)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed:
+                    _busy
+                        ? null
+                        : () => _pickTime(
+                          hour: prefs.wirdHour,
+                          minute: prefs.wirdMinute,
+                          onPicked:
+                              (hour, minute) => _apply(
+                                () => ref
+                                    .read(
+                                      notificationPreferencesProvider.notifier,
+                                    )
+                                    .update(
+                                      prefs.copyWith(
+                                        wirdHour: hour,
+                                        wirdMinute: minute,
+                                      ),
                                     ),
-                                  ),
-                            ),
-                      ),
-              icon: const Icon(Icons.schedule, size: 18),
-              label: Text(context.tr('change_time')),
+                              ),
+                        ),
+                icon: const Icon(Icons.schedule, size: 18),
+                label: Text(context.tr('change_time')),
+              ),
             ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: prefs.wirdAdaptive,
+            onChanged:
+                _busy
+                    ? null
+                    : (value) => _apply(
+                      () => ref
+                          .read(notificationPreferencesProvider.notifier)
+                          .update(prefs.copyWith(wirdAdaptive: value)),
+                    ),
+            title: Text(context.tr('wird_adaptive')),
+            subtitle: Text(context.tr('wird_adaptive_desc')),
           ),
+        ],
       ],
     );
   }

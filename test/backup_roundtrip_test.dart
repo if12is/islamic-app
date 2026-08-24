@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:islamic_app/core/services/backup_service.dart';
 import 'package:islamic_app/features/azkar/data/tasbeeh_store.dart';
+import 'package:islamic_app/features/quran/data/playlist_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Uint8List _bytes(Map<String, dynamic> payload) =>
@@ -72,6 +73,8 @@ void main() {
         'salawat_total': 4000,
         'prayer_log_2026-08-24': 'fajr:mosque',
         'zakat_cash': 1500.0,
+        'data_saver_enabled': true,
+        'wird_hours': '0,0,0,0,0,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0',
       });
 
       final settings =
@@ -81,6 +84,29 @@ void main() {
       expect(settings['salawat_total'], 4000);
       expect(settings['prayer_log_2026-08-24'], 'fajr:mosque');
       expect(settings['zakat_cash'], 1500.0);
+      expect(settings['data_saver_enabled'], isTrue);
+      expect(settings['wird_hours'], isNotNull);
+    });
+
+    test('the listening lists come with it', () async {
+      // A playlist someone built by hand is their work, not a cache.
+      final store = PlaylistStore();
+      await store.save(
+        const Playlist(
+          id: 'pl_1',
+          name: 'قبل النوم',
+          surahs: [67, 32, 112],
+          isDailyWird: true,
+        ),
+      );
+
+      final boxes =
+          (await BackupService.buildPayload())['boxes'] as Map<String, dynamic>;
+
+      expect(boxes.containsKey('audio_playlists'), isTrue);
+      final entries = boxes['audio_playlists'] as Map;
+      expect(entries['pl_1'], isNotNull);
+      expect((entries['pl_1'] as Map)['name'], 'قبل النوم');
     });
 
     test('leaves unrelated keys out', () async {

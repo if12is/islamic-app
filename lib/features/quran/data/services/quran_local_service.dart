@@ -1,5 +1,6 @@
 import 'package:quran/quran.dart' as quran;
 
+import '../../../../core/services/data_saver.dart';
 import 'quran_meta_data.dart';
 
 /// A single verse with everything the reader needs to render and locate it.
@@ -411,14 +412,19 @@ class QuranLocalService {
   }
 
   /// Verse audio from the islamic.network CDN (used by the reader's player).
+  ///
+  /// The bitrate follows the data-saver setting unless a caller states one:
+  /// 64 kbps is half the bytes and, for a single voice reciting, close enough
+  /// that most listeners never notice on a phone speaker.
   static String audioUrlForVerse(
     int surahNumber,
     int verseNumber, {
     String reciterCode = 'ar.alafasy',
-    int bitrate = 128,
+    int? bitrate,
   }) {
     final global = globalVerseNumber(surahNumber, verseNumber);
-    return 'https://cdn.islamic.network/quran/audio/$bitrate/$reciterCode/$global.mp3';
+    final rate = bitrate ?? DataSaver.audioBitrate;
+    return 'https://cdn.islamic.network/quran/audio/$rate/$reciterCode/$global.mp3';
   }
 
   /// Whole-surah audio from the same CDN.

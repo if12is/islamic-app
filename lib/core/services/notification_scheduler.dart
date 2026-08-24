@@ -13,6 +13,7 @@ import 'notification_service.dart';
 import 'prayer_calculation_service.dart';
 import 'prayer_settings_store.dart';
 import 'widget_service.dart';
+import 'wird_habit_store.dart';
 
 /// Outcome of a scheduling pass, surfaced in the notification centre.
 class ScheduleResult {
@@ -596,7 +597,10 @@ class NotificationScheduler {
         return ScheduleResult.empty;
       }
 
-      final plan = await preview(preferences: prefs, overrides: settings);
+      final plan = await preview(
+        preferences: prefs,
+        overrides: withLearnedWirdTime(settings, prefs),
+      );
       final scheduled = await NotificationService.replaceSchedule(plan);
       final exact = await NotificationService.canScheduleExactAlarms();
 
@@ -609,6 +613,31 @@ class NotificationScheduler {
       AppLogger.error('Notification refresh failed', e, stack);
       return ScheduleResult.empty;
     }
+  }
+
+  /// Move the wird reminder to the hour this person actually reads in.
+  ///
+  /// Only when they asked for it, and only once there are enough sessions to
+  /// mean something — otherwise the time they set themselves stands. A
+  /// reminder that wanders on the evidence of two readings is worse than one
+  /// that never moves.
+  static NotificationPreferences withLearnedWirdTime(
+    NotificationPreferences settings,
+    SharedPreferences prefs,
+  ) {
+    if (!settings.wirdEnabled || !settings.wirdAdaptive) {
+      return settings;
+    }
+    final suggestion = WirdHabitStore.suggestedTime(
+      WirdHabitStore.readCounts(prefs),
+    );
+    if (suggestion == null) {
+      return settings;
+    }
+    return settings.copyWith(
+      wirdHour: suggestion.hour,
+      wirdMinute: suggestion.minute,
+    );
   }
 
   /// Persisted notification settings, migrating the legacy boolean map.

@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  ffmpeg_kit_flutter_new_min_gpl
   flutter_timezone
   record_linux
   url_launcher_linux

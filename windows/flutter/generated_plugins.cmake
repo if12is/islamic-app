@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  ffmpeg_kit_flutter_new_min_gpl
   flutter_timezone
   geolocator_windows
   record_windows

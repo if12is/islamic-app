@@ -141,6 +141,10 @@ void main() {
         // themed screen, so they carry their own fixed palette.
         'lib/features/quran/presentation/widgets/ayah_share_card.dart',
         'lib/features/quran/presentation/widgets/ayah_actions_sheet.dart',
+        // The video frame is exported to a file that outlives this build's
+        // theme. Tying it to the tokens would mean a card someone shared last
+        // year quietly restyles itself the next time the palette is tuned.
+        'lib/features/quran/presentation/widgets/ayah_video_frame.dart',
         'lib/features/prayer_times/presentation/widgets/imsakiya_poster.dart',
         'lib/core/theme/design_colors.dart',
       };

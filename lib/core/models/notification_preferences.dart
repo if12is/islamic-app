@@ -63,6 +63,7 @@ class NotificationPreferences {
     this.wirdEnabled = false,
     this.wirdHour = 20,
     this.wirdMinute = 0,
+    this.wirdAdaptive = false,
     this.quietHoursEnabled = false,
     this.quietStartHour = 23,
     this.quietEndHour = 6,
@@ -104,6 +105,11 @@ class NotificationPreferences {
   final bool wirdEnabled;
   final int wirdHour;
   final int wirdMinute;
+
+  /// Move the wird reminder to the hour this person already reads in.
+  ///
+  /// Learned on the device from nothing but which hour sessions happen in.
+  final bool wirdAdaptive;
 
   /// Quiet hours mute the non-prayer reminders only; prayer alerts keep
   /// whatever mode the user picked for them.
@@ -186,6 +192,7 @@ class NotificationPreferences {
     bool? wirdEnabled,
     int? wirdHour,
     int? wirdMinute,
+    bool? wirdAdaptive,
     bool? quietHoursEnabled,
     int? quietStartHour,
     int? quietEndHour,
@@ -215,6 +222,7 @@ class NotificationPreferences {
       wirdEnabled: wirdEnabled ?? this.wirdEnabled,
       wirdHour: wirdHour ?? this.wirdHour,
       wirdMinute: wirdMinute ?? this.wirdMinute,
+      wirdAdaptive: wirdAdaptive ?? this.wirdAdaptive,
       quietHoursEnabled: quietHoursEnabled ?? this.quietHoursEnabled,
       quietStartHour: quietStartHour ?? this.quietStartHour,
       quietEndHour: quietEndHour ?? this.quietEndHour,
@@ -252,6 +260,7 @@ class NotificationPreferences {
     'wirdEnabled': wirdEnabled,
     'wirdHour': wirdHour,
     'wirdMinute': wirdMinute,
+    'wirdAdaptive': wirdAdaptive,
     'quietHoursEnabled': quietHoursEnabled,
     'quietStartHour': quietStartHour,
     'quietEndHour': quietEndHour,
@@ -309,6 +318,7 @@ class NotificationPreferences {
       wirdEnabled: json['wirdEnabled'] == true,
       wirdHour: intOr('wirdHour', 20, max: 23),
       wirdMinute: intOr('wirdMinute', 0, max: 59),
+      wirdAdaptive: json['wirdAdaptive'] == true,
       quietHoursEnabled: json['quietHoursEnabled'] == true,
       quietStartHour: intOr('quietStartHour', 23, max: 23),
       quietEndHour: intOr('quietEndHour', 6, max: 23),

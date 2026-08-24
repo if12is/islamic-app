@@ -88,6 +88,7 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
                 children: [
                   IconButton(
                     iconSize: 32,
+                    tooltip: context.tr('previous'),
                     icon: const Icon(Icons.skip_previous),
                     onPressed: audio.hasQueue ? controller.previous : null,
                   ),
@@ -115,6 +116,7 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
                   const SizedBox(width: 8),
                   IconButton(
                     iconSize: 32,
+                    tooltip: context.tr('next'),
                     icon: const Icon(Icons.skip_next),
                     onPressed: audio.hasQueue ? controller.next : null,
                   ),

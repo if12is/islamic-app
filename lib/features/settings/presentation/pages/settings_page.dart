@@ -13,6 +13,8 @@ import '../../../../core/services/update_service.dart';
 import '../../../../shared/providers/app_update_provider.dart';
 import '../widgets/app_update_dialog.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
+import '../../../quran/presentation/pages/playlists_page.dart';
+import 'storage_page.dart';
 import 'zakat_page.dart';
 import '../../../prayer_times/presentation/pages/prayer_settings_page.dart';
 import 'notification_center_page.dart';
@@ -80,6 +82,7 @@ class SettingsPage extends ConsumerWidget {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
+                tooltip: context.tr('back'),
                 icon: Icon(
                   context.isAppRtl
                       ? Icons.arrow_forward_rounded
@@ -413,6 +416,22 @@ class SettingsPage extends ConsumerWidget {
                                   builder: (_) => const ZakatPage(),
                                 ),
                               ),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.playlist_play_rounded,
+                          color: accentColor,
+                          title: context.tr('playlists'),
+                          subtitle: context.tr('playlists_desc'),
+                          onTap: () => PlaylistsPage.open(context),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.storage_outlined,
+                          color: accentColor,
+                          title: context.tr('storage'),
+                          subtitle: context.tr('storage_desc'),
+                          onTap: () => StoragePage.open(context),
                         ),
                         _buildToolTile(
                           context,

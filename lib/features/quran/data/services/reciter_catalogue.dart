@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/services/data_saver.dart';
 import '../../../../core/utils/app_logger.dart';
 import 'quran_local_service.dart';
 
@@ -129,6 +130,14 @@ class ReciterCatalogue {
     final cached = _readCache(prefs);
 
     if (cached.isNotEmpty && !refresh && !_isStale(prefs)) {
+      _register(cached);
+      return _memory = cached;
+    }
+
+    // Data saver: a fortnightly refresh of a list that rarely changes is not
+    // worth spending someone's allowance on behind their back. An explicit
+    // refresh from the picker still goes through.
+    if (cached.isNotEmpty && !refresh && !DataSaver.allowsBackgroundRefresh) {
       _register(cached);
       return _memory = cached;
     }

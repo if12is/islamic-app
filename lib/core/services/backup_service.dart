@@ -53,10 +53,14 @@ class BackupService {
   static const int formatVersion = 2;
 
   /// Hive boxes carried in the backup.
+  ///
+  /// Only what the user made: caches — tafsir, azkar, the reciter list — are
+  /// left out on purpose, because they refetch and would bloat the file.
   static const List<String> _boxes = [
     'quran_bookmarks',
     'reading_progress',
     'hifz_items',
+    'audio_playlists',
   ];
 
   /// Whole families of keys, carried by prefix.
@@ -72,6 +76,10 @@ class BackupService {
     'salawat_',
     'prayer_log_',
     'zakat_',
+    'data_saver_',
+    // The hours someone reads in, so an adaptive reminder does not have to
+    // relearn them from scratch on a new phone.
+    'wird_',
   ];
 
   /// Preference keys carried in the backup.

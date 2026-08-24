@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../localization/app_localizations.dart';
 import '../theme/design_tokens.dart';
 
 /// Frosted-glass surface used by the nav bar, search fields, and floating bars.
@@ -117,6 +118,7 @@ class GlassSearchField extends StatelessWidget {
             children: [
               if (controller.text.isNotEmpty)
                 IconButton(
+                  tooltip: context.tr('clear'),
                   icon: Icon(Icons.close, color: tokens.inkFaint, size: 18),
                   onPressed: () {
                     controller.clear();

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/wird_habit_store.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/reading_progress_store.dart';
 import '../../domain/entities/khatmah_plan.dart';
@@ -69,6 +72,9 @@ class ReadingProgressNotifier extends AsyncNotifier<ReadingSummary> {
   /// Called by the reader as the user moves through the Mushaf.
   Future<void> recordPage(int page) async {
     await _store.recordPage(page);
+    // Note the hour too, so an adaptive reminder has something to learn from.
+    // It is one counter per hour and never leaves the device.
+    unawaited(WirdHabitStore.noteSession(appPreferences));
     await refresh();
     await ref.read(khatmahPlanProvider.notifier).completeIfFinished();
   }

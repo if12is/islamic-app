@@ -6,7 +6,9 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/reading_progress_store.dart';
 import '../../domain/entities/khatmah_plan.dart';
+import '../../domain/weekly_report.dart';
 import '../providers/reading_progress_provider.dart';
+import '../widgets/weekly_report_card.dart';
 
 /// Reading habits at a glance: the streak, the year, and the totals.
 class ReadingStatsPage extends ConsumerWidget {
@@ -28,6 +30,8 @@ class ReadingStatsPage extends ConsumerWidget {
             (data) => ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
               children: [
+                _weeklyReport(context, data),
+                const SizedBox(height: 16),
                 _streakCard(context, data),
                 const SizedBox(height: 16),
                 _totalsCard(context, data),
@@ -42,6 +46,30 @@ class ReadingStatsPage extends ConsumerWidget {
               ],
             ),
       ),
+    );
+  }
+
+  /// This week, with last week beside it and a way to send it to someone.
+  Widget _weeklyReport(BuildContext context, ReadingSummary data) {
+    final report = WeeklyReport.of(data.days);
+    final previous = WeeklyReport.of(data.days, weeksAgo: 1);
+
+    return WeeklyReportCard(
+      report: report,
+      previous: previous,
+      onShare: () async {
+        final failed = context.tr('share_failed');
+        final ok = await WeeklyReportSharing.share(
+          context: context,
+          report: report,
+          previous: previous,
+        );
+        if (!ok && context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(failed)));
+        }
+      },
     );
   }
 

@@ -20,6 +20,8 @@ import '../../data/models/azkar_models.dart';
 import 'all_azkar_categories_page.dart';
 import 'azkar_details_page.dart';
 import 'divine_names_page.dart';
+import 'dua_library_page.dart';
+import 'ruqyah_page.dart';
 import 'salawat_page.dart';
 
 class AzkarPage extends ConsumerStatefulWidget {
@@ -160,33 +162,64 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     );
   }
 
-  /// The two devotions that are neither a chapter of the Hisn nor a tasbeeh
-  /// phrase, and so had nowhere to live.
+  /// The devotions that are neither a chapter of the Hisn nor a tasbeeh
+  /// phrase, plus the two other ways into the chapters themselves.
   Widget _buildDevotionShortcuts() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _shortcut(
-            icon: Icons.auto_awesome,
-            label: context.tr('divine_names'),
-            onTap:
-                () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const DivineNamesPage(),
-                  ),
-                ),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _shortcut(
+                icon: Icons.auto_awesome,
+                label: context.tr('divine_names'),
+                onTap:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const DivineNamesPage(),
+                      ),
+                    ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _shortcut(
+                icon: Icons.favorite_outline,
+                label: context.tr('salawat'),
+                onTap:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SalawatPage(),
+                      ),
+                    ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: _shortcut(
-            icon: Icons.favorite_outline,
-            label: context.tr('salawat'),
-            onTap:
-                () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const SalawatPage()),
-                ),
-          ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: _shortcut(
+                icon: Icons.menu_book_outlined,
+                label: context.tr('dua_library'),
+                onTap:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => DuaLibraryPage(categories: _categories),
+                      ),
+                    ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _shortcut(
+                icon: Icons.shield_outlined,
+                label: context.tr('ruqyah'),
+                onTap: () => RuqyahPage.open(context),
+              ),
+            ),
+          ],
         ),
       ],
     );

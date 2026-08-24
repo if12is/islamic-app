@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/localization/app_localizations.dart';
 import '../providers/app_providers.dart';
 
 /// Hamburger that opens Settings from any shell tab.
@@ -12,6 +13,7 @@ class ShellMenuButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
+      tooltip: context.tr('settings'),
       icon: Icon(
         Icons.menu,
         color: Theme.of(context).colorScheme.onSurface,

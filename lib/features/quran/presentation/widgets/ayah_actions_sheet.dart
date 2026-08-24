@@ -8,6 +8,7 @@ import '../../data/services/quran_local_service.dart';
 import '../providers/bookmarks_provider.dart';
 import '../providers/hifz_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import '../pages/ayah_video_studio_page.dart';
 import '../pages/recitation_page.dart';
 import 'ayah_share_card.dart';
 import 'tafsir_sheet.dart';
@@ -344,6 +345,18 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
                     icon: Icons.image,
                     labelKey: 'share_image',
                     onTap: _shareImage,
+                  ),
+                  _action(
+                    icon: Icons.videocam_outlined,
+                    labelKey: 'video_studio',
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      AyahVideoStudioPage.open(
+                        context,
+                        surahNumber: verse.surahNumber,
+                        fromVerse: verse.numberInSurah,
+                      );
+                    },
                   ),
                 ],
               ),

@@ -9,18 +9,17 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/custom_loader.dart';
-import '../../../../core/services/quran_media.dart';
-import '../../../../core/utils/app_logger.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
-import '../../data/services/audio_download_service.dart';
 import '../../data/services/quran_local_service.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import '../providers/surah_audio_provider.dart';
 import 'downloads_page.dart';
 import '../widgets/khatmah_card.dart';
 import '../widgets/last_read_card.dart';
 import '../widgets/reciter_picker_sheet.dart';
+import 'now_playing_page.dart';
 import 'recitation_page.dart';
 import 'surah_reader_page.dart';
 import 'package:just_audio/just_audio.dart';
@@ -106,19 +105,14 @@ class _QuranPageState extends ConsumerState<QuranPage> {
   // first player created — so whichever screen was built first won the media
   // controls and the other played with none, while both fought over the same
   // audio session.
+  //
+  // The session itself now lives in [surahAudioProvider] rather than in this
+  // State: it used to be thrown away every time the tab changed, which lost
+  // the bar, the reciter and the sleep timer while the audio carried on.
   AudioPlayer get _audioPlayer => ref.read(quranAudioPlayerProvider);
 
-  /// Same reciter list as the verse player, so a choice made in one place
-  /// holds everywhere.
-  String _selectedReciterCode = QuranReciter.all.first.code;
-  StreamSubscription<PlayerState>? _playerSub;
+  SurahAudioController get _playback => ref.read(surahAudioProvider.notifier);
 
-  /// Guards against two reciter switches loading at once.
-  int _switchToken = 0;
-
-  /// Never seek exactly onto the end; players treat that as "finished".
-  static const Duration _seekTailGuard = Duration(seconds: 2);
-  final AudioDownloadService _downloadService = AudioDownloadService();
   List<Surah> _allSurahs = [];
   List<Surah> _filteredSurahs = [];
   final List<int> _allJuzNumbers = List<int>.generate(30, (index) => index + 1);
@@ -152,34 +146,11 @@ class _QuranPageState extends ConsumerState<QuranPage> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
 
-  int? _currentlyPlayingSurahId;
-
-  // Mocked Last Read state (could be loaded from SharedPreferences)
-
   @override
   void initState() {
     super.initState();
-    _selectedReciterCode = ref.read(readerSettingsProvider).reciterCode;
     _fetchSurahs();
     _searchController.addListener(_onSearchChanged);
-
-    _playerSub = _audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
-        if (mounted) {
-          setState(() {
-            _currentlyPlayingSurahId = null;
-          });
-        }
-      } else {
-        if (mounted) setState(() {});
-      }
-    });
-
-    Future.delayed(const Duration(seconds: 10), () {
-      if (mounted) {
-        setState(() {});
-      }
-    });
   }
 
   Future<void> _fetchSurahs() async {
@@ -366,157 +337,37 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     _onSearchChanged();
   }
 
-  /// Change voice on a playing surah, resuming as close to the same place as
-  /// the new recording allows.
-  ///
-  /// Two reciters never record a surah at the same length, so the old position
-  /// is a hint rather than an instruction: seeking straight to it landed past
-  /// the end of a shorter recitation, which the player reports as "completed"
-  /// — the surah went silent the moment the voice was changed.
-  Future<void> _switchReciter(String reciterCode, int surahId) async {
-    final token = ++_switchToken;
-    final wasPlaying = _audioPlayer.playing;
-    final position = _audioPlayer.position;
-    final previousDuration = _audioPlayer.duration;
-
-    setState(() => _selectedReciterCode = reciterCode);
-
-    await _audioPlayer.stop();
-    _currentlyPlayingSurahId = null;
-
-    final loaded = await _togglePlayPause(surahId);
-    // Tapping through voices faster than they load used to leave two loads
-    // racing, and the loser would overwrite the winner.
-    if (!loaded || token != _switchToken || !mounted) {
+  /// Start or toggle a surah, and say something useful when it will not play.
+  Future<void> _play(int surahId) async {
+    final ok = await _playback.play(surahId);
+    if (ok || !mounted) {
       return;
     }
 
-    final duration = _audioPlayer.duration;
-    if (position > Duration.zero && duration != null) {
-      // Keep the same fraction of the recitation rather than the same second:
-      // it lands on roughly the same verse whatever the pace of the reciter.
-      final target =
-          (previousDuration != null && previousDuration > Duration.zero)
-              ? duration *
-                  (position.inMilliseconds / previousDuration.inMilliseconds)
-              : position;
-      final safe = target < duration ? target : duration - _seekTailGuard;
-      await _audioPlayer.seek(safe > Duration.zero ? safe : Duration.zero);
-    }
+    final state = ref.read(surahAudioProvider);
+    final key = state.errorKey ?? 'audio_play_failed';
+    final detail = state.errorDetail;
+    _playback.clearError();
 
-    if (!wasPlaying) {
-      await _audioPlayer.pause();
-    }
-  }
-
-  /// Returns true when a source is loaded and playing.
-  Future<bool> _togglePlayPause(int surahId) async {
-    try {
-      if (_currentlyPlayingSurahId == surahId) {
-        if (_audioPlayer.playing) {
-          await _audioPlayer.pause();
-        } else {
-          await _audioPlayer.play();
-        }
-        setState(() {});
-        return true;
-      }
-
-      setState(() {
-        _currentlyPlayingSurahId = surahId;
-      });
-
-      final surahName =
-          _allSurahs
-              .cast<Surah?>()
-              .firstWhere((item) => item?.id == surahId, orElse: () => null)
-              ?.nameAr ??
-          '';
-
-      // A downloaded surah plays from storage; otherwise stream the CDN.
-      final source = await _downloadService.sourceFor(
-        _selectedReciterCode,
-        surahId,
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            detail == null ? context.tr(key) : '${context.tr(key)} ($detail)',
+          ),
+          action: SnackBarAction(
+            label: context.tr('retry'),
+            onPressed: () => _play(surahId),
+          ),
+        ),
       );
-      await QuranMedia.prepareSession();
-      final reciter = QuranReciter.byCode(_selectedReciterCode);
-      final tag = await QuranMedia.item(
-        id: 'surah_${surahId}_$_selectedReciterCode',
-        title: 'سورة $surahName',
-        artist: reciter.nameAr,
-      );
-
-      await _audioPlayer.setAudioSource(
-        source.startsWith('http')
-            ? AudioSource.uri(Uri.parse(source), tag: tag)
-            : AudioSource.file(source, tag: tag),
-      );
-      await _audioPlayer.play();
-      return true;
-    } catch (e, stack) {
-      AppLogger.error('Error playing audio', e, stack);
-      // Silence with the play button still lit reads as a broken app. Say what
-      // actually went wrong — "check your connection" is useless advice to
-      // someone whose connection is fine.
-      if (mounted) {
-        setState(() => _currentlyPlayingSurahId = null);
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(_playbackMessage(context, e)),
-              action: SnackBarAction(
-                label: context.tr('retry'),
-                onPressed: () => _togglePlayPause(surahId),
-              ),
-            ),
-          );
-      }
-      return false;
-    }
-  }
-
-  /// Turn the exception into something the listener can act on.
-  String _playbackMessage(BuildContext context, Object error) {
-    // just_audio wraps the platform's own failure, and its code is the HTTP
-    // status when the source was refused. Reading it beats guessing from a
-    // stringified class name.
-    if (error is PlayerException) {
-      final status = error.code;
-      if (status == 403 || status == 404) {
-        return context.tr('audio_not_available');
-      }
-      return '${context.tr('audio_play_failed')} ($status)';
-    }
-
-    final text = error.toString().toLowerCase();
-
-    if (text.contains('socket') ||
-        text.contains('host') ||
-        text.contains('network') ||
-        text.contains('connection')) {
-      return context.tr('audio_no_network');
-    }
-    if (text.contains('403') ||
-        text.contains('404') ||
-        text.contains('not found')) {
-      return context.tr('audio_not_available');
-    }
-    // A plugin that is not there is a platform gap, not a user problem, and
-    // telling someone to check a working connection wastes their time.
-    if (text.contains('missingplugin')) {
-      return context.tr('audio_platform_unsupported');
-    }
-    // Anything else is worth showing verbatim: an unexplained failure that
-    // names itself can be reported, and one that does not cannot.
-    return '${context.tr('audio_play_failed')} (${error.runtimeType})';
   }
 
   @override
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
-    _playerSub?.cancel();
     // The player belongs to the provider, which disposes it. Stopping here
     // would cut off a recitation the listener left running on purpose.
     super.dispose();
@@ -577,7 +428,7 @@ class _QuranPageState extends ConsumerState<QuranPage> {
             ),
 
           // The player floats above the list while something is playing.
-          if (_currentlyPlayingSurahId != null)
+          if (ref.watch(surahAudioProvider).hasSurah)
             Align(
               alignment: Alignment.bottomCenter,
               child: SafeArea(
@@ -717,6 +568,8 @@ class _QuranPageState extends ConsumerState<QuranPage> {
       return _empty(context.tr('no_surah_match'));
     }
 
+    final playback = ref.watch(surahAudioProvider);
+
     return Column(
       children: [
         for (final surah in _filteredSurahs)
@@ -730,13 +583,13 @@ class _QuranPageState extends ConsumerState<QuranPage> {
             trailingText: context.isAppRtl ? null : surah.nameAr,
             trailing: GhostIconButton(
               icon:
-                  _currentlyPlayingSurahId == surah.id && _audioPlayer.playing
+                  playback.surahNumber == surah.id && playback.playing
                       ? Icons.pause_circle_filled
                       : Icons.play_circle_outline,
-              active:
-                  _currentlyPlayingSurahId == surah.id && _audioPlayer.playing,
+              active: playback.surahNumber == surah.id && playback.playing,
               size: 24,
-              onTap: () => _togglePlayPause(surah.id),
+              tooltip: context.tr('play'),
+              onTap: () => _play(surah.id),
             ),
             onTap: () => _openReader(SurahReaderPage(surahNumber: surah.id)),
           ),
@@ -1299,132 +1152,128 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     );
   }
 
+  /// The mini bar: what is playing, one control, and a way into the full
+  /// player. Everything else — speed, repeat, the sleep timer, seeking — lives
+  /// one tap away rather than crammed into a strip over the list.
   Widget _buildAudioPlayerBar() {
     final tokens = context.tokens;
-    final surah = _allSurahs.firstWhere(
-      (s) => s.id == _currentlyPlayingSurahId,
-      orElse: () => _allSurahs.first,
-    );
+    final playback = ref.watch(surahAudioProvider);
+    final surahNumber = playback.surahNumber;
+    if (surahNumber == null) {
+      return const SizedBox.shrink();
+    }
+    final info = QuranLocalService.surahInfo(surahNumber);
+
     return Material(
       color: tokens.surfaceRaised,
       elevation: 0,
       borderRadius: AppRadii.lgAll,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: AppRadii.lgAll,
-          border: Border.all(color: tokens.line),
-          boxShadow: AppShadows.soft(tokens.ink),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.sm,
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => NowPlayingPage.open(context),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: AppRadii.lgAll,
+            border: Border.all(color: tokens.line),
+            boxShadow: AppShadows.soft(tokens.ink),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    tooltip:
-                        _audioPlayer.playing
-                            ? context.tr('pause')
-                            : context.tr('play'),
-                    icon: Icon(
-                      _audioPlayer.playing
-                          ? Icons.pause_circle_filled_rounded
-                          : Icons.play_circle_fill_rounded,
-                      color: tokens.brand,
-                      size: 40,
-                    ),
-                    onPressed: () {
-                      if (_audioPlayer.playing) {
-                        _audioPlayer.pause();
-                      } else {
-                        _audioPlayer.play();
-                      }
-                      setState(() {});
-                    },
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.isAppRtl ? surah.nameAr : surah.nameEn,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.display(
-                            context,
-                            fontSize: 15,
-                            color: tokens.ink,
-                          ),
-                        ),
-                        ReciterChooser(
-                          compact: true,
-                          selectedId: _selectedReciterCode,
-                          onSelected: (voice) {
-                            _switchReciter(voice.id, surah.id);
-                            ref
-                                .read(readerSettingsProvider.notifier)
-                                .setReciter(voice.id);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: context.tr('reciter_library'),
-                    icon: Icon(
-                      Icons.download_outlined,
-                      size: 20,
-                      color: tokens.inkMuted,
-                    ),
-                    onPressed:
-                        () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const DownloadsPage(),
-                          ),
-                        ),
-                  ),
-                  IconButton(
-                    tooltip: context.tr('close'),
-                    icon: Icon(Icons.close_rounded, color: tokens.inkMuted),
-                    onPressed: () {
-                      _audioPlayer.stop();
-                      setState(() {
-                        _currentlyPlayingSurahId = null;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: StreamBuilder<Duration>(
-                  stream: _audioPlayer.positionStream,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    final duration = _audioPlayer.duration ?? Duration.zero;
-                    final progress =
-                        duration.inMilliseconds > 0
-                            ? position.inMilliseconds / duration.inMilliseconds
-                            : 0.0;
-                    return ClipRRect(
-                      borderRadius: AppRadii.pillAll,
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 4,
-                        backgroundColor: tokens.groundAlt,
-                        valueColor: AlwaysStoppedAnimation(tokens.gold),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip:
+                          playback.playing
+                              ? context.tr('pause')
+                              : context.tr('play'),
+                      icon: Icon(
+                        playback.playing
+                            ? Icons.pause_circle_filled_rounded
+                            : Icons.play_circle_fill_rounded,
+                        color: tokens.brand,
+                        size: 40,
                       ),
-                    );
-                  },
+                      onPressed: _playback.toggle,
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.isAppRtl ? info.nameAr : info.nameEn,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.display(
+                              context,
+                              fontSize: 15,
+                              color: tokens.ink,
+                            ),
+                          ),
+                          ReciterChooser(
+                            compact: true,
+                            selectedId: playback.reciterId,
+                            onSelected: (voice) {
+                              _playback.setReciter(voice.id);
+                              ref
+                                  .read(readerSettingsProvider.notifier)
+                                  .setReciter(voice.id);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: context.tr('now_playing'),
+                      icon: Icon(
+                        Icons.keyboard_arrow_up_rounded,
+                        size: 22,
+                        color: tokens.inkMuted,
+                      ),
+                      onPressed: () => NowPlayingPage.open(context),
+                    ),
+                    IconButton(
+                      tooltip: context.tr('close'),
+                      icon: Icon(Icons.close_rounded, color: tokens.inkMuted),
+                      onPressed: _playback.stop,
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  child: StreamBuilder<Duration>(
+                    stream: _audioPlayer.positionStream,
+                    builder: (context, snapshot) {
+                      final position = snapshot.data ?? Duration.zero;
+                      final duration = _audioPlayer.duration ?? Duration.zero;
+                      final progress =
+                          duration.inMilliseconds > 0
+                              ? position.inMilliseconds /
+                                  duration.inMilliseconds
+                              : 0.0;
+                      return ClipRRect(
+                        borderRadius: AppRadii.pillAll,
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 4,
+                          backgroundColor: tokens.groundAlt,
+                          valueColor: AlwaysStoppedAnimation(tokens.gold),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

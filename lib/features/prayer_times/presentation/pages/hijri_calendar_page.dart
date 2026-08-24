@@ -136,6 +136,7 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
     return Row(
       children: [
         IconButton(
+          tooltip: context.tr('previous_month'),
           icon: const Icon(Icons.chevron_right),
           onPressed: () => _shiftMonth(-1),
         ),
@@ -157,6 +158,7 @@ class _HijriCalendarPageState extends ConsumerState<HijriCalendarPage> {
           ),
         ),
         IconButton(
+          tooltip: context.tr('next_month'),
           icon: const Icon(Icons.chevron_left),
           onPressed: () => _shiftMonth(1),
         ),

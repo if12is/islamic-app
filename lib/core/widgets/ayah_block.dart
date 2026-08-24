@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../localization/app_localizations.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/design_tokens.dart';
 import 'app_section.dart';
@@ -136,20 +137,35 @@ class AyahBlock extends StatelessWidget {
   }
 
   /// The usual trio under a verse.
-  static List<Widget> defaultActions({
+  ///
+  /// [context] is required rather than optional so the three buttons are named
+  /// for a screen reader — an unlabelled icon is a button that announces
+  /// itself as "button" and nothing else.
+  static List<Widget> defaultActions(
+    BuildContext context, {
     VoidCallback? onPlay,
     VoidCallback? onBookmark,
     VoidCallback? onShare,
     bool bookmarked = false,
   }) => [
     if (onPlay != null)
-      GhostIconButton(icon: Icons.play_circle_outline, onTap: onPlay),
+      GhostIconButton(
+        icon: Icons.play_circle_outline,
+        tooltip: context.tr('play'),
+        onTap: onPlay,
+      ),
     if (onBookmark != null)
       GhostIconButton(
         icon: bookmarked ? Icons.bookmark : Icons.bookmark_border,
+        tooltip: context.tr(bookmarked ? 'remove_bookmark' : 'add_bookmark'),
         onTap: onBookmark,
         active: bookmarked,
       ),
-    if (onShare != null) GhostIconButton(icon: Icons.ios_share, onTap: onShare),
+    if (onShare != null)
+      GhostIconButton(
+        icon: Icons.ios_share,
+        tooltip: context.tr('share_text'),
+        onTap: onShare,
+      ),
   ];
 }
