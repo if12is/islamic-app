@@ -150,6 +150,10 @@ void main() {
         // so they are deliberately not tied to the tokens.
         'lib/features/quran/domain/tajweed_palette.dart',
         'lib/features/prayer_times/presentation/widgets/imsakiya_poster.dart',
+        // The monthly sheet is rendered to a PNG that gets shared and printed.
+        // A printed page has no dark mode, and a sheet someone pinned to a
+        // wall should not depend on which theme the app was in that day.
+        'lib/features/prayer_times/presentation/widgets/monthly_timetable_poster.dart',
         'lib/core/theme/design_colors.dart',
       };
 

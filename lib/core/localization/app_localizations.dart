@@ -1062,6 +1062,99 @@ class AppLocalizations {
       'logged_out': 'Signed out of the profile',
       'cancel': 'Cancel',
       'save': 'Save',
+      // The monthly timetable.
+      'monthly_timetable': 'Monthly timetable',
+      'monthly_timetable_desc': 'Every prayer, every day, for any month',
+      'gregorian_month_1': 'January',
+      'gregorian_month_2': 'February',
+      'gregorian_month_3': 'March',
+      'gregorian_month_4': 'April',
+      'gregorian_month_5': 'May',
+      'gregorian_month_6': 'June',
+      'gregorian_month_7': 'July',
+      'gregorian_month_8': 'August',
+      'gregorian_month_9': 'September',
+      'gregorian_month_10': 'October',
+      'gregorian_month_11': 'November',
+      'gregorian_month_12': 'December',
+      // Travel mode.
+      'travel_mode': 'Travel',
+      'travel_mode_desc': 'Shortening, joining, and times for where you are',
+      'travel_switch': 'I am travelling',
+      'travel_switch_desc':
+          'You decide this, not the phone: the ruling turns on the intention '
+          'to travel and the intention to stay, and neither can be measured.',
+      'travel_days_note':
+          'Travel has been on for {days} days. If you have settled somewhere, '
+          'shortening ends with the intention to stay.',
+      'travel_home': 'Home',
+      'travel_home_desc': 'The place distances are measured from.',
+      'travel_home_unset': 'Not set yet',
+      'travel_set_home': 'Use where I am now',
+      'travel_no_home_yet':
+          'Set a home first — until there is somewhere to measure from, no '
+          'distance can be worked out.',
+      'travel_threshold': 'Distance for shortening',
+      'travel_threshold_desc':
+          'Scholars differ over the figure: four burud is put at roughly 83 '
+          'km, and 88.7 km is also given. Choose the one you follow.',
+      'travel_current_place': 'Where you are',
+      'travel_km_from_home': 'km from home',
+      'travel_beyond_threshold': 'Past the distance you set',
+      'travel_within_threshold': '{remaining} km short of the distance you set',
+      'travel_what_changes': 'What changes while travelling',
+      'travel_unchanged': 'unchanged',
+      'travel_no_join': 'joined with nothing',
+      'travel_joins_with': 'joins with',
+      'rakaat': 'rak\'ahs',
+      'travel_disclaimer':
+          'This describes a well-known ruling; it is not a fatwa. Whether you '
+          'are a traveller, and for how long, is yours to decide — ask someone '
+          'you trust when it is unclear.',
+      'city_change_title': 'You seem to have moved',
+      'city_change_body':
+          'The prayer times shown are calculated for {home}. Recalculate them '
+          'for where you are now?',
+      'travel_within_or_beyond_prompt':
+          'You are a long way from {home}. If this is a journey, travel mode '
+          'sets out what changes about the prayers.',
+      'city_change_accept': 'Use where I am',
+      'city_change_dismiss': 'Keep as is',
+      // Nearest mosques, from OpenStreetMap.
+      'nearby_mosques': 'Nearest mosques',
+      'nearby_mosques_desc': 'From OpenStreetMap, sorted by distance',
+      'mosques_searching': 'Looking for mosques around you…',
+      'mosques_found': '{count} nearby',
+      'mosques_found_capped': 'The {count} nearest',
+      'mosques_from_cache': 'From an earlier search — refresh for a new one.',
+      'mosques_none': 'No mosque is mapped within {distance} of you.',
+      'mosques_none_hint':
+          'OpenStreetMap is drawn by volunteers, and some places are mapped '
+          'more thinly than others. A wider search may find one.',
+      'mosques_offline':
+          'Could not reach the map service. Check the connection and try '
+          'again.',
+      'mosques_busy':
+          'The map service is busy — it allows a couple of searches at a time. '
+          'Try again in a moment.',
+      'mosques_unreadable': 'The map service sent something unreadable.',
+      'mosques_directions': 'Directions',
+      'mosques_open_failed': 'No app on this device could open the map.',
+      'mosques_attribution': 'Mosque data © OpenStreetMap contributors',
+      'mosque_unnamed': 'A mosque (unnamed on the map)',
+      'musalla_unnamed': 'A prayer room (unnamed on the map)',
+      'musalla': 'Prayer room',
+      'unit_metre': 'm',
+      'unit_km': 'km',
+      'refresh': 'Refresh',
+      'compass_n': 'north',
+      'compass_ne': 'north-east',
+      'compass_e': 'east',
+      'compass_se': 'south-east',
+      'compass_s': 'south',
+      'compass_sw': 'south-west',
+      'compass_w': 'west',
+      'compass_nw': 'north-west',
     },
     'ar': {
       // Imsakiya poster: weekday names and captions.
@@ -2082,6 +2175,96 @@ class AppLocalizations {
       'logged_out': 'تم تسجيل الخروج من الملف الشخصي',
       'cancel': 'إلغاء',
       'save': 'حفظ',
+      // الجدول الشهري.
+      'monthly_timetable': 'الجدول الشهري',
+      'monthly_timetable_desc': 'كل الصلوات، كل يوم، لأي شهر',
+      'gregorian_month_1': 'يناير',
+      'gregorian_month_2': 'فبراير',
+      'gregorian_month_3': 'مارس',
+      'gregorian_month_4': 'أبريل',
+      'gregorian_month_5': 'مايو',
+      'gregorian_month_6': 'يونيو',
+      'gregorian_month_7': 'يوليو',
+      'gregorian_month_8': 'أغسطس',
+      'gregorian_month_9': 'سبتمبر',
+      'gregorian_month_10': 'أكتوبر',
+      'gregorian_month_11': 'نوفمبر',
+      'gregorian_month_12': 'ديسمبر',
+      // وضع السفر.
+      'travel_mode': 'السفر',
+      'travel_mode_desc': 'القصر والجمع، والمواقيت حيث أنت',
+      'travel_switch': 'أنا مسافر',
+      'travel_switch_desc':
+          'القرار لك لا للهاتف: الحكم متعلق بنيّة السفر ونيّة الإقامة، وكلتاهما '
+          'لا تُقاس بجهاز.',
+      'travel_days_note':
+          'مضى على وضع السفر {days} يوماً. فإن كنت قد أقمت في مكان، فالقصر '
+          'ينتهي بنيّة الإقامة.',
+      'travel_home': 'موطنك',
+      'travel_home_desc': 'المكان الذي تُقاس منه المسافة.',
+      'travel_home_unset': 'لم يُحدَّد بعد',
+      'travel_set_home': 'اجعله مكاني الحالي',
+      'travel_no_home_yet':
+          'حدِّد موطنك أولاً — فما لم يكن هناك مكان تُقاس منه المسافة، لا تُعرف '
+          'مسافة أصلاً.',
+      'travel_threshold': 'مسافة القصر',
+      'travel_threshold_desc':
+          'اختلف الفقهاء في تقديرها: أربعة بُرد تُقدَّر بنحو ٨٣ كم، وقيل ٨٨٫٧ '
+          'كم. اختر ما تأخذ به.',
+      'travel_current_place': 'مكانك الآن',
+      'travel_km_from_home': 'كم من موطنك',
+      'travel_beyond_threshold': 'تجاوزت المسافة التي اخترتها',
+      'travel_within_threshold': 'بقي {remaining} كم على المسافة التي اخترتها',
+      'travel_what_changes': 'ما الذي يتغيّر في السفر',
+      'travel_unchanged': 'لا تُقصر',
+      'travel_no_join': 'لا تُجمع',
+      'travel_joins_with': 'تُجمع مع',
+      'rakaat': 'ركعات',
+      'travel_disclaimer':
+          'هذا بيان لحكم معروف، وليس فتوى. وكونك مسافراً ومدة ذلك أمر يرجع '
+          'إليك، فاسأل من تثق بعلمه عند الاشتباه.',
+      'city_change_title': 'يبدو أنك انتقلت',
+      'city_change_body':
+          'المواقيت المعروضة محسوبة على {home}. أأحسبها لمكانك الحالي؟',
+      'travel_within_or_beyond_prompt':
+          'أنت بعيد عن {home}. فإن كان هذا سفراً، فوضع السفر يبيّن ما يتغيّر في '
+          'الصلاة.',
+      'city_change_accept': 'احسبها لمكاني',
+      'city_change_dismiss': 'اتركها كما هي',
+      // أقرب المساجد من OpenStreetMap.
+      'nearby_mosques': 'أقرب المساجد',
+      'nearby_mosques_desc': 'من OpenStreetMap، مرتّبة بالأقرب',
+      'mosques_searching': 'جارٍ البحث عن المساجد حولك…',
+      'mosques_found': '{count} حولك',
+      'mosques_found_capped': 'أقرب {count}',
+      'mosques_from_cache': 'من بحث سابق — حدِّث للحصول على بحث جديد.',
+      'mosques_none': 'لا مسجد مُسجَّل على الخريطة في حدود {distance} منك.',
+      'mosques_none_hint':
+          'خريطة OpenStreetMap يرسمها متطوّعون، وبعض الأماكن أقل تغطية من '
+          'غيرها. قد يجد بحث أوسع شيئاً.',
+      'mosques_offline':
+          'تعذّر الوصول إلى خدمة الخرائط. تأكد من الاتصال وأعد المحاولة.',
+      'mosques_busy':
+          'خدمة الخرائط مشغولة — تسمح ببحثين في وقت واحد. أعد المحاولة بعد '
+          'قليل.',
+      'mosques_unreadable': 'أرسلت خدمة الخرائط رداً غير مفهوم.',
+      'mosques_directions': 'الاتجاهات',
+      'mosques_open_failed': 'لا يوجد تطبيق على هذا الجهاز يفتح الخريطة.',
+      'mosques_attribution': 'بيانات المساجد © مساهمو OpenStreetMap',
+      'mosque_unnamed': 'مسجد (بلا اسم على الخريطة)',
+      'musalla_unnamed': 'مصلّى (بلا اسم على الخريطة)',
+      'musalla': 'مصلّى',
+      'unit_metre': 'م',
+      'unit_km': 'كم',
+      'refresh': 'تحديث',
+      'compass_n': 'شمالاً',
+      'compass_ne': 'شمالاً شرقاً',
+      'compass_e': 'شرقاً',
+      'compass_se': 'جنوباً شرقاً',
+      'compass_s': 'جنوباً',
+      'compass_sw': 'جنوباً غرباً',
+      'compass_w': 'غرباً',
+      'compass_nw': 'شمالاً غرباً',
     },
   };
 

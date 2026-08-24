@@ -15,6 +15,7 @@
         <domain includeSubdomains="true">qurango.net</domain>
         <domain includeSubdomains="true">win.holol.com</domain>
         <domain includeSubdomains="true">everyayah.com</domain>
+        <domain includeSubdomains="true">overpass-api.de</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

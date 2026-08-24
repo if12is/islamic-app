@@ -12,12 +12,16 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/arc_gauge.dart';
 import 'hijri_calendar_page.dart';
+import 'monthly_timetable_page.dart';
+import 'nearby_mosques_page.dart';
 import 'prayer_settings_page.dart';
 import 'qibla_page.dart';
+import 'travel_mode_page.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../domain/entities/prayer_times_entity.dart';
 import '../providers/prayer_times_providers.dart';
+import '../widgets/city_change_banner.dart';
 import '../widgets/location_picker_sheet.dart';
 import '../widgets/prayer_log_card.dart';
 
@@ -376,6 +380,8 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
+                const CityChangeBanner(),
+
                 _LocationCard(
                   label: locationText,
                   detail:
@@ -452,6 +458,37 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                                   builder: (_) => const PrayerSettingsPage(),
                                 ),
                               ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _ShortcutCard(
+                          icon: Icons.calendar_view_month_outlined,
+                          label: context.tr('monthly_timetable'),
+                          onTap: () => MonthlyTimetablePage.open(context),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ShortcutCard(
+                          icon: Icons.mosque_outlined,
+                          label: context.tr('nearby_mosques'),
+                          onTap: () => NearbyMosquesPage.open(context),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ShortcutCard(
+                          icon: Icons.flight_takeoff_outlined,
+                          label: context.tr('travel_mode'),
+                          onTap: () => TravelModePage.open(context),
                         ),
                       ),
                     ],

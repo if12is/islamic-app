@@ -20,6 +20,11 @@ class SecureHttpClient {
     // The `www` matters: the bare domain answers 301, and this client does not
     // follow redirects, so mp3quran.net would be rejected as a bad response.
     'www.mp3quran.net',
+    // OpenStreetMap's query endpoint, for finding the nearest mosques. Only
+    // this one mirror: the alternatives that answer are hosted elsewhere
+    // again, and a search sends the user's coordinates — so the fewer places
+    // they go, the better. A busy server is reported as busy instead.
+    'overpass-api.de',
   };
 
   static Dio create({String? baseUrl}) {
