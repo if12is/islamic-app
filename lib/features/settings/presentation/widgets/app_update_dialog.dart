@@ -30,13 +30,30 @@ class AppUpdateDialog extends ConsumerWidget {
 
     final next = ref.read(appUpdateProvider);
     if (next.status == AppUpdateStatus.current || next.release == null) {
+      // A check that could not reach GitHub says so, and offers to try again.
+      // It used to report "you are on the latest version", which is a claim
+      // the app had no way of making.
+      final failed = next.status == AppUpdateStatus.failed;
       final message =
-          next.status == AppUpdateStatus.failed
-              ? context.tr('app_update_failed')
+          failed
+              ? context.tr(next.messageKey ?? 'app_update_failed')
               : context.tr('app_update_current');
+
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
+        ..showSnackBar(
+          SnackBar(
+            content: Text(message),
+            duration: Duration(seconds: failed ? 6 : 4),
+            action:
+                failed
+                    ? SnackBarAction(
+                      label: context.tr('retry'),
+                      onPressed: () => present(context, ref, forceCheck: true),
+                    )
+                    : null,
+          ),
+        );
       return;
     }
 
@@ -121,7 +138,7 @@ class AppUpdateDialog extends ConsumerWidget {
           if (state.status == AppUpdateStatus.failed) ...[
             const SizedBox(height: 12),
             Text(
-              context.tr('app_update_failed'),
+              context.tr(state.messageKey ?? 'app_update_failed'),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ],

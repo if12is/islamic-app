@@ -246,6 +246,15 @@ class AppLocalizations {
       'wird_adaptive': 'At the time I usually read',
       'wird_adaptive_desc':
           'Moves the reminder to the hour you already read in. Worked out on this device from nothing but the hour — it holds the time you set until there is enough to go on.',
+      // Why an update check produced no answer.
+      'update_check_failed': 'The check did not complete.',
+      'update_check_offline':
+          'Could not reach GitHub, so there is no way to tell whether a newer build exists. Check the connection and try again.',
+      'update_check_rate_limited':
+          'GitHub is refusing checks for the moment. Try again in a little while.',
+      'update_check_no_release': 'No release has been published yet.',
+      'update_check_unreadable':
+          'The release carries no version number, so it cannot be compared with what is installed.',
       // Live radio and television.
       'broadcasts': 'Live radio and TV',
       'broadcasts_desc': 'Quran radio, and the Makkah and Sunnah channels',
@@ -1279,6 +1288,15 @@ class AppLocalizations {
       'wird_adaptive': 'في وقتي المعتاد للقراءة',
       'wird_adaptive_desc':
           'ينقل التذكير إلى الساعة التي تقرأ فيها فعلاً. يُحسب على جهازك من الساعة فقط، ويبقى على الوقت الذي اخترته حتى يجتمع ما يكفي.',
+      // أسباب تعذّر التحقق من التحديث.
+      'update_check_failed': 'لم يكتمل التحقق.',
+      'update_check_offline':
+          'تعذّر الوصول إلى GitHub، فلا سبيل لمعرفة هل توجد نسخة أحدث. تأكد من الاتصال وأعد المحاولة.',
+      'update_check_rate_limited':
+          'GitHub يرفض التحقق مؤقتاً. أعد المحاولة بعد قليل.',
+      'update_check_no_release': 'لم يُنشر أي إصدار بعد.',
+      'update_check_unreadable':
+          'الإصدار لا يحمل رقم بناء، فلا يمكن مقارنته بالمثبَّت عندك.',
       // البثوث والراديو.
       'broadcasts': 'البثوث والراديو',
       'broadcasts_desc': 'إذاعات القرآن، وقناتا القرآن الكريم والسنة النبوية',

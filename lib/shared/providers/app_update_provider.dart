@@ -23,12 +23,19 @@ class AppUpdateState {
     this.release,
     this.currentLabel = '',
     this.progress,
+    this.messageKey,
   });
 
   final AppUpdateStatus status;
   final AppRelease? release;
   final String currentLabel;
   final UpdateProgress? progress;
+
+  /// Why the check or the download did not work, when it did not.
+  ///
+  /// A failed check used to be shown as a successful one that found nothing,
+  /// so someone with no signal was told they were on the latest build.
+  final String? messageKey;
 
   bool get canInstall =>
       release?.apkUrl != null &&
@@ -40,14 +47,17 @@ class AppUpdateState {
     AppRelease? release,
     String? currentLabel,
     UpdateProgress? progress,
+    String? messageKey,
     bool clearRelease = false,
     bool clearProgress = false,
+    bool clearMessage = false,
   }) {
     return AppUpdateState(
       status: status ?? this.status,
       release: clearRelease ? null : (release ?? this.release),
       currentLabel: currentLabel ?? this.currentLabel,
       progress: clearProgress ? null : (progress ?? this.progress),
+      messageKey: clearMessage ? null : (messageKey ?? this.messageKey),
     );
   }
 }
@@ -72,14 +82,19 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
     state = state.copyWith(
       status: AppUpdateStatus.checking,
       clearProgress: true,
+      clearMessage: true,
     );
+
+    var label = state.currentLabel;
     try {
       final currentBuild = await UpdateService.currentBuildNumber();
       final currentName = await UpdateService.currentVersionName();
-      final label = '$currentName ($currentBuild)';
+      label = '$currentName ($currentBuild)';
 
-      await UpdateService.markChecked(appPreferences);
       final release = await UpdateService.fetchLatest();
+      // Only a check that actually reached GitHub resets the timer. Marking a
+      // failed one as done would put the next attempt twelve hours away.
+      await UpdateService.markChecked(appPreferences);
 
       if (release == null || !UpdateService.isNewer(release, currentBuild)) {
         state = AppUpdateState(
@@ -103,11 +118,22 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
         release: release,
         currentLabel: label,
       );
+    } on UpdateCheckException catch (e) {
+      // Not knowing is not the same as there being nothing, and saying "you
+      // are up to date" when the request never arrived is a lie the user
+      // cannot see through.
+      AppLogger.warning('Update check could not complete: $e');
+      state = AppUpdateState(
+        status: AppUpdateStatus.failed,
+        currentLabel: label,
+        messageKey: e.messageKey,
+      );
     } catch (e, stack) {
       AppLogger.error('Update check failed', e, stack);
-      state = state.copyWith(
+      state = AppUpdateState(
         status: AppUpdateStatus.failed,
-        clearRelease: true,
+        currentLabel: label,
+        messageKey: 'update_check_failed',
       );
     }
   }

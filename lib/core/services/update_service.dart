@@ -42,6 +42,46 @@ class AppRelease {
       buildNumber > 0 ? '$versionName ($buildNumber)' : versionName;
 }
 
+/// Why a check produced no answer.
+enum UpdateCheckFailure {
+  /// The request never reached GitHub.
+  offline,
+
+  /// GitHub answered, but refused — usually the unauthenticated hourly limit.
+  rateLimited,
+
+  /// GitHub answered, and there is no release to read.
+  notFound,
+
+  /// A release exists but carries no version anyone can compare.
+  unreadable,
+}
+
+/// The check could not be completed.
+///
+/// This exists because the absence of an answer was being reported as an
+/// answer: every failure returned null, and null was read as "nothing newer",
+/// so a phone with no signal — or a repository that had briefly rate-limited
+/// the request — was told it was up to date. Not knowing and knowing there is
+/// nothing are different facts and the user is owed the difference.
+class UpdateCheckException implements Exception {
+  const UpdateCheckException(this.reason, {this.detail});
+
+  final UpdateCheckFailure reason;
+  final String? detail;
+
+  /// What to say about it.
+  String get messageKey => switch (reason) {
+    UpdateCheckFailure.offline => 'update_check_offline',
+    UpdateCheckFailure.rateLimited => 'update_check_rate_limited',
+    UpdateCheckFailure.notFound => 'update_check_no_release',
+    UpdateCheckFailure.unreadable => 'update_check_unreadable',
+  };
+
+  @override
+  String toString() => 'UpdateCheckException(${reason.name}: $detail)';
+}
+
 /// Checks GitHub for a newer build and fetches it.
 ///
 /// Play Store delta patches are not available for a sideloaded APK: the
@@ -76,8 +116,11 @@ class UpdateService {
   /// The rolling [rollingTag] release is what testers install from. GitHub's
   /// `/releases/latest` points at a kept versioned tag and is only a fallback.
   ///
-  /// Returns null when the network is unavailable or the repository has no
-  /// release yet — neither is worth interrupting anyone about.
+  /// Throws [UpdateCheckException] when the check could not be completed.
+  ///
+  /// It never returns null on a failure. Reporting "nothing newer" for a
+  /// request that never arrived is how a phone with no signal came to be told
+  /// it was on the latest build for as long as it stayed offline.
   static Future<AppRelease?> fetchLatest({
     Dio? client,
     List<String>? preferredAbis,
@@ -89,28 +132,35 @@ class UpdateService {
     final abis = preferredAbis ?? await DeliveryCheck.deviceAbis();
     final dio = client ?? SecureHttpClient.create();
 
-    final rolling = await _fetchRelease(
-      dio,
+    // The rolling release is what testers install from; the kept versioned
+    // tag is the fallback. Both are tried before giving up, and the first
+    // failure is remembered so the message names what actually went wrong
+    // rather than whatever the second attempt happened to hit.
+    UpdateCheckException? firstFailure;
+
+    for (final url in [
       'https://api.github.com/repos/$_owner/$_repo/releases/tags/$rollingTag',
-      abis,
-    );
-    if (rolling != null) {
-      return rolling;
-    }
-    return _fetchRelease(
-      dio,
       'https://api.github.com/repos/$_owner/$_repo/releases/latest',
-      abis,
-    );
+    ]) {
+      try {
+        return await _fetchRelease(dio, url, abis);
+      } on UpdateCheckException catch (e) {
+        firstFailure ??= e;
+      }
+    }
+
+    throw firstFailure ??
+        const UpdateCheckException(UpdateCheckFailure.offline);
   }
 
-  static Future<AppRelease?> _fetchRelease(
+  static Future<AppRelease> _fetchRelease(
     Dio dio,
     String url,
     List<String> abis,
   ) async {
+    Response<dynamic> response;
     try {
-      final response = await dio.get<dynamic>(
+      response = await dio.get<dynamic>(
         url,
         options: Options(
           headers: {'Accept': 'application/vnd.github+json'},
@@ -118,18 +168,56 @@ class UpdateService {
           sendTimeout: const Duration(seconds: 15),
         ),
       );
+    } on DioException catch (e) {
+      AppLogger.warning('Update check failed ($url): $e');
+      throw UpdateCheckException(failureFor(e.response?.statusCode, e.type));
+    } catch (e) {
+      AppLogger.warning('Update check failed ($url): $e');
+      throw UpdateCheckException(
+        UpdateCheckFailure.offline,
+        detail: e.toString(),
+      );
+    }
 
+    try {
       final body = response.data;
       final json =
           body is String
               ? jsonDecode(body) as Map<String, dynamic>
               : Map<String, dynamic>.from(body as Map);
 
-      return parseRelease(json, preferredAbis: abis);
+      final release = parseRelease(json, preferredAbis: abis);
+      if (release == null) {
+        throw const UpdateCheckException(UpdateCheckFailure.unreadable);
+      }
+      return release;
+    } on UpdateCheckException {
+      rethrow;
     } catch (e) {
-      AppLogger.warning('Update check failed: $e');
-      return null;
+      AppLogger.warning('Release payload unreadable ($url): $e');
+      throw UpdateCheckException(
+        UpdateCheckFailure.unreadable,
+        detail: e.toString(),
+      );
     }
+  }
+
+  /// Turn what the network said into a reason worth showing.
+  static UpdateCheckFailure failureFor(int? status, [DioExceptionType? type]) {
+    if (status == 404) {
+      return UpdateCheckFailure.notFound;
+    }
+    // GitHub answers 403 with a rate-limit header, and 429 when it is stricter.
+    if (status == 403 || status == 429) {
+      return UpdateCheckFailure.rateLimited;
+    }
+    if (status != null && status >= 500) {
+      return UpdateCheckFailure.offline;
+    }
+    if (type == DioExceptionType.badResponse && status != null) {
+      return UpdateCheckFailure.unreadable;
+    }
+    return UpdateCheckFailure.offline;
   }
 
   /// Read a GitHub release payload. Kept separate so it can be tested.
@@ -222,13 +310,25 @@ class UpdateService {
   static (String, int)? _versionFrom(String tag, String name, String? asset) {
     final pattern = RegExp(r'(\d+\.\d+\.\d+)(?:[-+ ]?(?:build)?(\d+))?');
 
+    (String, int)? withoutBuild;
+
     for (final candidate in [asset ?? '', name, tag]) {
       final match = pattern.firstMatch(candidate);
-      if (match != null) {
-        return (match.group(1)!, int.tryParse(match.group(2) ?? '') ?? 0);
+      if (match == null) {
+        continue;
       }
+      final build = int.tryParse(match.group(2) ?? '');
+      if (build != null && build > 0) {
+        return (match.group(1)!, build);
+      }
+      // A version with no build number cannot be compared — build 0 is never
+      // greater than what is installed, so taking it would report every
+      // release as old. Keep looking, and only fall back to it if nothing
+      // else carries one.
+      withoutBuild ??= (match.group(1)!, 0);
     }
-    return null;
+
+    return withoutBuild;
   }
 
   /// Whether [release] is worth telling the user about.

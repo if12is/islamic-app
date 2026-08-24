@@ -36,6 +36,7 @@ import '../../../../shared/providers/app_update_provider.dart';
 import '../providers/ayah_provider.dart';
 import '../providers/daily_wird_provider.dart';
 import '../widgets/daily_wird_card.dart';
+import '../../../../core/widgets/now_playing_strip.dart';
 import '../widgets/glass_nav_bar.dart';
 import '../widgets/ramadan_card.dart';
 
@@ -114,40 +115,49 @@ class _HomePageState extends ConsumerState<HomePage> {
         // something to blur.
         extendBody: true,
         body: IndexedStack(index: selectedNavIndex, children: tabs),
-        bottomNavigationBar: GlassNavBar(
-          selectedIndex: selectedNavIndex,
-          onSelected: _onTabTapped,
-          // Visual order; home sits in the middle and is drawn raised.
-          items: [
-            GlassNavItem(
-              tabIndex: 3,
-              icon: Icons.settings_outlined,
-              selectedIcon: Icons.settings,
-              label: context.tr('settings'),
-            ),
-            GlassNavItem(
-              tabIndex: 2,
-              icon: Icons.auto_awesome_outlined,
-              selectedIcon: Icons.auto_awesome,
-              label: context.tr('azkar'),
-            ),
-            GlassNavItem(
-              tabIndex: 0,
-              icon: Icons.home_outlined,
-              selectedIcon: Icons.home_filled,
-              label: context.tr('home'),
-            ),
-            GlassNavItem(
-              tabIndex: 1,
-              icon: Icons.menu_book_outlined,
-              selectedIcon: Icons.menu_book,
-              label: context.tr('quran'),
-            ),
-            GlassNavItem(
-              tabIndex: 4,
-              icon: Icons.mosque_outlined,
-              selectedIcon: Icons.mosque,
-              label: context.tr('prayer_times'),
+        // The strip sits between the content and the nav bar, so whatever is
+        // playing is reachable from every tab rather than only from the screen
+        // that started it. It takes no height when nothing is playing.
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const NowPlayingStrip(),
+            GlassNavBar(
+              selectedIndex: selectedNavIndex,
+              onSelected: _onTabTapped,
+              // Visual order; home sits in the middle and is drawn raised.
+              items: [
+                GlassNavItem(
+                  tabIndex: 3,
+                  icon: Icons.settings_outlined,
+                  selectedIcon: Icons.settings,
+                  label: context.tr('settings'),
+                ),
+                GlassNavItem(
+                  tabIndex: 2,
+                  icon: Icons.auto_awesome_outlined,
+                  selectedIcon: Icons.auto_awesome,
+                  label: context.tr('azkar'),
+                ),
+                GlassNavItem(
+                  tabIndex: 0,
+                  icon: Icons.home_outlined,
+                  selectedIcon: Icons.home_filled,
+                  label: context.tr('home'),
+                ),
+                GlassNavItem(
+                  tabIndex: 1,
+                  icon: Icons.menu_book_outlined,
+                  selectedIcon: Icons.menu_book,
+                  label: context.tr('quran'),
+                ),
+                GlassNavItem(
+                  tabIndex: 4,
+                  icon: Icons.mosque_outlined,
+                  selectedIcon: Icons.mosque,
+                  label: context.tr('prayer_times'),
+                ),
+              ],
             ),
           ],
         ),
