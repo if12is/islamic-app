@@ -19,6 +19,8 @@ import '../../data/azkar_progress_store.dart';
 import '../../data/models/azkar_models.dart';
 import 'all_azkar_categories_page.dart';
 import 'azkar_details_page.dart';
+import 'divine_names_page.dart';
+import 'salawat_page.dart';
 
 class AzkarPage extends ConsumerStatefulWidget {
   const AzkarPage({super.key});
@@ -142,6 +144,8 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                 padding: AppScaffold.scrollPadding,
                 children: [
                   const SmartTasbeehWidget(),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildDevotionShortcuts(),
                   const SizedBox(height: AppSpacing.xl),
                   _buildAdhkarSectionHeader(),
                   if (_lastAzkar != null) ...[
@@ -153,6 +157,68 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                   _buildAyahOfTheDayCard(),
                 ],
               ),
+    );
+  }
+
+  /// The two devotions that are neither a chapter of the Hisn nor a tasbeeh
+  /// phrase, and so had nowhere to live.
+  Widget _buildDevotionShortcuts() {
+    return Row(
+      children: [
+        Expanded(
+          child: _shortcut(
+            icon: Icons.auto_awesome,
+            label: context.tr('divine_names'),
+            onTap:
+                () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const DivineNamesPage(),
+                  ),
+                ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _shortcut(
+            icon: Icons.favorite_outline,
+            label: context.tr('salawat'),
+            onTap:
+                () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const SalawatPage()),
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _shortcut({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final tokens = context.tokens;
+
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: tokens.gold),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body(context, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -751,9 +817,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
             children: [
               _buildControlButton(
                 icon:
-                    context.isAppRtl
-                        ? Icons.chevron_right
-                        : Icons.chevron_left,
+                    context.isAppRtl ? Icons.chevron_right : Icons.chevron_left,
                 tooltip: context.tr('tasbeeh_prev_phrase'),
                 onTap: () => _changePhrase(azkarList.length, -1),
               ),
@@ -770,9 +834,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
               ),
               _buildControlButton(
                 icon:
-                    context.isAppRtl
-                        ? Icons.chevron_left
-                        : Icons.chevron_right,
+                    context.isAppRtl ? Icons.chevron_left : Icons.chevron_right,
                 tooltip: context.tr('tasbeeh_next_phrase'),
                 onTap: () => _changePhrase(azkarList.length, 1),
               ),

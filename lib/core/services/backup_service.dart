@@ -69,6 +69,9 @@ class BackupService {
     'tasbeeh_',
     'azkar_',
     'seasonal_intro_',
+    'salawat_',
+    'prayer_log_',
+    'zakat_',
   ];
 
   /// Preference keys carried in the backup.

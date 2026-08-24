@@ -64,6 +64,25 @@ void main() {
       expect(settings.containsKey('tasbeeh_rounds_date'), isTrue);
     });
 
+    test('carries the newer stores too', () async {
+      // Every store added after the backup was written needs a prefix here, or
+      // it silently stops being exported — which is how the tasbeeh total came
+      // to be missing in the first place.
+      SharedPreferences.setMockInitialValues({
+        'salawat_total': 4000,
+        'prayer_log_2026-08-24': 'fajr:mosque',
+        'zakat_cash': 1500.0,
+      });
+
+      final settings =
+          (await BackupService.buildPayload())['settings']
+              as Map<String, dynamic>;
+
+      expect(settings['salawat_total'], 4000);
+      expect(settings['prayer_log_2026-08-24'], 'fajr:mosque');
+      expect(settings['zakat_cash'], 1500.0);
+    });
+
     test('leaves unrelated keys out', () async {
       SharedPreferences.setMockInitialValues({
         'some_cache_blob': 'x',

@@ -19,6 +19,7 @@ import '../../../../shared/providers/app_providers.dart';
 import '../../domain/entities/prayer_times_entity.dart';
 import '../providers/prayer_times_providers.dart';
 import '../widgets/location_picker_sheet.dart';
+import '../widgets/prayer_log_card.dart';
 
 class _PrayerSlot {
   final String id;
@@ -386,6 +387,9 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                     ref.invalidate(prayerTimesProvider(params));
                   },
                 ),
+                const SizedBox(height: AppSpacing.lg),
+
+                const PrayerLogCard(),
                 const SizedBox(height: AppSpacing.lg),
 
                 SectionHeader(title: context.tr('prayer_times_today')),

@@ -147,8 +147,9 @@ class AppUpdateDialog extends ConsumerWidget {
           onPressed:
               busy || !state.canInstall
                   ? null
-                  : () =>
-                      unawaited(ref.read(appUpdateProvider.notifier).download()),
+                  : () => unawaited(
+                    ref.read(appUpdateProvider.notifier).download(),
+                  ),
           child: Text(context.tr('app_update_now')),
         ),
       ],

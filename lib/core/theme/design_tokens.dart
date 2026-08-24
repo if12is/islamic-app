@@ -95,6 +95,13 @@ class AppMotion {
 /// becomes noise.
 @immutable
 class AppTokens extends ThemeExtension<AppTokens> {
+  /// The tint Android paints the media notification with.
+  ///
+  /// It lives here rather than at the call site because it is a brand colour
+  /// like any other — but it cannot be read through `context.tokens`, since
+  /// the background audio service is configured before any widget exists.
+  static const Color notificationTint = Color(0xFF003527);
+
   const AppTokens({
     required this.ground,
     required this.groundAlt,

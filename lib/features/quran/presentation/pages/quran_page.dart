@@ -1410,8 +1410,7 @@ class _QuranPageState extends ConsumerState<QuranPage> {
                     final duration = _audioPlayer.duration ?? Duration.zero;
                     final progress =
                         duration.inMilliseconds > 0
-                            ? position.inMilliseconds /
-                                duration.inMilliseconds
+                            ? position.inMilliseconds / duration.inMilliseconds
                             : 0.0;
                     return ClipRRect(
                       borderRadius: AppRadii.pillAll,

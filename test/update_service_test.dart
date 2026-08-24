@@ -7,7 +7,8 @@ void main() {
       'tag_name': 'apk-latest',
       'name': 'Latest development APK (1.1.0+88)',
       'body': 'Rolling build',
-      'html_url': 'https://github.com/if12is/islamic-app/releases/tag/apk-latest',
+      'html_url':
+          'https://github.com/if12is/islamic-app/releases/tag/apk-latest',
       'assets': assets,
     };
   }

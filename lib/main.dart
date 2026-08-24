@@ -40,13 +40,12 @@ Future<void> _bootstrap() async {
       await JustAudioBackground.init(
         androidNotificationChannelId: 'com.islamicapp.islamic_app.audio',
         androidNotificationChannelName: 'تشغيل القرآن',
-        androidNotificationChannelDescription:
-            'التلاوة من الجزيرة وشاشة القفل',
+        androidNotificationChannelDescription: 'التلاوة من الجزيرة وشاشة القفل',
         androidNotificationOngoing: false,
         androidStopForegroundOnPause: false,
         androidNotificationIcon: 'drawable/ic_stat_quran',
         androidShowNotificationBadge: true,
-        notificationColor: const Color(0xFF003527),
+        notificationColor: AppTokens.notificationTint,
         preloadArtwork: true,
         artDownscaleWidth: 256,
         artDownscaleHeight: 256,

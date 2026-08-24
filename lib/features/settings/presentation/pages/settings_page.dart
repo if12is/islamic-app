@@ -13,6 +13,7 @@ import '../../../../core/services/update_service.dart';
 import '../../../../shared/providers/app_update_provider.dart';
 import '../widgets/app_update_dialog.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
+import 'zakat_page.dart';
 import '../../../prayer_times/presentation/pages/prayer_settings_page.dart';
 import 'notification_center_page.dart';
 import 'design_gallery_page.dart';
@@ -397,6 +398,19 @@ class SettingsPage extends ConsumerWidget {
                               () => Navigator.of(context).push(
                                 MaterialPageRoute<void>(
                                   builder: (_) => const HijriCalendarPage(),
+                                ),
+                              ),
+                        ),
+                        _buildToolTile(
+                          context,
+                          icon: Icons.balance,
+                          color: accentColor,
+                          title: context.tr('zakat'),
+                          subtitle: context.tr('zakat_tool_desc'),
+                          onTap:
+                              () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const ZakatPage(),
                                 ),
                               ),
                         ),

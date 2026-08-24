@@ -69,7 +69,10 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
 
   /// [force] true means a tap in Settings: tell the user even if they skipped.
   Future<void> check({bool force = true}) async {
-    state = state.copyWith(status: AppUpdateStatus.checking, clearProgress: true);
+    state = state.copyWith(
+      status: AppUpdateStatus.checking,
+      clearProgress: true,
+    );
     try {
       final currentBuild = await UpdateService.currentBuildNumber();
       final currentName = await UpdateService.currentVersionName();
@@ -86,7 +89,8 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
         return;
       }
 
-      if (!force && UpdateService.wasSkipped(appPreferences, release.buildNumber)) {
+      if (!force &&
+          UpdateService.wasSkipped(appPreferences, release.buildNumber)) {
         state = AppUpdateState(
           status: AppUpdateStatus.current,
           currentLabel: label,
@@ -101,7 +105,10 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
       );
     } catch (e, stack) {
       AppLogger.error('Update check failed', e, stack);
-      state = state.copyWith(status: AppUpdateStatus.failed, clearRelease: true);
+      state = state.copyWith(
+        status: AppUpdateStatus.failed,
+        clearRelease: true,
+      );
     }
   }
 
