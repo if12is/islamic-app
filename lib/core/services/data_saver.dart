@@ -70,6 +70,19 @@ class DataSaver {
   static bool shouldConfirm(int bytes) =>
       _enabled && bytes > 0 && bytes >= warnAboveBytes;
 
+  /// A whole surah at 128 kbps, roughly. The Mushaf is about 1 GB across the
+  /// 114, and they vary from half a minute to two hours, so this is only ever
+  /// used to size a warning, never to report a total.
+  static const int averageSurahBytes = 9 * 1024 * 1024;
+
+  /// Rough size of a batch of [surahCount] surahs, for the warning.
+  static int estimateBatchBytes(int surahCount) =>
+      surahCount * averageSurahBytes;
+
+  /// Whether queueing [surahCount] surahs at once should ask first.
+  static bool shouldConfirmBatch(int surahCount) =>
+      shouldConfirm(estimateBatchBytes(surahCount));
+
   /// Reset, for tests.
   static void resetForTest() {
     _enabled = false;

@@ -225,6 +225,8 @@ class AppLocalizations {
       'data_saver_what':
           'Recitation streams at half the bitrate, the reciter list stops refreshing itself, and a large download asks first.',
       'data_saver_warn': 'A download over {mb} MB will ask before it starts.',
+      'download_batch_warning':
+          'That is {count} surahs, roughly {size}. The exact size is only known once it starts. Go ahead?',
       // Listening lists.
       'playlists': 'Listening lists',
       'playlists_desc':
@@ -1198,6 +1200,8 @@ class AppLocalizations {
       'data_saver_what':
           'تُبثّ التلاوة بنصف الجودة، وتتوقف قائمة القرّاء عن التحديث وحدها، ويسألك التطبيق قبل أي تنزيل كبير.',
       'data_saver_warn': 'أي تنزيل يتجاوز {mb} ميجابايت سيسألك قبل أن يبدأ.',
+      'download_batch_warning':
+          'هذه {count} سورة، نحو {size} تقريباً. الحجم الدقيق لا يُعرف إلا بعد البدء. أتابع؟',
       // قوائم الاستماع.
       'playlists': 'قوائم الاستماع',
       'playlists_desc': 'مجموعة سور تشغّلها وتتركها — في الطريق أو قبل النوم.',

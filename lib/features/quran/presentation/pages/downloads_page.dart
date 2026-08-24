@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/services/data_saver.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/audio_download_service.dart';
@@ -163,6 +164,54 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
     );
   }
 
+  /// Queue a batch, asking first when the data saver says it is a lot.
+  ///
+  /// The size is an estimate from a typical surah, not a measurement: these
+  /// servers answer chunked, so nothing states a length until the bytes are
+  /// already arriving. An estimate is enough to warn on; it is not enough to
+  /// report as a total, so it is never shown as one.
+  Future<void> _downloadAll(List<int> pending) async {
+    if (DataSaver.shouldConfirmBatch(pending.length)) {
+      final language = Localizations.localeOf(context).languageCode;
+      final approved = await showDialog<bool>(
+        context: context,
+        builder:
+            (dialogContext) => AlertDialog(
+              title: Text(dialogContext.tr('data_saver')),
+              content: Text(
+                AppLocalizations.translate(
+                  language,
+                  'download_batch_warning',
+                  replacements: {
+                    'count': '${pending.length}',
+                    'size': AudioDownloadService.formatBytes(
+                      DataSaver.estimateBatchBytes(pending.length),
+                    ),
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(dialogContext.tr('cancel')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(dialogContext.tr('download')),
+                ),
+              ],
+            ),
+      );
+      if (approved != true) {
+        return;
+      }
+    }
+
+    await ref
+        .read(downloadsProvider.notifier)
+        .downloadAll(_reciterCode, pending);
+  }
+
   /// Queue everything the current search shows, in one tap.
   ///
   /// Tapping ninety download buttons one at a time is the same work for the
@@ -191,10 +240,7 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
           if (pending.isNotEmpty)
             Expanded(
               child: FilledButton.tonalIcon(
-                onPressed:
-                    () => ref
-                        .read(downloadsProvider.notifier)
-                        .downloadAll(_reciterCode, pending),
+                onPressed: () => _downloadAll(pending),
                 icon: const Icon(Icons.download_for_offline_outlined, size: 18),
                 label: Text(
                   '${context.tr('download_all_visible')} (${pending.length})',

@@ -156,6 +156,18 @@ void main() {
     test('with the saver off nothing is ever gated', () async {
       await DataSaver.setEnabled(false);
       expect(DataSaver.shouldConfirm(500 * 1024 * 1024), isFalse);
+      expect(DataSaver.shouldConfirmBatch(114), isFalse);
+    });
+
+    test('a whole-Mushaf download asks, a couple of surahs does not', () async {
+      await DataSaver.setEnabled(true);
+      await DataSaver.setWarnMegabytes(20);
+
+      expect(DataSaver.shouldConfirmBatch(114), isTrue);
+      expect(DataSaver.shouldConfirmBatch(1), isFalse);
+      // Roughly a gigabyte for the whole Mushaf, which is the right order of
+      // magnitude to warn on even though no server states a length up front.
+      expect(DataSaver.estimateBatchBytes(114), greaterThan(900 * 1024 * 1024));
     });
   });
 
