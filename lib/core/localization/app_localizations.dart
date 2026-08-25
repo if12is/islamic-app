@@ -1142,6 +1142,8 @@ class AppLocalizations {
           'more.',
       'mosques_search_maps': 'Open maps',
       'mosque_search_term': 'mosque',
+      'mosques_map_failed':
+          'The map could not load. The list below still works.',
       'mosques_offline':
           'Could not reach the map service. Check the connection and try '
           'again.',
@@ -2262,6 +2264,8 @@ class AppLocalizations {
           'وهي ضعيفة التغطية في مدن كثيرة — وتطبيق الخرائط عندك سيعرض أكثر.',
       'mosques_search_maps': 'افتح الخرائط',
       'mosque_search_term': 'مسجد',
+      'mosques_map_failed':
+          'تعذّر تحميل الخريطة. والقائمة بالأسفل ما زالت تعمل.',
       'mosques_offline':
           'تعذّر الوصول إلى خدمة الخرائط. تأكد من الاتصال وأعد المحاولة.',
       'mosques_busy':

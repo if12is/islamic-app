@@ -14,14 +14,18 @@ import '../../../../core/widgets/app_section.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../domain/nearby_mosque.dart';
 import '../providers/nearby_mosques_provider.dart';
+import '../widgets/mosque_map_view.dart';
 
-/// The mosques around you, nearest first, from OpenStreetMap.
+/// The mosques around you: a map, and a list sorted by distance.
 ///
-/// There is no map drawn here on purpose. A map tile layer means a second
-/// network dependency, a licence, and a screen that is slower to read than a
-/// list — while what someone actually wants at prayer time is one line saying
-/// how far and which way, and a button that hands the place to whichever maps
-/// app they already use.
+/// Two sources, because neither one is enough on its own. The list comes from
+/// OpenStreetMap and is what knows how far each mosque is and which way to
+/// walk — but OSM is drawn by volunteers, and in most Egyptian cities it is
+/// nearly empty. The map above it is Google's, through the one part of Maps
+/// Platform that is free and uncapped, and it shows the mosques OSM has never
+/// been told about. Below both sits a button that hands the whole search to
+/// whichever maps app is already installed, which is the only part that works
+/// with no key at all.
 class NearbyMosquesPage extends ConsumerStatefulWidget {
   const NearbyMosquesPage({super.key});
 
@@ -85,6 +89,19 @@ class _NearbyMosquesPageState extends ConsumerState<NearbyMosquesPage> {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
+
+          // The map goes above the list, and is drawn whatever the search
+          // returned. It is the part that knows about the mosques Overpass
+          // has never been told exist.
+          if (MosqueMapView.isAvailable && coordinates != null) ...[
+            MosqueMapView(
+              latitude: coordinates.latitude,
+              longitude: coordinates.longitude,
+              radiusMetres: state.radiusMetres,
+              language: language,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
 
           if (state.loading)
             const _Waiting()

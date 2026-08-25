@@ -295,6 +295,37 @@ Agents MUST use the latest stable Flutter SDK and the newest compatible package 
 - Keep widgets small. Put API/cache work in services or data sources, not in pages.
 - `app_router.dart` is a stub. Do not assume go_router is the live navigator until it is wired in `main.dart`.
 
+## Secrets and API keys
+
+**Never put a key in the repository.** Keys reach the build through
+`--dart-define` from a GitHub Actions secret, and every one of them is absent
+by default so the app still builds and works without it.
+
+### `MAPS_EMBED_KEY` — the map on the nearest-mosques screen
+
+Optional. Without it the screen still works: the OpenStreetMap list, and the
+button that hands the search to whichever maps app is installed. With it, an
+embedded Google map is drawn above the list showing mosques OpenStreetMap has
+not been given — which in most Egyptian cities is nearly all of them.
+
+To set it up:
+
+1. Google Cloud Console → APIs & Services → Credentials → create an API key.
+2. **Restrict it to the Maps Embed API and nothing else.** This is not
+   optional and it is the whole security model. A key in a published APK can
+   be extracted by anyone; the Maps Embed API is free with no request cap, so
+   a key that unlocks only it is worth nothing to whoever extracts it. Leave
+   it unrestricted, or restricted to anything billable, and it is a blank
+   cheque — Places Nearby Search alone bills $32 per thousand calls past five
+   thousand a month.
+3. Add it as repository secret `MAPS_EMBED_KEY`.
+
+Locally: `flutter run --dart-define=MAPS_EMBED_KEY=…`.
+
+Do **not** use a key found in a tutorial or a gist. It belongs to someone
+else, cannot be restricted by you, and stops working for every user the moment
+its owner revokes it.
+
 ## GitHub APK workflow
 
 Workflow: `.github/workflows/android-apk.yml`

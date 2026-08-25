@@ -56,6 +56,7 @@ dependencies:
   package_info_plus: ^10.2.1
   ota_update: ^7.1.0
   ffmpeg_kit_flutter_new_min_gpl: ^2.6.2
+  webview_flutter: ^4.14.1
 
 dev_dependencies:
   flutter_test:
