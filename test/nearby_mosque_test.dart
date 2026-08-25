@@ -347,4 +347,98 @@ void main() {
       expect(uri.queryParameters['destination'], '30.05,31.24');
     });
   });
+
+  group('A query that failed while answering 200', () {
+    // Overpass reports a failed query as HTTP 200, an empty element list, and
+    // a `remark`. Reading only the list turns "the query timed out" into
+    // "there is no mosque near you" — the wrong answer wearing the clothes of
+    // a right one. This is exactly what came back from a slow query around
+    // Damanhour while this was being built.
+    test('a timed-out query is busy, not an empty neighbourhood', () {
+      expect(
+        () => MosqueSearch.parse(
+          {
+            'version': 0.6,
+            'elements': <dynamic>[],
+            'remark':
+                'runtime error: Query timed out in "query" at line 1 after '
+                '56 seconds.',
+          },
+          latitude: _lat,
+          longitude: _lon,
+        ),
+        throwsA(
+          isA<MosqueLookupException>().having(
+            (e) => e.reason,
+            'reason',
+            MosqueLookupFailure.busy,
+          ),
+        ),
+      );
+    });
+
+    test('any other remark is refused rather than read as empty', () {
+      expect(
+        () => MosqueSearch.parse(
+          {'elements': <dynamic>[], 'remark': 'runtime error: out of memory'},
+          latitude: _lat,
+          longitude: _lon,
+        ),
+        throwsA(isA<MosqueLookupException>()),
+      );
+    });
+
+    test('a genuinely empty area is still allowed to be empty', () {
+      // The distinction has to cut both ways: 25 km into the Western Desert
+      // really does hold no mosque, and that answer must survive.
+      expect(
+        MosqueSearch.parse(
+          {'version': 0.6, 'elements': <dynamic>[]},
+          latitude: _lat,
+          longitude: _lon,
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group('Handing the search to a maps app', () {
+    test('the point and the term both travel', () {
+      final uri = MosqueSearch.mapsSearchUri(31.0345, 30.4676);
+      expect(uri.scheme, 'geo');
+      expect(uri.path, '31.0345,30.4676');
+      expect(uri.queryParameters['q'], 'مسجد');
+    });
+
+    test('the term can follow the reader\'s language', () {
+      final uri = MosqueSearch.mapsSearchUri(31.0, 30.0, term: 'mosque');
+      expect(uri.queryParameters['q'], 'mosque');
+    });
+
+    test('the web fallback centres on the same point', () {
+      final uri = MosqueSearch.webSearchUri(31.0345, 30.4676);
+      expect(uri.host, 'www.google.com');
+      expect(uri.toString(), contains('@31.0345,30.4676,15z'));
+    });
+  });
+
+  group('How far the search reaches', () {
+    test('it starts wide enough to find something in a thin city', () {
+      // Three kilometres finds one mosque around Damanhour and none around
+      // most of it; the first thing anyone does with an empty screen is widen
+      // it, so it starts a step out.
+      expect(MosqueSearch.defaultRadius, greaterThanOrEqualTo(5000));
+      expect(MosqueSearch.radiusChoices, contains(MosqueSearch.defaultRadius));
+    });
+
+    test('the choices climb, and the widest is a real journey', () {
+      for (var i = 1; i < MosqueSearch.radiusChoices.length; i++) {
+        expect(
+          MosqueSearch.radiusChoices[i],
+          greaterThan(MosqueSearch.radiusChoices[i - 1]),
+        );
+      }
+      expect(MosqueSearch.radiusChoices.last, greaterThanOrEqualTo(20000));
+    });
+  });
 }

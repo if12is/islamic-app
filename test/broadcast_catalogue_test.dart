@@ -189,15 +189,109 @@ void main() {
     });
   });
 
-  group('The station the catalogue leaves out', () {
+  group('What the catalogue leaves out or gets wrong', () {
+    Broadcast pinnedById(String id) =>
+        BroadcastCatalogue.pinned.firstWhere((item) => item.id == id);
+
     test('Cairo is pinned, because mp3quran does not carry it', () {
       // It is what most people in Egypt mean by "إذاعة القرآن الكريم" and it is
       // simply not in the API's 177 entries.
-      final cairo = BroadcastCatalogue.pinned.single;
+      final cairo = pinnedById('cairo-quran');
       expect(cairo.name, contains('القاهرة'));
       expect(cairo.kind, BroadcastKind.radio);
       expect(cairo.pinned, isTrue);
-      expect(cairo.url, startsWith('https://'));
+    });
+
+    test('Cairo is reached over http, on purpose', () {
+      // Radiojar answers the https address with a redirect to a plain-http
+      // node, and a player will not follow a redirect that drops protocol —
+      // which is why this station, alone among the radios, would not start.
+      // Going straight to http makes the redirect same-protocol. The audio
+      // arrives in the clear either way; there is no credential in it.
+      final cairo = pinnedById('cairo-quran');
+      expect(cairo.url, startsWith('http://'));
+      expect(cairo.sources.last, startsWith('https://'));
+    });
+
+    test('the two channels do not point at the dead host', () {
+      // mp3quran publishes win.holol.com addresses that answer 404 on every
+      // path variant. The pinned addresses were checked down to a downloaded
+      // video segment.
+      for (final id in ['tv:3', 'tv:4']) {
+        final channel = pinnedById(id);
+        expect(channel.kind, BroadcastKind.tv);
+        expect(channel.url, startsWith('https://'));
+        for (final host in BroadcastCatalogue.deadTvHosts) {
+          expect(
+            Uri.parse(channel.url).host,
+            isNot(host),
+            reason: '\$id still plays from the host that does not answer',
+          );
+        }
+      }
+    });
+
+    test('the published address is kept behind the working one', () {
+      // If the broadcaster brings its own stream back, it is still tried.
+      for (final id in ['tv:3', 'tv:4']) {
+        expect(pinnedById(id).sources.length, 2);
+      }
+    });
+
+    test('every pinned entry has a name, an id and somewhere to play from', () {
+      for (final item in BroadcastCatalogue.pinned) {
+        expect(item.id, isNotEmpty);
+        expect(item.name, isNotEmpty);
+        expect(item.sources, isNotEmpty);
+        expect(item.pinned, isTrue);
+      }
+    });
+  });
+
+  group('Pinned entries and the API\'s own', () {
+    test('a channel that is both pinned and published appears once', () {
+      // Both channels are pinned under the same ids the API uses. Without the
+      // merge they would be listed twice — once playing and once not, which is
+      // a worse way to be broken than simply not working.
+      final fetched = [
+        const Broadcast(
+          id: 'tv:3',
+          name: 'قناة القرآن الكريم',
+          url: 'https://win.holol.com/live/quran/playlist.m3u8',
+          kind: BroadcastKind.tv,
+        ),
+        const Broadcast(
+          id: 'radio:1',
+          name: 'إذاعة أخرى',
+          url: 'https://qurango.net/radio/x',
+          kind: BroadcastKind.radio,
+        ),
+      ];
+
+      final merged = BroadcastCatalogue.merge(
+        BroadcastCatalogue.pinned,
+        fetched,
+      );
+
+      expect(merged.where((item) => item.id == 'tv:3'), hasLength(1));
+      expect(
+        merged.firstWhere((item) => item.id == 'tv:3').url,
+        isNot(contains('win.holol.com')),
+      );
+      // Everything the API carries that is not pinned still comes through.
+      expect(merged.any((item) => item.id == 'radio:1'), isTrue);
+    });
+
+    test('the pinned entries come first', () {
+      final merged = BroadcastCatalogue.merge(BroadcastCatalogue.pinned, [
+        const Broadcast(
+          id: 'radio:9',
+          name: 'x',
+          url: 'https://qurango.net/radio/y',
+          kind: BroadcastKind.radio,
+        ),
+      ]);
+      expect(merged.first.pinned, isTrue);
     });
   });
 

@@ -129,14 +129,46 @@ class MosqueLookupException implements Exception {
 class MosqueSearch {
   MosqueSearch._();
 
+  /// Hand the search itself to whichever maps app is installed.
+  ///
+  /// OpenStreetMap is drawn by volunteers, and outside the big cities it can
+  /// be nearly empty: ten kilometres around the centre of Damanhour — a city
+  /// of a quarter of a million people — holds exactly one mapped mosque, while
+  /// a phone's own maps app lists eight within five. No amount of tuning the
+  /// query fixes an absence in the data.
+  ///
+  /// So rather than pretend, this offers one tap to the place where the answer
+  /// actually lives. `geo:` is the intent every maps app registers for, and a
+  /// `q` alongside a point is a search near that point.
+  static Uri mapsSearchUri(
+    double latitude,
+    double longitude, {
+    String term = 'مسجد',
+  }) => Uri.parse('geo:$latitude,$longitude?q=${Uri.encodeComponent(term)}');
+
+  /// For a device with nothing registered for `geo:`.
+  static Uri webSearchUri(
+    double latitude,
+    double longitude, {
+    String term = 'مسجد',
+  }) => Uri.parse(
+    'https://www.google.com/maps/search/${Uri.encodeComponent(term)}/'
+    '@$latitude,$longitude,15z',
+  );
+
   /// Radii offered on screen, in metres.
   ///
   /// One query per search, not a loop that widens until it finds something:
   /// Overpass gives an address two slots and answers `504` past them, so a
   /// widening loop would rate-limit itself on the first empty result.
-  static const List<int> radiusChoices = [1000, 3000, 5000, 10000];
+  static const List<int> radiusChoices = [1000, 3000, 5000, 10000, 20000];
 
-  static const int defaultRadius = 3000;
+  /// Five kilometres, not three.
+  ///
+  /// Three is plenty in a mapped city and finds nothing at all in an unmapped
+  /// one, and the first thing someone does when a screen says "nothing here"
+  /// is widen it — so it starts one step further out.
+  static const int defaultRadius = 5000;
 
   /// A ceiling on what is drawn, not on what is asked for.
   ///
@@ -185,6 +217,22 @@ class MosqueSearch {
     required double longitude,
     int limit = maxShown,
   }) {
+    // Overpass reports a failed query as HTTP 200, an empty element list, and
+    // a `remark` explaining itself. Reading only the list turns "the query
+    // timed out" into "there is no mosque near you" — a wrong answer wearing
+    // the clothes of a right one, which is the exact failure this whole file
+    // is written to avoid. Measured, not assumed: a slow query around
+    // Damanhour came back this way, 200 and empty, with the reason in `remark`.
+    final remark = json['remark'];
+    if (remark is String && remark.isNotEmpty) {
+      throw MosqueLookupException(
+        remark.toLowerCase().contains('timed out')
+            ? MosqueLookupFailure.busy
+            : MosqueLookupFailure.unreadable,
+        detail: remark,
+      );
+    }
+
     final elements = json['elements'];
     if (elements is! List) {
       throw const MosqueLookupException(MosqueLookupFailure.unreadable);

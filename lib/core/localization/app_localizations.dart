@@ -1129,8 +1129,19 @@ class AppLocalizations {
       'mosques_from_cache': 'From an earlier search — refresh for a new one.',
       'mosques_none': 'No mosque is mapped within {distance} of you.',
       'mosques_none_hint':
-          'OpenStreetMap is drawn by volunteers, and some places are mapped '
-          'more thinly than others. A wider search may find one.',
+          'This is a gap in the map, not a verdict on the neighbourhood: '
+          'OpenStreetMap is drawn by volunteers, and outside the big cities it '
+          'can be nearly empty. Widen the search, or hand it to your maps app '
+          'below.',
+      'mosques_search_maps_title': 'Search in your maps app',
+      'mosques_search_maps_desc':
+          'Your maps app knows places OpenStreetMap has not been given yet.',
+      'mosques_coverage_thin':
+          'That is fewer than there probably are. OpenStreetMap is drawn by '
+          'volunteers and is thin in many cities — your maps app will list '
+          'more.',
+      'mosques_search_maps': 'Open maps',
+      'mosque_search_term': 'mosque',
       'mosques_offline':
           'Could not reach the map service. Check the connection and try '
           'again.',
@@ -2240,8 +2251,17 @@ class AppLocalizations {
       'mosques_from_cache': 'من بحث سابق — حدِّث للحصول على بحث جديد.',
       'mosques_none': 'لا مسجد مُسجَّل على الخريطة في حدود {distance} منك.',
       'mosques_none_hint':
-          'خريطة OpenStreetMap يرسمها متطوّعون، وبعض الأماكن أقل تغطية من '
-          'غيرها. قد يجد بحث أوسع شيئاً.',
+          'هذا نقص في الخريطة لا حكم على الحيّ: خريطة OpenStreetMap يرسمها '
+          'متطوّعون، وهي خارج المدن الكبرى تكاد تكون خالية. وسّع النطاق، أو سلّم '
+          'البحث لتطبيق الخرائط بالأسفل.',
+      'mosques_search_maps_title': 'ابحث في تطبيق الخرائط',
+      'mosques_search_maps_desc':
+          'تطبيق الخرائط عندك يعرف أماكن لم تُرسَم على OpenStreetMap بعد.',
+      'mosques_coverage_thin':
+          'هذا أقل مما هو موجود على الأرجح. خريطة OpenStreetMap يرسمها متطوّعون '
+          'وهي ضعيفة التغطية في مدن كثيرة — وتطبيق الخرائط عندك سيعرض أكثر.',
+      'mosques_search_maps': 'افتح الخرائط',
+      'mosque_search_term': 'مسجد',
       'mosques_offline':
           'تعذّر الوصول إلى خدمة الخرائط. تأكد من الاتصال وأعد المحاولة.',
       'mosques_busy':

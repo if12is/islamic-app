@@ -16,6 +16,13 @@
         <domain includeSubdomains="true">win.holol.com</domain>
         <domain includeSubdomains="true">everyayah.com</domain>
         <domain includeSubdomains="true">overpass-api.de</domain>
+        <!--
+          The two Qur'an television channels. mp3quran publishes win.holol.com
+          addresses that have been 404 for as long as they have been checked,
+          so the streams are pinned to these, which were verified down to a
+          downloaded video segment.
+        -->
+        <domain includeSubdomains="true">cdn-globecast.akamaized.net</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

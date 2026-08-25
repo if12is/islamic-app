@@ -110,7 +110,24 @@ class _NearbyMosquesPageState extends ConsumerState<NearbyMosquesPage> {
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
-            const SizedBox(height: AppSpacing.sm),
+          ],
+
+          // Offered whatever the search returned, not only when it returned
+          // nothing. A short list is the more misleading case: it looks like
+          // the whole answer, and in a thinly mapped city it is a fraction of
+          // one. This says so, and hands the search to the app that has the
+          // rest of it.
+          if (!state.loading) ...[
+            const SizedBox(height: AppSpacing.md),
+            _SearchElsewhere(
+              latitude: coordinates?.latitude,
+              longitude: coordinates?.longitude,
+              sparse: state.mosques.length < 4,
+            ),
+          ],
+
+          if (state.mosques.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
             Text(
               context.tr('mosques_attribution'),
               textAlign: TextAlign.center,
@@ -425,9 +442,9 @@ class _Empty extends StatelessWidget {
             style: AppTextStyles.body(context, fontSize: 13.5),
           ),
           const SizedBox(height: AppSpacing.sm),
-          // OSM is drawn by volunteers, and coverage is thinner in some places
-          // than others. Saying so is more useful than an empty list that
-          // implies the area was surveyed and found wanting.
+          // The distinction that matters: the area was not surveyed and found
+          // empty, it was never drawn. Saying "no mosque near you" without
+          // that would be a claim about the world made from a gap in a map.
           Text(
             context.tr('mosques_none_hint'),
             style: AppTextStyles.caption(context),
@@ -435,5 +452,91 @@ class _Empty extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// One tap to the maps app, which in most of the world knows more mosques than
+/// OpenStreetMap does.
+class _SearchElsewhere extends StatelessWidget {
+  const _SearchElsewhere({
+    required this.latitude,
+    required this.longitude,
+    required this.sparse,
+  });
+
+  final double? latitude;
+  final double? longitude;
+
+  /// Whether the list came back thin enough to be worth warning about.
+  final bool sparse;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    if (latitude == null || longitude == null) {
+      return const SizedBox.shrink();
+    }
+
+    return AppCard(
+      accent: sparse ? tokens.gold.withValues(alpha: 0.12) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.travel_explore_rounded, size: 19, color: tokens.gold),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  context.tr('mosques_search_maps_title'),
+                  style: AppTextStyles.body(context, fontSize: 13.5),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            context.tr(
+              sparse ? 'mosques_coverage_thin' : 'mosques_search_maps_desc',
+            ),
+            style: AppTextStyles.caption(context),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton.tonalIcon(
+              onPressed: () => _search(context),
+              icon: const Icon(Icons.map_outlined, size: 17),
+              label: Text(context.tr('mosques_search_maps')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _search(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final failed = context.tr('mosques_open_failed');
+    // The search term follows the reader's language: a maps app searching for
+    // "mosque" in Egypt finds fewer than one searching for "مسجد".
+    final term = context.tr('mosque_search_term');
+
+    for (final uri in [
+      MosqueSearch.mapsSearchUri(latitude!, longitude!, term: term),
+      MosqueSearch.webSearchUri(latitude!, longitude!, term: term),
+    ]) {
+      try {
+        if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+          return;
+        }
+      } catch (_) {
+        // Fall through to the next one.
+      }
+    }
+
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(failed)));
   }
 }

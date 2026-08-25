@@ -22,7 +22,9 @@ class BroadcastCatalogue {
   static const String tvEndpoint =
       'https://www.mp3quran.net/api/v3/live-tv?language=ar';
 
-  static const String cacheKey = 'broadcast_catalogue_v1';
+  // Bumped when a pinned address changes, so a phone that already cached the
+  // dead ones does not keep serving them for another week.
+  static const String cacheKey = 'broadcast_catalogue_v2';
   static const String cachedAtKey = 'broadcast_catalogue_fetched_at';
 
   /// Stations do not move often; a weekly re-check is generous.
@@ -36,20 +38,57 @@ class BroadcastCatalogue {
   static const String publishedHost = 'backup.qurango.net';
   static const String primaryHost = 'qurango.net';
 
-  /// Stations the API does not carry.
+  /// Channels whose published address does not answer.
   ///
-  /// Cairo's Quran radio — the one that has been broadcasting since 1964 and
-  /// is what most people in Egypt mean by "إذاعة القرآن الكريم" — is simply not
-  /// in mp3quran's list. Its stream address is stable and is published by the
-  /// station's own site, so it is pinned here rather than left missing.
+  /// mp3quran's `live-tv` endpoint hands out `win.holol.com/live/quran` and
+  /// `.../sunnah`, and both have been 404 on every path variant for as long as
+  /// this has been checked — the host is up, the streams are gone. So the two
+  /// channels are pinned to addresses that were verified end to end: master
+  /// playlist, variant playlist, and an actual video segment downloaded. The
+  /// address the API publishes is kept behind them, in case it comes back.
+  static const List<String> deadTvHosts = ['win.holol.com'];
+
+  /// Stations and channels the API either omits or gets wrong.
   static const List<Broadcast> pinned = [
     Broadcast(
+      // Cairo's Quran radio — broadcasting since 1964, and what most people in
+      // Egypt mean by "إذاعة القرآن الكريم" — is not in mp3quran's list at all.
+      //
+      // The address is deliberately http. Radiojar answers the https address
+      // with a redirect to a plain-http node, and a player will not follow a
+      // redirect that drops from https to http — which is why this station,
+      // alone among the radios, would not start. Going to http directly makes
+      // the redirect same-protocol and it plays. Nothing is lost by it: the
+      // audio arrives in the clear either way, and it carries no credential.
       id: 'cairo-quran',
       name: 'إذاعة القرآن الكريم من القاهرة',
-      url: 'https://stream.radiojar.com/8s5u5tpdtwzuv',
+      url: 'http://stream.radiojar.com/8s5u5tpdtwzuv',
+      fallbackUrl: 'https://stream.radiojar.com/8s5u5tpdtwzuv',
       kind: BroadcastKind.radio,
       pinned: true,
       noteAr: 'البث المباشر · ٩٨٫٢ FM',
+    ),
+    Broadcast(
+      id: 'tv:3',
+      name: 'قناة القرآن الكريم',
+      url:
+          'https://cdn-globecast.akamaized.net/live/eds/saudi_quran/'
+          'hls_roku/index.m3u8',
+      fallbackUrl: 'https://win.holol.com/live/quran/playlist.m3u8',
+      kind: BroadcastKind.tv,
+      pinned: true,
+      noteAr: 'الحرم المكي · بث مباشر',
+    ),
+    Broadcast(
+      id: 'tv:4',
+      name: 'قناة السنة النبوية',
+      url:
+          'https://cdn-globecast.akamaized.net/live/eds/saudi_sunnah/'
+          'hls_roku/index.m3u8',
+      fallbackUrl: 'https://win.holol.com/live/sunnah/playlist.m3u8',
+      kind: BroadcastKind.tv,
+      pinned: true,
+      noteAr: 'المسجد النبوي · بث مباشر',
     ),
   ];
 
@@ -71,12 +110,29 @@ class BroadcastCatalogue {
 
     final fetched = await _fetchAll();
     if (fetched.isNotEmpty) {
-      final all = [...pinned, ...fetched];
+      final all = merge(pinned, fetched);
       await _writeCache(prefs, all);
       return _memory = all;
     }
 
     return _memory = cached.isNotEmpty ? cached : pinned;
+  }
+
+  /// Pinned entries win over the API's own.
+  ///
+  /// The two television channels are pinned *and* published, under the same
+  /// ids. Without this they would appear twice — once playing and once not,
+  /// which is a worse way to be broken than simply not working.
+  static List<Broadcast> merge(
+    List<Broadcast> pinnedItems,
+    List<Broadcast> fetched,
+  ) {
+    final ids = {for (final item in pinnedItems) item.id};
+    return [
+      ...pinnedItems,
+      for (final item in fetched)
+        if (!ids.contains(item.id)) item,
+    ];
   }
 
   static List<Broadcast> of(List<Broadcast> all, BroadcastKind kind) => [
