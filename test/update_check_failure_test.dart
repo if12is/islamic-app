@@ -243,4 +243,91 @@ void main() {
       expect(UpdateService.isNewer(parsed, 25), isFalse);
     });
   });
+
+  group('The build that is actually published right now', () {
+    // Captured from api.github.com/repos/if12is/islamic-app/releases/tags/
+    // apk-latest while chasing a report that the check always said "you are
+    // up to date". It did — and it was right: the phone held build 30 and 30
+    // was the newest published. The parser was never the fault, so this pins
+    // that so the next report can be aimed somewhere useful.
+    final live = <String, dynamic>{
+      'tag_name': 'apk-latest',
+      'name': 'Latest development APK (1.1.0+30)',
+      'body': '',
+      'html_url': 'https://github.com/if12is/islamic-app/releases',
+      'assets': [
+        {
+          'name': 'islamic-app-1.1.0-build30-arm64-v8a.apk',
+          'size': 86659118,
+          'browser_download_url': 'https://example.com/a.apk',
+        },
+        {
+          'name': 'islamic-app-1.1.0-build30-armeabi-v7a.apk',
+          'size': 93532242,
+          'browser_download_url': 'https://example.com/b.apk',
+        },
+        {
+          'name': 'islamic-app-latest-arm64-v8a.apk',
+          'size': 86659118,
+          'browser_download_url': 'https://example.com/c.apk',
+        },
+        {
+          'name': 'islamic-app-latest-armeabi-v7a.apk',
+          'size': 93532242,
+          'browser_download_url': 'https://example.com/d.apk',
+        },
+      ],
+    };
+
+    test('the build number is read out of the versioned asset', () {
+      final parsed = UpdateService.parseRelease(
+        live,
+        preferredAbis: const ['arm64-v8a', 'armeabi-v7a'],
+      );
+      expect(parsed!.buildNumber, 30);
+      expect(parsed.versionName, '1.1.0');
+    });
+
+    test('the unversioned "latest" asset never wins the pick', () {
+      // It carries no build number, so choosing it would read as build 0 and
+      // report every release as older than what is installed.
+      final parsed = UpdateService.parseRelease(
+        live,
+        preferredAbis: const ['arm64-v8a'],
+      );
+      expect(parsed!.apkUrl, 'https://example.com/a.apk');
+    });
+
+    test('the phone gets the APK built for its own CPU', () {
+      final arm32 = UpdateService.parseRelease(
+        live,
+        preferredAbis: const ['armeabi-v7a'],
+      );
+      expect(arm32!.apkUrl, 'https://example.com/b.apk');
+    });
+
+    test('older builds are offered it, and build 30 is not', () {
+      final parsed =
+          UpdateService.parseRelease(live, preferredAbis: const ['arm64-v8a'])!;
+      for (final installed in [3, 25, 29]) {
+        expect(
+          UpdateService.isNewer(parsed, installed),
+          isTrue,
+          reason: 'build $installed should be offered build 30',
+        );
+      }
+      expect(UpdateService.isNewer(parsed, 30), isFalse);
+      // A phone ahead of the release — a local build, or a run that published
+      // late — is not told to downgrade.
+      expect(UpdateService.isNewer(parsed, 31), isFalse);
+    });
+
+    test('a release carries a label with both halves in it', () {
+      // The screen shows this against the installed one, so a reader can see
+      // the comparison rather than being asked to trust it.
+      final parsed =
+          UpdateService.parseRelease(live, preferredAbis: const ['arm64-v8a'])!;
+      expect(parsed.label, '1.1.0 (30)');
+    });
+  });
 }

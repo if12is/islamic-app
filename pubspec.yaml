@@ -1,9 +1,12 @@
 name: islamic_app
 description: A comprehensive, production-ready Islamic mobile application with clean architecture, Riverpod state management, and offline-first design.
 publish_to: 'none'
-# The build number is only a floor: CI overrides it with the run number so it
-# always increases. The name is what people read.
-version: 1.1.0+3
+# The build number is only a floor: CI overrides it with the workflow run
+# number, so the versionCode always increases and Android always treats a new
+# APK as an upgrade. This value decides only what a locally built APK reports,
+# and it is kept near the published build so a local build does not announce
+# every release as an update to itself. The name is what people read.
+version: 1.2.0+31
 
 environment:
   sdk: '>=3.7.0 <4.0.0'

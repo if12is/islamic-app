@@ -850,7 +850,13 @@ class AppLocalizations {
       'app_update': 'App update',
       'app_update_desc': 'Check here and install only this phone\'s package.',
       'app_update_checking': 'Checking for a new version…',
-      'app_update_current': 'You are already on the latest version.',
+      // Both numbers, always. "You are on the latest version" is a claim
+      // the reader cannot check, and when they suspect it is wrong they have
+      // no way to tell — which is exactly the state this was reported in.
+      'app_update_current':
+          'You have {installed}, and {latest} is the newest published. '
+          'Nothing to install.',
+      'app_update_downloaded': '{done} of {total}',
       'app_update_available': 'Version {version} is ready ({size}).',
       'app_update_available_title': 'A new version is ready',
       'app_update_installed': 'Installed now: {version}',
@@ -1983,7 +1989,11 @@ class AppLocalizations {
       'app_update': 'تحديث التطبيق',
       'app_update_desc': 'تحقق من هنا ونزّل حزمة هذا الهاتف فقط.',
       'app_update_checking': 'جارٍ التحقق من إصدار جديد…',
-      'app_update_current': 'أنت على آخر إصدار.',
+      // الرقمان معاً دائماً: «أنت على آخر إصدار» دعوى لا يستطيع القارئ
+      // التحقق منها، وإن شكّ أنها خطأ فلا سبيل له إلى معرفة ذلك.
+      'app_update_current':
+          'عندك {installed}، وأحدث ما نُشر {latest}. لا جديد لتثبيته.',
+      'app_update_downloaded': '{done} من {total}',
       'app_update_available': 'الإصدار {version} جاهز ({size}).',
       'app_update_available_title': 'يتوفر إصدار جديد',
       'app_update_installed': 'المثبّت الآن: {version}',

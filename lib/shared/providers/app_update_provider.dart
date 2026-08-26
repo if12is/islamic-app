@@ -97,8 +97,14 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
       await UpdateService.markChecked(appPreferences);
 
       if (release == null || !UpdateService.isNewer(release, currentBuild)) {
+        // The release is kept even when there is nothing to install, so the
+        // screen can name what it compared against. Dropping it here is what
+        // left "you are on the latest version" as a bare assertion the reader
+        // had no way to check — and no way to challenge when they believed it
+        // was wrong.
         state = AppUpdateState(
           status: AppUpdateStatus.current,
+          release: release,
           currentLabel: label,
         );
         return;
@@ -108,6 +114,7 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
           UpdateService.wasSkipped(appPreferences, release.buildNumber)) {
         state = AppUpdateState(
           status: AppUpdateStatus.current,
+          release: release,
           currentLabel: label,
         );
         return;
@@ -178,6 +185,23 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
         progress: progress,
       );
     }
+  }
+
+  /// Stop a download in progress and put the offer back.
+  ///
+  /// The dialog cannot be dismissed while the bar is moving — a download that
+  /// carries on behind a closed dialog is one nobody can see, cancel, or tell
+  /// has finished — so there has to be a way out that is not the back button.
+  void cancelDownload() {
+    UpdateInstaller.cancel();
+    state = state.copyWith(
+      status:
+          state.release == null
+              ? AppUpdateStatus.idle
+              : AppUpdateStatus.available,
+      clearProgress: true,
+      clearMessage: true,
+    );
   }
 
   void dismissFailure() {
