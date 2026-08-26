@@ -3,9 +3,9 @@
     "short_name": "الفجر",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F6F0E4",
+    "theme_color": "#0F6B4F",
+    "description": "الفجر — مصحف كامل، مواقيت الصلاة، أذكار، وإذاعات القرآن. يعمل بلا إنترنت.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

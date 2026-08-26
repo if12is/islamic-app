@@ -24,7 +24,7 @@ class AppLocalizations {
       'weekday_saturday': 'Saturday',
       'ramadan_month': 'Ramadan',
       'imsakiya_footer':
-          'Calculated on your device for your own location — Islamic App.',
+          'Calculated on your device for your own location — Fajr.',
       // Seasonal theme, qibla compass, location picking.
       'last_read_position': 'Verse {verse} of {total} · page {page}',
       'season_ramadan_greeting': 'Ramadan Kareem',
@@ -824,7 +824,7 @@ class AppLocalizations {
       'preparing_image': 'Preparing the image…',
       'share_failed': 'Sharing failed. Please try again.',
       'all': 'All',
-      'app_title': 'Islamic App',
+      'app_title': 'Fajr',
       'home': 'Home',
       'quran': 'Quran',
       'prayer': 'Prayer',
@@ -921,7 +921,7 @@ class AppLocalizations {
       'count': 'Count',
       'reset': 'Reset',
       'no_fixed_target': 'No fixed target count',
-      'onboarding_welcome_title': 'Welcome to Islamic App',
+      'onboarding_welcome_title': 'Welcome to Fajr',
       'onboarding_welcome_body':
           'Your companion for daily Islamic practices, prayer times, and the Holy Quran.',
       'onboarding_location_title': 'Enable Location',
@@ -937,7 +937,7 @@ class AppLocalizations {
       'skip': 'Skip',
       'prayer_reminder_title': 'Prayer Reminder',
       'prayer_reminder_body': 'It is now time for prayer',
-      'islamic_app_version': 'Islamic App v1.0.0',
+      'islamic_app_version': 'Fajr v1.0.0',
       'search_surah': 'Search for a Surah...',
       'continue_reading': 'Continue Reading',
       'monthly_khatmah': 'Monthly Khatmah',

@@ -43,7 +43,7 @@ Future<void> _bootstrap() async {
         androidNotificationChannelDescription: 'التلاوة من الجزيرة وشاشة القفل',
         androidNotificationOngoing: false,
         androidStopForegroundOnPause: false,
-        androidNotificationIcon: 'drawable/ic_stat_quran',
+        androidNotificationIcon: 'drawable/ic_stat_fajr',
         androidShowNotificationBadge: true,
         notificationColor: AppTokens.notificationTint,
         preloadArtwork: true,

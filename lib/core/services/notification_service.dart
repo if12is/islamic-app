@@ -175,7 +175,13 @@ class NotificationService {
 
     await _ensureTimeZone();
 
-    const android = AndroidInitializationSettings('@mipmap/launcher_icon');
+    // The status-bar icon, not the launcher icon. Android flattens a small
+    // icon to a white stencil and keeps only its alpha, so pointing this at
+    // the launcher mipmap — which is a full-bleed cream square — drew a solid
+    // white block in the status bar for every prayer reminder. The drawable
+    // is the mark cut for exactly this: transparent ground, and a kerf that
+    // keeps the sun and the book apart once both are the same white.
+    const android = AndroidInitializationSettings('@drawable/ic_stat_fajr');
     const iOS = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -606,7 +612,7 @@ class NotificationService {
     String? body,
   }) async {
     await showNow(
-      title: title ?? 'Islamic App',
+      title: title ?? 'Fajr',
       body: body ?? 'This is a test notification.',
     );
   }
@@ -633,7 +639,7 @@ class NotificationService {
       android: AndroidNotificationDetails(
         channelId,
         _channelNameFor(channelId),
-        channelDescription: 'Islamic App reminders',
+        channelDescription: 'Fajr reminders',
         importance:
             mode == PrayerAlertMode.adhan
                 ? Importance.max

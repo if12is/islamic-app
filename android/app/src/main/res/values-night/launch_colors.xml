@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dark theme's ground. Opening the app at Fajr with the phone in
+         dark mode should not start with a white flash. -->
+    <color name="launch_background">#0B1411</color>
+</resources>

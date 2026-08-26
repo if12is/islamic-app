@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Kept out of colors.xml on purpose: that file is rewritten by
+  flutter_launcher_icons, and anything added to it is lost the next time the
+  icons are regenerated.
+-->
+<resources>
+    <!-- The identity's cream. The launch window used to be plain white, which
+         flashed against every screen in the app, because neither theme's
+         ground is white. -->
+    <color name="launch_background">#F6F0E4</color>
+</resources>

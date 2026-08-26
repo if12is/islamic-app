@@ -88,13 +88,25 @@ flutter:
       fonts:
         - asset: assets/fonts/ReemKufi.ttf
 
+# Regenerate the sources first: python3 scripts/brand_assets.py
+# Then fan them out:      dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
+  remove_alpha_ios: true
   image_path: "icon.png"
-  min_sdk_size: 21
+  # Adaptive icons are three separate layers, not one picture. The background
+  # is the app's own cream — flat, because the launcher may parallax the two
+  # layers against each other and anything textured smears when it does.
+  adaptive_icon_background: "#F6F0E4"
+  adaptive_icon_foreground: "assets/brand/icon-foreground.png"
+  # Android 13 themed icons: the system throws away every colour and recolours
+  # this silhouette to the wallpaper. It is the same drawing carrying the kerf,
+  # which is what stops the sun and the book merging into one blob.
+  adaptive_icon_monochrome: "assets/brand/icon-monochrome.png"
+  min_sdk_android: 21
   web:
     generate: true
     image_path: "icon.png"
-    background_color: "#003527"
-    theme_color: "#003527"
+    background_color: "#F6F0E4"
+    theme_color: "#0F6B4F"

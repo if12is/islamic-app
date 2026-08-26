@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/fajr_mark.dart';
 import '../../../../core/widgets/motif_icon.dart';
 import '../../../../core/widgets/seasonal_art.dart';
 import '../../../../core/services/seasonal_theme.dart';
@@ -161,6 +162,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                           titleKey: 'onboarding_welcome_title',
                           bodyKey: 'onboarding_welcome_body',
                           showMedallion: season == SeasonalEvent.none,
+                          useMark: true,
                         ),
                         _buildFeaturePage(
                           context,
@@ -275,6 +277,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     required String titleKey,
     required String bodyKey,
     bool showMedallion = true,
+    bool useMark = false,
   }) {
     final tokens = context.tokens;
 
@@ -311,7 +314,20 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       ),
                     ),
                     child: Center(
-                      child: Icon(icon, size: 26, color: tokens.goldBright),
+                      // The first page is the app saying its own name, so the
+                      // mark stands where the page's icon otherwise would.
+                      // Monochrome in the page's own gold: the ground here is
+                      // deep green under both themes, and the two-colour mark
+                      // has no green that reads on it. The kerf is what keeps
+                      // the sun and the book apart once they share a colour.
+                      child:
+                          useMark
+                              ? FajrMark(
+                                size: 34,
+                                monochrome: true,
+                                book: tokens.goldBright,
+                              )
+                              : Icon(icon, size: 26, color: tokens.goldBright),
                     ),
                   ),
                 ],

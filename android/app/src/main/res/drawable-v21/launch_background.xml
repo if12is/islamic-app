@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
+<!--
+  The window the OS paints before Flutter has drawn anything.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+  It was `?android:colorBackground` — white under the light platform theme and
+  black under the dark one — and the app's grounds are neither: cream and
+  near-black. So every cold start flashed. `@color/launch_background` has a
+  values-night twin, so this follows the phone's theme to the app's own colour.
+
+  The mark is not drawn here. This window is up for a fraction of a second and
+  cannot animate; a logo on it reads as a flicker, not a splash.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
 </layer-list>

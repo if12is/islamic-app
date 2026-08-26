@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+<!--
+  The window the OS paints before Flutter has drawn anything.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+  It was plain white, which flashed against every screen in the app: the light
+  theme's ground is cream and the dark theme's is near-black, and neither is
+  white. Cream is the identity's ground, so the launch window is cream and the
+  handover is invisible.
+
+  The mark is not drawn here. This window is up for a fraction of a second and
+  cannot animate, so a logo on it reads as a flicker rather than a splash.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
 </layer-list>
