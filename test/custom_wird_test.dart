@@ -57,10 +57,7 @@ void main() {
     });
 
     test('removing takes only the one named', () {
-      final items = [
-        _item(WirdKind.surah, '18'),
-        _item(WirdKind.surah, '36'),
-      ];
+      final items = [_item(WirdKind.surah, '18'), _item(WirdKind.surah, '36')];
       final left = CustomWirdStore.withoutId(items, 'surah:18');
       expect(left, hasLength(1));
       expect(left.single.reference, '36');
@@ -144,11 +141,9 @@ void main() {
       // opened already ticked would be telling the reader they had done
       // something they had not.
       final prefs = await SharedPreferences.getInstance();
-      await CustomWirdStore.writeProgress(
-        prefs,
-        {'surah:18': 1},
-        now: DateTime(2026, 8, 26),
-      );
+      await CustomWirdStore.writeProgress(prefs, {
+        'surah:18': 1,
+      }, now: DateTime(2026, 8, 26));
 
       final today = CustomWirdStore.read(prefs, now: DateTime(2026, 8, 27));
       expect(today.doneToday, isEmpty);

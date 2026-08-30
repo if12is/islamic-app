@@ -13,6 +13,7 @@ import '../../../../core/services/update_service.dart';
 import '../../../../shared/providers/app_update_provider.dart';
 import '../widgets/app_update_dialog.dart';
 import '../widgets/profile_header.dart';
+import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../broadcasts/presentation/pages/broadcasts_page.dart';
@@ -56,14 +57,19 @@ class SettingsPage extends ConsumerWidget {
 
     final isDark = themeMode == ThemeMode.dark;
 
+    // This page reads the ColorScheme where the rest of the app reads the
+    // tokens, which is how it drifted: cards at radius 32 beside cards at 28,
+    // and grey icon circles beside tinted tiles. The cards and the tiles are
+    // now the shared components; what is left here still uses the scheme, but
+    // the scheme is built from the same tokens, so the two agree.
+    final tokens = context.tokens;
     final colorScheme = Theme.of(context).colorScheme;
-    final bgColor = Theme.of(context).scaffoldBackgroundColor;
-    final textColor = colorScheme.onSurface;
-    final subtitleColor = colorScheme.onSurfaceVariant;
-    final cardColor = Theme.of(context).cardColor;
-    final primaryColor = colorScheme.primary;
-    final accentColor = colorScheme.secondary;
-    final mutedFill = colorScheme.surfaceContainerHighest;
+    final bgColor = tokens.ground;
+    final textColor = tokens.ink;
+    final subtitleColor = tokens.inkMuted;
+    final primaryColor = tokens.brand;
+    final accentColor = tokens.goldInk;
+    final mutedFill = tokens.brand.withValues(alpha: 0.11);
 
     return Directionality(
       textDirection: context.appTextDirection,
@@ -107,12 +113,11 @@ class SettingsPage extends ConsumerWidget {
                 const SizedBox(height: 32),
 
                 // Adhan Notifications
-                Container(
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(32),
-                  ),
+                // AppCard, not a hand-built one. These were radius 32 with 24
+                // of padding while every other card in the app is 28 and 16 —
+                // near enough to look like a mistake rather than a choice, and
+                // it is why this page never quite sat with the rest.
+                AppCard(
                   child: Column(
                     children: [
                       Row(
@@ -225,12 +230,11 @@ class SettingsPage extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // Calculation Method
-                Container(
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(32),
-                  ),
+                // AppCard, not a hand-built one. These were radius 32 with 24
+                // of padding while every other card in the app is 28 and 16 —
+                // near enough to look like a mistake rather than a choice, and
+                // it is why this page never quite sat with the rest.
+                AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -292,14 +296,13 @@ class SettingsPage extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // Tools: everything with its own screen.
-                Material(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(32),
+                AppCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.sm,
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    padding: EdgeInsets.zero,
                     child: Column(
                       children: [
                         _buildToolTile(
@@ -407,12 +410,11 @@ class SettingsPage extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // Language & Appearance
-                Container(
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(32),
-                  ),
+                // AppCard, not a hand-built one. These were radius 32 with 24
+                // of padding while every other card in the app is 28 and 16 —
+                // near enough to look like a mistake rather than a choice, and
+                // it is why this page never quite sat with the rest.
+                AppCard(
                   child: Column(
                     children: [
                       GestureDetector(
@@ -908,26 +910,29 @@ class SettingsPage extends ConsumerWidget {
     required String subtitle,
     required VoidCallback onTap,
   }) {
+    final tokens = context.tokens;
+
     return ListTile(
-      leading: Icon(icon, color: color),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
       ),
+      // A bare glyph, where every other list in the app leads with a filled
+      // tile. Fourteen of these sat one card away from rows that had them.
+      leading: AppIconTile(icon, role: AppIconRole.row),
+      title: Text(title, style: AppTextStyles.body(context, fontSize: 14.5)),
       subtitle: Text(
         subtitle,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 12,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
+        style: AppTextStyles.caption(context),
       ),
       trailing: Icon(
         context.isAppRtl
             ? Icons.keyboard_arrow_left
             : Icons.keyboard_arrow_right,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        size: 20,
+        color: tokens.inkFaint,
       ),
       onTap: onTap,
     );

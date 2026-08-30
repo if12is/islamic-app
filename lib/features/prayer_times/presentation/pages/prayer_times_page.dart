@@ -558,15 +558,7 @@ class _LocationCard extends StatelessWidget {
       onTap: onChange,
       child: Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: tokens.brand.withValues(alpha: 0.14),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.place_outlined, size: 19, color: tokens.brand),
-          ),
+          const AppIconTile(Icons.place_outlined, role: AppIconRole.row),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(

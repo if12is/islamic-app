@@ -6,6 +6,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../data/prayer_log_store.dart';
 
@@ -113,21 +114,35 @@ class _PrayerLogCardState extends State<PrayerLogCard> {
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
           child: Column(
             children: [
+              // The tile's box and radius, with a ring added: this control has
+              // five states, not two, and the ring is what tells "not recorded
+              // yet" from "recorded as prayed alone" at a glance. The fill was
+              // groundAlt when unset and a tinted circle otherwise — two
+              // shapes and two colour families for one row of five.
               Container(
-                width: 38,
-                height: 38,
+                width: AppIconTile.boxFor(AppIconRole.row),
+                height: AppIconTile.boxFor(AppIconRole.row),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color:
-                      record == PrayerRecord.none
-                          ? tokens.groundAlt
-                          : colour.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(
+                    AppIconTile.boxFor(AppIconRole.row) / 3,
+                  ),
+                  color: colour.withValues(
+                    alpha: record == PrayerRecord.none ? 0.06 : 0.16,
+                  ),
                   border: Border.all(
-                    color: record == PrayerRecord.none ? tokens.line : colour,
+                    color:
+                        record == PrayerRecord.none
+                            ? tokens.line
+                            : colour.withValues(alpha: 0.55),
                     width: 1.4,
                   ),
                 ),
-                child: Icon(_iconFor(record), size: 18, color: colour),
+                child: Icon(
+                  _iconFor(record),
+                  size: AppIconTile.glyphFor(AppIconRole.row),
+                  color: colour,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(

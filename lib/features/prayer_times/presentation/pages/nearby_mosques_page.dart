@@ -9,6 +9,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/geo.dart';
 import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../shared/providers/app_providers.dart';
@@ -352,18 +353,26 @@ class _Arrow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
+    final box = AppIconTile.boxFor(AppIconRole.row);
+
     return Container(
-      width: 38,
-      height: 38,
+      width: box,
+      height: box,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: tokens.brand.withValues(alpha: 0.12),
-        shape: BoxShape.circle,
+        color: tokens.brand.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(box / 3),
       ),
-      // The bearing is measured from north; the icon points up, which is
-      // north on a north-up dial, so the rotation is the bearing itself.
+      // Not AppIconTile, because the glyph turns: the bearing is measured
+      // from north and the arrow points up, so the rotation is the bearing
+      // itself. Everything around it is the tile's own geometry.
       child: Transform.rotate(
         angle: bearing * math.pi / 180,
-        child: Icon(Icons.navigation_rounded, size: 19, color: tokens.brand),
+        child: Icon(
+          Icons.navigation_rounded,
+          size: AppIconTile.glyphFor(AppIconRole.row),
+          color: tokens.brand,
+        ),
       ),
     );
   }

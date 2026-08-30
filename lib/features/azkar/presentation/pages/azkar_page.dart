@@ -806,6 +806,15 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                   style: AppTextStyles.display(context, fontSize: 16),
                 ),
               ),
+              // The phrase on screen can be committed to daily from here,
+              // which is where someone decides they want it every day.
+              AddToWirdButton(
+                kind: WirdKind.tasbih,
+                reference: 'phrase:$_currentZekrIndex',
+                title: currentZekr,
+                target: _target,
+                compact: true,
+              ),
               PillSelector<TasbeehMode>(
                 compact: true,
                 scrollable: false,
