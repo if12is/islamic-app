@@ -255,3 +255,56 @@ jobs:
           EOF
           )" \
             --latest=true
+
+      # ------------------------------------------------------------------
+      # Everything the Uptodown form asks for, in one place.
+      #
+      # There is no public Uptodown API — the developer console is a web form
+      # and nothing else — so this cannot upload for you. What it can do is
+      # remove every reason to go looking: the console's upload dialog takes a
+      # URL instead of a file, the rolling release URL never changes, and the
+      # rest of the form wants numbers this job already knows.
+      # ------------------------------------------------------------------
+      - name: Prepare the store submission
+        if: always() && steps.mode.outputs.update_latest == 'true'
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+          BASE="https://github.com/${REPO}/releases/download/apk-latest"
+
+          {
+            echo "## Uptodown submission"
+            echo
+            echo "Paste into **Files → + Add new version → ☑ Use url**."
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version name | \`${VERSION_NAME}\` |"
+            echo "| Version code | \`${VERSION_CODE}\` |"
+            echo "| Signed | \`${{ steps.signing.outputs.signed }}\` |"
+            echo
+            echo "### Download URLs (stable — they do not change between releases)"
+            echo
+            echo '```'
+            echo "${BASE}/islamic-app-latest-arm64-v8a.apk"
+            echo "${BASE}/islamic-app-latest-armeabi-v7a.apk"
+            echo '```'
+            echo
+            echo "Upload **arm64-v8a** first: every current phone runs it."
+            echo
+            echo "### Checksums"
+            echo
+            echo '```'
+            for f in dist/*.apk; do
+              printf '%s  %s  %s MB\n' \
+                "$(sha256sum "$f" | cut -c1-16)" \
+                "$(basename "$f")" \
+                "$(( $(stat -c%s "$f") / 1000000 ))"
+            done
+            echo '```'
+            echo
+            echo "Listing text and screenshots: \`store/listing.md\`, \`ads/cards/\`."
+          } >> "$GITHUB_STEP_SUMMARY"
