@@ -25,6 +25,8 @@ const HEIGHT = 1920;
 
 // One line each. The title names the screen, the subtitle says what it is for
 // — not what it contains, which the picture underneath is already saying.
+// Crops are fractions of the screenshot, not pixels, so they survive a change
+// of capture density. x/y is the top-left corner, w/h the size.
 const CARDS = [
   {
     file: 'home',
@@ -52,16 +54,64 @@ const CARDS = [
     sub: 'أضف أي سورة أو جزء أو ذكر أو تسبيح إلى وردك، وتابعه كل يوم',
   },
   {
-    // This shot is scrolled to where the add buttons are, so the caption is
-    // about them rather than about the beads above them.
-    file: 'azkar_tasbeeh',
-    title: 'أضفه لوردك بضغطة',
-    sub: 'من أي باب أذكار أو سورة أو تسبيح — يُصبح جزءاً من وردك اليومي',
-  },
-  {
     file: 'prayer_tools',
     title: 'كل ما حول الصلاة',
     sub: 'القبلة، جدول الشهر، أقرب المساجد، ووضع السفر',
+  },
+  {
+    file: 'reader',
+    title: 'صفحة المصحف',
+    sub: 'الرسم العثماني بأدوات كل آية: تفسير، حفظ، مشاركة، وتلاوة',
+  },
+  {
+    file: 'broadcasts',
+    title: 'البثوث والراديو',
+    sub: 'إذاعة القرآن من القاهرة، وعشرات الإذاعات، وقناتا القرآن والسنة',
+  },
+  {
+    file: 'zakat',
+    title: 'حاسبة الزكاة',
+    sub: 'نصاب الذهب أو الفضة، بأسعار اليوم، على كل ما تملك',
+  },
+  {
+    file: 'notification_center',
+    title: 'تنبيهات على مقاسك',
+    sub: 'أذان أو تنبيه أو صامت لكل صلاة، وتنبيه قبل الأذان وبعد الإقامة',
+  },
+  {
+    file: 'home_dark',
+    title: 'ووضع ليلي كامل',
+    sub: 'كل شاشة في التطبيق لها وجهها الليلي — للفجر وقيام الليل',
+  },
+
+  // ---- التركيز: بطاقة عن شيء واحد، مكبَّرة عليه ------------------------
+  {
+    file: 'prayer_log',
+    mode: 'zoom',
+    crop: { x: 0.04, y: 0.325, w: 0.92, h: 0.25 },
+    title: 'سجّل كيف صلّيتها',
+    sub: 'في المسجد، أو جماعةً، أو منفرداً، أو قضاءً — بضغطة على كل صلاة',
+  },
+  {
+    file: 'azkar_cards',
+    mode: 'zoom',
+    crop: { x: 0.04, y: 0.58, w: 0.92, h: 0.26 },
+    title: 'أضفه لوردك بضغطة',
+    sub: 'من أي باب أذكار أو سورة أو جزء أو تسبيح — يُصبح جزءاً من وردك',
+  },
+  {
+    file: 'hijri_calendar',
+    mode: 'zoom',
+    crop: { x: 0.03, y: 0.045, w: 0.94, h: 0.54 },
+    title: 'الأيام لها علامات',
+    sub: 'الاثنين والخميس، والأيام البيض، والأعياد — معلَّمة في تقويمك',
+  },
+  {
+    file: 'quran_index',
+    mode: 'zoom',
+    crop: { x: 0.03, y: 0.38, w: 0.94, h: 0.25 },
+    title: 'ابحث كيفما تحفظ',
+    sub: 'بالسورة، أو الجزء، أو الحزب، أو رقم الصفحة',
   },
 ];
 
@@ -99,23 +149,49 @@ async function main() {
       (c, dir) => {
         document.getElementById('title').textContent = c.title;
         document.getElementById('sub').textContent = c.sub;
-        document.getElementById('shot').src = `${dir}/${c.file}.png`;
+        document.body.dataset.mode = c.mode || 'phone';
+
+        const id = c.mode === 'zoom' ? 'zoomShot' : 'shot';
+        document.getElementById(id).src = `${dir}/${c.file}.png`;
       },
       card,
       'screens'
     );
 
     // Wait for the screenshot itself to decode, or the card is composed
-    // around an image that is not there yet.
+    // around an image that is not there yet — and, for a zoom, around an
+    // image whose natural size is not known so the crop cannot be computed.
     await page.evaluate(
-      () =>
+      (mode) =>
         new Promise((resolve) => {
-          const img = document.getElementById('shot');
+          const img = document.getElementById(
+            mode === 'zoom' ? 'zoomShot' : 'shot'
+          );
           if (img.complete && img.naturalWidth) return resolve();
           img.onload = resolve;
           img.onerror = resolve;
-        })
+        }),
+      card.mode
     );
+
+    if (card.mode === 'zoom') {
+      await page.evaluate((c) => {
+        const box = document.getElementById('zoom');
+        const img = document.getElementById('zoomShot');
+        const { naturalWidth: nw, naturalHeight: nh } = img;
+
+        const cw = c.crop.w * nw;
+        const ch = c.crop.h * nh;
+        // The window is a fixed width, so the scale is whatever brings the
+        // crop up to it; the height follows, which keeps the aspect honest.
+        const scale = box.clientWidth / cw;
+
+        box.style.height = `${Math.round(ch * scale)}px`;
+        img.style.width = `${nw}px`;
+        img.style.transform =
+          `scale(${scale}) translate(${-c.crop.x * nw}px, ${-c.crop.y * nh}px)`;
+      }, card);
+    }
     await new Promise((r) => setTimeout(r, 400));
 
     const file = path.join(OUT, `${card.file}.png`);

@@ -124,6 +124,48 @@
     border-radius: 50px;
   }
 
+  /* The zoom layout.
+     A card about one control should show that control, not a whole phone with
+     the control somewhere in it. The window crops the screenshot to the part
+     the caption is about and scales it up, so the thing being described is the
+     thing being looked at. */
+  .zoom {
+    /* Centred in what the header and the footer leave, rather than pinned
+       under the title with a void beneath it: a crop is short, and a short
+       thing at the top of a tall card reads as a mistake. */
+    margin-block: auto;
+    flex-shrink: 0;
+    width: 860px;
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
+    background: var(--cream);
+    box-shadow:
+      0 40px 80px rgba(18, 38, 31, 0.24),
+      0 6px 18px rgba(18, 38, 31, 0.12);
+    /* A hairline, because a cream crop on a cream card has no edge of its own
+       and would read as a hole rather than a window. */
+    outline: 3px solid rgba(15, 107, 79, 0.16);
+    outline-offset: -3px;
+    z-index: 2;
+  }
+
+  .zoom img {
+    display: block;
+    position: absolute;
+    /* Anchored explicitly. The page is right-to-left, so an absolutely
+       positioned element with neither edge set resolves against the right —
+       and the crop, whose maths is all measured from the left, came out
+       shifted by the difference. */
+    top: 0;
+    left: 0;
+    right: auto;
+    transform-origin: top left;
+  }
+
+  body[data-mode='zoom'] .phone { display: none; }
+  body[data-mode='phone'] .zoom { display: none; }
+
   footer {
     margin-top: auto;
     padding-bottom: 76px;
@@ -151,7 +193,7 @@
   }
 </style>
 </head>
-<body>
+<body data-mode="phone">
 
 <svg class="skyline" viewBox="0 0 1080 420" preserveAspectRatio="none" aria-hidden="true">
   <!-- Two minarets and three domes on a ground line. Flat fills, no detail:
@@ -178,6 +220,10 @@
 
 <div class="phone">
   <img id="shot" alt="">
+</div>
+
+<div class="zoom" id="zoom">
+  <img id="zoomShot" alt="">
 </div>
 
 <footer>
