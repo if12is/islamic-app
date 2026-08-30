@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+  /* The app's own faces, loaded from the app's own asset folder, so the
+     cards are set in the same type the screenshots are. */
+  @font-face {
+    font-family: 'ReemKufi';
+    src: url('../assets/fonts/ReemKufi.ttf') format('truetype');
+    font-weight: 400 700;
+  }
+  @font-face {
+    font-family: 'Cairo';
+    src: url('../assets/fonts/Cairo-Variable.ttf') format('truetype');
+    font-weight: 200 900;
+  }
+
+  /* Straight from design_tokens.dart. The cards and the app are one palette
+     or they are two products. */
+  :root {
+    --cream: #F6F0E4;
+    --cream-deep: #EFE7D7;
+    --brand: #0F6B4F;
+    --brand-deep: #0A4A37;
+    --gold: #AF7B21;
+    --gold-ink: #89611A;
+    --ink: #12261F;
+    --ink-muted: #3E5148;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { width: 1080px; height: 1920px; }
+
+  body {
+    font-family: 'Cairo', system-ui, sans-serif;
+    color: var(--ink);
+    /* Cream at the top where the words are, deepening to the brand at the
+       foot — the dawn the app is named for, read top to bottom. */
+    background:
+      radial-gradient(120% 60% at 50% 118%, rgba(15,107,79,0.30) 0%, transparent 62%),
+      linear-gradient(180deg, var(--cream) 0%, var(--cream-deep) 46%, #DCE8DF 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* A skyline, drawn rather than photographed: three domes and two minarets,
+     kept to a whisper so it is texture under the phone and not a picture
+     competing with it. */
+  .skyline {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 420px;
+    opacity: 0.13;
+    color: var(--brand-deep);
+  }
+
+  header {
+    padding: 96px 80px 0;
+    text-align: center;
+    z-index: 2;
+  }
+
+  h1 {
+    font-family: 'ReemKufi', serif;
+    font-size: 86px;
+    line-height: 1.18;
+    font-weight: 700;
+    color: var(--brand-deep);
+    letter-spacing: -0.5px;
+  }
+
+  .sub {
+    margin-top: 22px;
+    font-size: 34px;
+    line-height: 1.55;
+    font-weight: 500;
+    color: var(--ink-muted);
+    max-width: 820px;
+    margin-inline: auto;
+  }
+
+  /* The phone. A dark bezel, a real corner radius, and one soft shadow —
+     enough to read as a device and not so much that it becomes the subject. */
+  .phone {
+    margin-top: 70px;
+    /* 580, not 620. The column is a flex container, so an over-tall phone is
+       silently squeezed rather than overflowing — which cropped the bottom of
+       every screenshot including the nav bar, the one part of the app every
+       card was meant to show. `flex-shrink: 0` makes that a visible overflow
+       instead of a quiet crop, and 580 leaves it room it does not need. */
+    flex-shrink: 0;
+    width: 580px;
+    padding: 14px;
+    border-radius: 62px;
+    background: linear-gradient(160deg, #223028 0%, #101a15 100%);
+    box-shadow:
+      0 46px 90px rgba(18, 38, 31, 0.30),
+      0 8px 22px rgba(18, 38, 31, 0.16);
+    z-index: 2;
+    position: relative;
+  }
+
+  .phone::after {
+    /* The earpiece slot, which is what stops a rounded rectangle reading as
+       a rounded rectangle. */
+    content: '';
+    position: absolute;
+    top: 30px; left: 50%;
+    transform: translateX(-50%);
+    width: 112px; height: 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.16);
+    z-index: 3;
+  }
+
+  .phone img {
+    display: block;
+    width: 100%;
+    border-radius: 50px;
+  }
+
+  footer {
+    margin-top: auto;
+    padding-bottom: 76px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 2;
+  }
+
+  .wordmark {
+    font-family: 'ReemKufi', serif;
+    font-size: 46px;
+    font-weight: 700;
+    color: var(--brand-deep);
+    line-height: 1;
+  }
+
+  .latin {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.44em;
+    text-indent: 0.44em;
+    color: var(--gold-ink);
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<svg class="skyline" viewBox="0 0 1080 420" preserveAspectRatio="none" aria-hidden="true">
+  <!-- Two minarets and three domes on a ground line. Flat fills, no detail:
+       at 13% opacity anything finer is mud. -->
+  <path fill="currentColor" d="
+    M0 420 L0 300 L120 300 L120 420 Z
+    M150 420 L150 250 Q150 210 178 210 Q206 210 206 250 L206 420 Z
+    M240 420 L240 296 Q300 296 300 232 Q360 232 360 296 L360 420 Z
+    M400 420 L400 268 Q460 200 540 200 Q620 200 680 268 L680 420 Z
+    M720 420 L720 296 Q780 296 780 232 Q840 232 840 296 L840 420 Z
+    M874 420 L874 250 Q874 210 902 210 Q930 210 930 250 L930 420 Z
+    M960 420 L960 300 L1080 300 L1080 420 Z
+  "/>
+  <!-- Finials. -->
+  <circle cx="178" cy="196" r="9" fill="currentColor"/>
+  <circle cx="902" cy="196" r="9" fill="currentColor"/>
+  <circle cx="540" cy="184" r="12" fill="currentColor"/>
+</svg>
+
+<header>
+  <h1 id="title">العنوان</h1>
+  <p class="sub" id="sub">الوصف</p>
+</header>
+
+<div class="phone">
+  <img id="shot" alt="">
+</div>
+
+<footer>
+  <!-- The Al-Fajr mark, the same circle and band the app icon is drawn from. -->
+  <svg width="72" height="72" viewBox="0 0 120 120" aria-hidden="true">
+    <circle cx="60" cy="58" r="26" fill="#AF7B21"></circle>
+    <path d="M12 60 L60 74 L108 60 L108 78 L60 92 L12 78 Z" fill="#0F6B4F"></path>
+  </svg>
+  <div>
+    <div class="wordmark">الفجر</div>
+    <div class="latin">FAJR</div>
+  </div>
+</footer>
+
+</body>
+</html>

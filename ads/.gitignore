@@ -1,0 +1,4 @@
+# Installed with `npm i puppeteer-core` when the cards are rebuilt.
+node_modules/
+package-lock.json
+package.json

@@ -7,6 +7,7 @@ import '../../../../core/services/seasonal_intro_service.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/widgets/fajr_mark.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../home/presentation/pages/home_page.dart';
@@ -112,23 +113,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // The app's own mark. This was a generic brightness glyph in a
+                // green disc — the one screen every launch passes through was
+                // showing a logo the app does not have.
                 Container(
-                  width: 108,
-                  height: 108,
+                  width: 116,
+                  height: 116,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: AlignmentDirectional.topStart,
-                      end: AlignmentDirectional.bottomEnd,
-                      colors: [tokens.brand, tokens.brandDeep],
-                    ),
-                    boxShadow: AppShadows.glow(tokens.brand, alpha: 0.30),
+                    borderRadius: BorderRadius.circular(116 / 3),
+                    color: tokens.brand.withValues(alpha: 0.11),
+                    boxShadow: AppShadows.glow(tokens.brand, alpha: 0.22),
                   ),
-                  child: const Icon(
-                    Icons.brightness_low,
-                    color: Colors.white,
-                    size: 52,
-                  ),
+                  child: const FajrMark(size: 76),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 Text(
