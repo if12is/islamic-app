@@ -56,7 +56,7 @@ void main() {
     expect(parsed.buildNumber, 88);
   });
 
-  test('a higher build number is the only thing that counts as newer', () {
+  test('a higher build number is newer when the names match', () {
     const release = AppRelease(
       versionName: '1.1.0',
       buildNumber: 90,
@@ -69,6 +69,34 @@ void main() {
     expect(UpdateService.isNewer(release, 89), isTrue);
     expect(UpdateService.isNewer(release, 90), isFalse);
     expect(UpdateService.isNewer(release, 91), isFalse);
+  });
+
+  test('a higher marketing version is newer even if its build is smaller', () {
+    const published = AppRelease(
+      versionName: '1.3.0',
+      buildNumber: 44,
+      notes: '',
+      pageUrl: '',
+      apkUrl: 'https://example.com/app.apk',
+      apkBytes: 1,
+    );
+
+    expect(
+      UpdateService.isNewer(
+        published,
+        2032,
+        currentVersionName: '1.2.0',
+      ),
+      isTrue,
+    );
+    expect(
+      UpdateService.isNewer(published, 44, currentVersionName: '1.3.0'),
+      isFalse,
+    );
+    expect(
+      UpdateService.isNewer(published, 10, currentVersionName: '1.4.0'),
+      isFalse,
+    );
   });
 
   test('formats a size someone can weigh against their data', () {

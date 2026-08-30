@@ -896,7 +896,15 @@ class SettingsPage extends ConsumerWidget {
       case AppUpdateStatus.failed:
         return context.tr('app_update_failed');
       case AppUpdateStatus.current:
-        return context.tr('app_update_current');
+        return AppLocalizations.translate(
+          language,
+          'app_update_current',
+          replacements: {
+            'installed':
+                state.currentLabel.isEmpty ? '—' : state.currentLabel,
+            'latest': state.release?.label ?? '—',
+          },
+        );
       case AppUpdateStatus.idle:
         return context.tr('app_update_desc');
     }

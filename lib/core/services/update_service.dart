@@ -23,8 +23,8 @@ class AppRelease {
   /// "1.0.1" — the marketing version.
   final String versionName;
 
-  /// The versionCode. This, not [versionName], decides what is newer: CI
-  /// takes it from the run number, so it only ever increases.
+  /// The versionCode. Used when the marketing names are equal. It is not
+  /// enough on its own: a phone on 1.2.0+2032 must still be offered 1.3.0+44.
   final int buildNumber;
 
   final String notes;
@@ -332,8 +332,49 @@ class UpdateService {
   }
 
   /// Whether [release] is worth telling the user about.
-  static bool isNewer(AppRelease release, int currentBuild) =>
-      release.buildNumber > currentBuild;
+  ///
+  /// Marketing versions win when they differ. Build numbers used to be the
+  /// only signal because CI set versionCode from the Actions run number.
+  /// That refuses a real upgrade when an older name carries a larger run
+  /// number — 1.2.0 (2032) vs 1.3.0 (44) was reported as "nothing to install".
+  static bool isNewer(
+    AppRelease release,
+    int currentBuild, {
+    String currentVersionName = '',
+  }) {
+    final nameCmp = compareVersionNames(release.versionName, currentVersionName);
+    if (nameCmp != 0) {
+      return nameCmp > 0;
+    }
+    return release.buildNumber > currentBuild;
+  }
+
+  /// -1 if [a] is older, 1 if newer, 0 if equal or either is unreadable.
+  static int compareVersionNames(String a, String b) {
+    final aParts = _versionParts(a);
+    final bParts = _versionParts(b);
+    if (aParts == null || bParts == null) {
+      return 0;
+    }
+    for (var i = 0; i < 3; i++) {
+      if (aParts[i] != bParts[i]) {
+        return aParts[i].compareTo(bParts[i]);
+      }
+    }
+    return 0;
+  }
+
+  static List<int>? _versionParts(String name) {
+    final match = RegExp(r'^(\d+)\.(\d+)\.(\d+)').firstMatch(name.trim());
+    if (match == null) {
+      return null;
+    }
+    return [
+      int.parse(match.group(1)!),
+      int.parse(match.group(2)!),
+      int.parse(match.group(3)!),
+    ];
+  }
 
   /// Has enough time passed to look again?
   static bool isDue(SharedPreferences prefs, {DateTime? now}) {

@@ -96,7 +96,12 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
       // failed one as done would put the next attempt twelve hours away.
       await UpdateService.markChecked(appPreferences);
 
-      if (release == null || !UpdateService.isNewer(release, currentBuild)) {
+      if (release == null ||
+          !UpdateService.isNewer(
+            release,
+            currentBuild,
+            currentVersionName: currentName,
+          )) {
         // The release is kept even when there is nothing to install, so the
         // screen can name what it compared against. Dropping it here is what
         // left "you are on the latest version" as a bare assertion the reader
