@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/bookmark_store.dart';
 import '../../data/services/quran_local_service.dart';
@@ -240,13 +241,9 @@ class _NotesPageState extends ConsumerState<NotesPage> {
   }
 
   Widget _noteCard(QuranBookmark bookmark, ColorScheme colorScheme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
+    // AppCard: this was a bordered container at radius 16 with its own
+    // padding, in an app whose cards are 28 with a soft shadow and no border.
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

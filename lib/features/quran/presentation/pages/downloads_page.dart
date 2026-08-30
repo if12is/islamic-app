@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/data_saver.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/audio_download_service.dart';
 import '../../data/services/quran_local_service.dart';
@@ -305,8 +307,16 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      // The surah number was printed into the title as "18. الكهف" while the
+      // main surah list gives it a badge. Same list, two shapes.
+      leading: AppIconTile(
+        isDownloaded ? Icons.offline_pin_outlined : Icons.menu_book_rounded,
+        role: AppIconRole.row,
+        tone: isDownloaded ? AppIconTone.brand : AppIconTone.neutral,
+        selected: isDownloaded,
+      ),
       title: Text(
-        '${surah.id}. ${context.isAppRtl ? surah.nameAr : surah.nameEn}',
+        context.isAppRtl ? surah.nameAr : surah.nameEn,
         style: AppTextStyles.body(context, fontSize: 15),
       ),
       subtitle:
@@ -361,7 +371,10 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
                         : context.tr('download'),
                 icon: Icon(
                   isDownloaded ? Icons.delete_outline : Icons.download_outlined,
-                  color: isDownloaded ? colorScheme.error : colorScheme.primary,
+                  color:
+                      isDownloaded
+                          ? context.tokens.danger
+                          : context.tokens.brand,
                 ),
                 onPressed:
                     () =>

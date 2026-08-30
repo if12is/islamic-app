@@ -300,6 +300,14 @@ class QuranLocalService {
   static QuranVerse hizbStart(int hizb) =>
       hizbQuarterStart((hizb.clamp(1, hizbCount) - 1) * 4 + 1);
 
+  /// Where a juz begins.
+  ///
+  /// A juz is two ahzab, so it starts where its first hizb does. Derived
+  /// rather than tabulated: one table of quarter starts is the single place
+  /// any of these three can be wrong.
+  static QuranVerse juzStart(int juz) =>
+      hizbStart((juz.clamp(1, juzCount) - 1) * 2 + 1);
+
   /// Where a page begins, for the page index.
   static QuranVerse pageStart(int pageNumber) {
     final data = quran.getPageData(pageNumber.clamp(1, pageCount));

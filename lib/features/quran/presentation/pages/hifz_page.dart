@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../domain/entities/hifz_item.dart';
@@ -94,35 +97,31 @@ class HifzPage extends ConsumerWidget {
   }
 
   Widget _dueCard(BuildContext context, WidgetRef ref, List<HifzItem> due) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color:
-            due.isEmpty
-                ? Theme.of(context).cardColor
-                : colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
+    return AppCard(
+      // A tint, not primaryContainer: the card is the app's own surface with
+      // the brand washed over it when there is something due, which is how
+      // every other "this one is live" card in the app is marked.
+      accent: due.isEmpty ? null : tokens.brand.withValues(alpha: 0.09),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                due.isEmpty ? Icons.check_circle : Icons.event_repeat,
-                color: colorScheme.primary,
+              AppIconTile(
+                due.isEmpty ? Icons.check_circle_outline : Icons.event_repeat,
+                role: AppIconRole.card,
+                selected: due.isNotEmpty,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
                   context.tr('hifz_due_today'),
                   style: AppTextStyles.display(context, fontSize: 17),
                 ),
               ),
-              Text('${due.length}', style: AppTextStyles.display(context)),
+              AppIconCount(count: '${due.length}'),
             ],
           ),
           const SizedBox(height: 10),
@@ -172,54 +171,63 @@ class HifzPage extends ConsumerWidget {
         child: Icon(Icons.delete_outline, color: colorScheme.onErrorContainer),
       ),
       onDismissed: (_) => ref.read(hifzProvider.notifier).remove(item),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDue ? colorScheme.primary : colorScheme.outlineVariant,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
           ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${context.tr('surah_word')} ${surah.nameAr} · '
-                    '${item.fromAyah}-${item.toAyah}',
-                    style: AppTextStyles.display(context, fontSize: 16),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isDue
-                        ? context.tr('hifz_due_now')
-                        : '${context.tr('hifz_next_review')}: '
-                            '${item.dueDate.day}/${item.dueDate.month}',
-                    style: AppTextStyles.caption(context),
-                  ),
-                ],
+          // The brand wash for "due now", the plain surface otherwise. It was
+          // a border that changed colour, which is a hairline the eye has to
+          // hunt for; every other list in the app marks state with a fill.
+          accent: isDue ? context.tokens.brand.withValues(alpha: 0.09) : null,
+          child: Row(
+            children: [
+              AppIconTile(
+                Icons.psychology_alt_outlined,
+                role: AppIconRole.row,
+                selected: isDue,
+                tone: isDue ? AppIconTone.brand : AppIconTone.neutral,
               ),
-            ),
-            _strengthBar(context, item),
-            IconButton(
-              tooltip: context.tr('open_in_reader'),
-              icon: const Icon(Icons.menu_book, size: 20),
-              onPressed:
-                  () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder:
-                          (_) => SurahReaderPage(
-                            surahNumber: item.surahNumber,
-                            initialVerse: item.fromAyah,
-                          ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${context.tr('surah_word')} ${surah.nameAr} · '
+                      '${item.fromAyah}-${item.toAyah}',
+                      style: AppTextStyles.display(context, fontSize: 16),
                     ),
-                  ),
-            ),
-          ],
+                    const SizedBox(height: 4),
+                    Text(
+                      isDue
+                          ? context.tr('hifz_due_now')
+                          : '${context.tr('hifz_next_review')}: '
+                              '${item.dueDate.day}/${item.dueDate.month}',
+                      style: AppTextStyles.caption(context),
+                    ),
+                  ],
+                ),
+              ),
+              _strengthBar(context, item),
+              IconButton(
+                tooltip: context.tr('open_in_reader'),
+                icon: const Icon(Icons.menu_book, size: 20),
+                onPressed:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder:
+                            (_) => SurahReaderPage(
+                              surahNumber: item.surahNumber,
+                              initialVerse: item.fromAyah,
+                            ),
+                      ),
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );

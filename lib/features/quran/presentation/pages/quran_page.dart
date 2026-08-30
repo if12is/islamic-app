@@ -625,121 +625,35 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     ),
   );
 
+  /// The thirty ajzaa.
+  ///
+  /// This was the last hand-built list in the app: its own card at radius 16
+  /// with its own shadow, a 48px badge on `surfaceContainerHighest`, a
+  /// hardcoded green, and "Juz 7" in Latin down the side of an Arabic screen.
+  /// It sat one tab away from the hizb list, which was already on the shared
+  /// row — the same list, drawn twice, differently.
   Widget _buildJuzList() {
-    if (_filteredJuzNumbers.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Text(
-            context.tr('no_juz_match'),
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _filteredJuzNumbers.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
+    return _buildIndexList(
+      count: _filteredJuzNumbers.length,
+      emptyKey: 'no_juz_match',
+      builder: (index) {
         final juzNumber = _filteredJuzNumbers[index];
+        final start = QuranLocalService.juzStart(juzNumber);
 
-        return GestureDetector(
-          onTap: () {
-            Navigator.of(context)
-                .push(
-                  MaterialPageRoute(
-                    builder: (context) => SurahReaderPage(juzNumber: juzNumber),
-                  ),
-                )
-                .then((_) {
-                  _loadLastRead();
-                });
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _formatNumber(context, juzNumber),
-                      style: TextStyle(
-                        color: _primaryDarkGreen,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${context.tr('juz_word')} ${_formatNumber(context, juzNumber)}',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).textTheme.bodyLarge!.color!,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        context.tr('tap_to_read_full_juz'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Juz $juzNumber',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: _primaryDarkGreen,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        return _IndexEntry(
+          badge: _formatNumber(context, juzNumber),
+          title:
+              '${context.tr('juz_word')} '
+              '${_formatNumber(context, juzNumber)}',
+          subtitle:
+              '${context.tr('starts_at')} ${start.surahNameAr} '
+              '${_formatNumber(context, start.numberInSurah)}',
+          trailing:
+              '${context.tr('page_word')} '
+              '${_formatNumber(context, start.page)}',
+          onTap: () => _openReader(SurahReaderPage(juzNumber: juzNumber)),
+          wirdKind: WirdKind.juz,
+          wirdReference: '$juzNumber',
         );
       },
     );
@@ -778,6 +692,8 @@ class _QuranPageState extends ConsumerState<QuranPage> {
           trailing:
               '${context.tr('page_word')} ${_formatNumber(context, start.page)}',
           onTap: () => _openReader(SurahReaderPage(hizbNumber: hizb)),
+          wirdKind: WirdKind.hizb,
+          wirdReference: '$hizb',
         );
       },
     );
@@ -858,7 +774,19 @@ class _QuranPageState extends ConsumerState<QuranPage> {
           badge: entry.badge,
           title: entry.title,
           meta: entry.subtitle,
-          trailingText: entry.trailing,
+          // The juz and hizb indexes are where someone decides to read a
+          // portion a day, so the wird button belongs on the row rather than
+          // only on the surah list.
+          trailingText: entry.canJoinWird ? null : entry.trailing,
+          trailing:
+              entry.canJoinWird
+                  ? AddToWirdButton(
+                    kind: entry.wirdKind!,
+                    reference: entry.wirdReference!,
+                    title: entry.title,
+                    compact: true,
+                  )
+                  : null,
           onTap: entry.onTap,
         );
       },
@@ -1306,6 +1234,8 @@ class _IndexEntry {
     required this.subtitle,
     required this.trailing,
     required this.onTap,
+    this.wirdKind,
+    this.wirdReference,
   });
 
   final String badge;
@@ -1313,4 +1243,13 @@ class _IndexEntry {
   final String subtitle;
   final String trailing;
   final VoidCallback onTap;
+
+  /// What this row would become if added to the daily wird.
+  ///
+  /// Null for the indexes that are a way of finding a place rather than a
+  /// portion to commit to — a page number is where you are, not what you read.
+  final WirdKind? wirdKind;
+  final String? wirdReference;
+
+  bool get canJoinWird => wirdKind != null && wirdReference != null;
 }
