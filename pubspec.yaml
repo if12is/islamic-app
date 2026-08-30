@@ -6,7 +6,7 @@ publish_to: 'none'
 # APK as an upgrade. This value decides only what a locally built APK reports,
 # and it is kept near the published build so a local build does not announce
 # every release as an update to itself. The name is what people read.
-version: 1.2.0+31
+version: 1.3.0+33
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
