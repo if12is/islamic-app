@@ -35,7 +35,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.islamicapp.islamic_app"
+        // Store listings key off this, not the Kotlin namespace. The old id
+        // `com.islamicapp.islamic_app` is already taken on Uptodown.
+        applicationId = "com.if12is.fajr"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // CI passes a strictly increasing build number. Android compares this,

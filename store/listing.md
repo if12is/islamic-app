@@ -15,7 +15,9 @@
 
 ## المعرّف
 
-`com.islamicapp.islamic_app`
+`com.if12is.fajr`
+
+> Uptodown رفض `com.islamicapp.islamic_app` لأنه مستخدم مسبقاً. لا تُرجعه.
 
 ## التصنيف
 

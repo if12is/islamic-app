@@ -17,7 +17,7 @@ fonts are bundled (Cairo for UI, ReemKufi for headings, AmiriQuran / Scheherazad
 Mushaf). The network is used only for tafsir and recitation audio.
 
 Package name: `islamic_app` (`pubspec.yaml`).
-Android applicationId: `com.islamicapp.islamic_app`.
+Android applicationId: `com.if12is.fajr` (Kotlin namespace stays `com.islamicapp.islamic_app`).
 App version: `version:` in `pubspec.yaml` (`1.0.0+1` = name `1.0.0`, build `1`).
 
 ## How to run during development
