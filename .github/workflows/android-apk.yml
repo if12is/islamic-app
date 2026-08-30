@@ -173,7 +173,18 @@ jobs:
             [ "${{ github.event.inputs.update_latest }}" = "true" ] && UPDATE_LATEST=true
             [ "${{ github.event.inputs.create_versioned_release }}" = "true" ] && CREATE_VERSIONED=true
           elif [ "${{ github.ref_type }}" = "tag" ]; then
-            UPDATE_LATEST=true
+            # A tag build makes the kept release and nothing else.
+            #
+            # `release.sh` pushes the branch and the tag together, so two runs
+            # start on the same commit. The concurrency group keys on the ref,
+            # and a branch and a tag are different refs, so neither cancels the
+            # other — and both used to race for the single rolling release.
+            # One deleted it while the other was uploading into it, which is
+            # exactly what happened on v1.3.0: HTTP 404 mid-upload.
+            #
+            # The master run replaces the rolling release; this one does not
+            # need to, because it is the same APK from the same commit.
+            UPDATE_LATEST=false
             CREATE_VERSIONED=true
           else
             # Push to master: replace rolling APK. Versioned only with [release].
