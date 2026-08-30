@@ -362,7 +362,7 @@ class NowPlayingPage extends ConsumerWidget {
                 : '${context.tr('sleep_timer')}: '
                     '${remaining!.inMinutes + 1} '
                     '${context.tr('minutes_short')}',
-            style: AppTextStyles.caption(context, color: tokens.gold),
+            style: AppTextStyles.caption(context, color: tokens.goldInk),
           ),
         ],
       ],

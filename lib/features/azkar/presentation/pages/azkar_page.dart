@@ -9,6 +9,9 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
+import '../../../home/domain/custom_wird.dart';
+import '../../../home/presentation/widgets/add_to_wird_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/services/azkar_data_service.dart';
@@ -137,7 +140,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'azkar',
-      leading: const ShellMenuButton(),
+      leading: const ShellThemeButton(),
       actions: const [ShellProfileButton()],
       body:
           _isLoading
@@ -352,6 +355,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                   count: morning.azkar.length.toString(),
                   icon: Icons.wb_twilight,
                   onTap: () => _navigateToDetails(morning),
+                  category: morning,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -366,6 +370,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                   count: evening.azkar.length.toString(),
                   icon: Icons.nights_stay_outlined,
                   onTap: () => _navigateToDetails(evening),
+                  category: evening,
                 ),
               ),
             ],
@@ -387,6 +392,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                   count: prayer.azkar.length.toString(),
                   icon: Icons.mosque_outlined,
                   onTap: () => _navigateToDetails(prayer),
+                  category: prayer,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -397,6 +403,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                   count: sleep.azkar.length.toString(),
                   icon: Icons.bedtime_outlined,
                   onTap: () => _navigateToDetails(sleep),
+                  category: sleep,
                 ),
               ),
             ],
@@ -412,9 +419,8 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     required String count,
     required IconData icon,
     required VoidCallback onTap,
+    AzkarCategory? category,
   }) {
-    final tokens = context.tokens;
-
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -423,34 +429,13 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: tokens.brand.withValues(alpha: 0.12),
-                  borderRadius: AppRadii.smAll,
-                ),
-                child: Icon(icon, size: 19, color: tokens.brand),
-              ),
+              // The icon and the count now sit on the same wash. They were a
+              // brand tint and `groundAlt` — two unrelated backgrounds a few
+              // pixels apart, which is why this card looked designed in the
+              // dark theme and assembled from parts in the light one.
+              AppIconTile(icon, role: AppIconRole.card),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: tokens.groundAlt,
-                  borderRadius: AppRadii.pillAll,
-                ),
-                child: Text(
-                  count,
-                  style: AppTextStyles.caption(
-                    context,
-                    fontSize: 11,
-                    color: tokens.inkFaint,
-                  ),
-                ),
-              ),
+              AppIconCount(count: count),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -464,8 +449,19 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
             subtitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption(context, color: tokens.inkFaint),
+            style: AppTextStyles.caption(context),
           ),
+          if (category != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AddToWirdButton(
+                kind: WirdKind.azkar,
+                reference: category.id.isEmpty ? title : category.id,
+                title: title,
+              ),
+            ),
+          ],
         ],
       ),
     );

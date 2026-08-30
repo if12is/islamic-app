@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/widgets/seasonal_decor.dart';
@@ -25,8 +26,9 @@ class GlassNavItem {
 ///
 /// The middle destination — home — sits in a circle that lifts above the bar,
 /// so the thumb finds it without looking and the shape says "this is the way
-/// back". The rest stay as quiet icons; the bar carries no labels, which is
-/// what keeps five destinations comfortable on a narrow phone.
+/// back". The other four carry their names: the bar used to show a dot under
+/// the open tab and nothing else, which works only for someone who already
+/// knows what each glyph opens.
 class GlassNavBar extends StatelessWidget {
   const GlassNavBar({
     super.key,
@@ -78,7 +80,7 @@ class GlassNavBar extends StatelessWidget {
                                 i == centre
                                     // The raised button is drawn above; this keeps its
                                     // slot in the row so the spacing stays even.
-                                    ? const SizedBox(height: 46)
+                                    ? const SizedBox(height: 50)
                                     : _FlatDestination(
                                       item: items[i],
                                       isSelected:
@@ -132,25 +134,34 @@ class _FlatDestination extends StatelessWidget {
         onTap: onTap,
         radius: 28,
         child: SizedBox(
-          height: 46,
+          height: 50,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 isSelected ? item.selectedIcon : item.icon,
-                size: 23,
-                color: isSelected ? tokens.brand : tokens.inkFaint,
+                size: 21,
+                color: isSelected ? tokens.brand : tokens.inkMuted,
               ),
-              const SizedBox(height: 5),
-              // A dot marks the open tab; a label would crowd five slots.
-              AnimatedContainer(
-                duration: AppMotion.base,
-                curve: AppMotion.enter,
-                width: isSelected ? 16 : 0,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: tokens.brand,
-                  borderRadius: BorderRadius.circular(2),
+              const SizedBox(height: 3),
+              // The bar carried no labels and a dot instead, which asked the
+              // reader to have already learned what each glyph opens. Four
+              // words fit, and a nav bar that has to be learned is a nav bar
+              // people guess at.
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppTextStyles.bodyFamily,
+                  fontSize: 10,
+                  height: 1.1,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  // inkMuted, not inkFaint: this is the smallest type in the
+                  // app and it sits on frosted glass, so it takes the stronger
+                  // of the two secondary inks.
+                  color: isSelected ? tokens.brand : tokens.inkMuted,
                 ),
               ),
             ],

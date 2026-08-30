@@ -12,6 +12,8 @@ import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/update_service.dart';
 import '../../../../shared/providers/app_update_provider.dart';
 import '../widgets/app_update_dialog.dart';
+import '../widgets/profile_header.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../broadcasts/presentation/pages/broadcasts_page.dart';
 import '../../../quran/presentation/pages/playlists_page.dart';
@@ -48,7 +50,6 @@ class SettingsPage extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final isNotificationsEnabled = ref.watch(notificationsEnabledProvider);
     final prayerMethod = ref.watch(prayerMethodProvider);
-    final profile = ref.watch(userProfileProvider);
     final notificationPrefs = ref.watch(notificationPreferencesProvider);
     final seasonalIntroEnabled = ref.watch(seasonalIntroEnabledProvider);
     final seasonalOverride = ref.watch(seasonalOverrideProvider);
@@ -102,71 +103,7 @@ class SettingsPage extends ConsumerWidget {
             body: ListView(
               padding: AppScaffold.scrollPadding,
               children: [
-                // Profile Area
-                Center(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color:
-                              isDark
-                                  ? colorScheme.surfaceContainerHighest
-                                  : context.tokens.ink,
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        child: Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.white24,
-                        ),
-                      ),
-                      Positioned(
-                        bottom: -8,
-                        right: -8,
-                        child: Material(
-                          color: accentColor,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => _editProfile(context, ref),
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.edit,
-                                size: 16,
-                                color: colorScheme.onSecondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    profile.name.isEmpty
-                        ? context.tr('user_name')
-                        : profile.name,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                ),
-                Center(
-                  child: Text(
-                    profile.location.isEmpty
-                        ? context.tr('user_location')
-                        : profile.location,
-                    style: TextStyle(fontSize: 14, color: subtitleColor),
-                  ),
-                ),
+                ProfileHeader(onEdit: () => _editProfile(context, ref)),
                 const SizedBox(height: 32),
 
                 // Adhan Notifications
@@ -486,13 +423,13 @@ class SettingsPage extends ConsumerWidget {
                         },
                         child: Row(
                           children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: mutedFill,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(Icons.language, color: textColor),
+                            // Settings drew its own icon container — a padded
+                            // grey circle — while every list elsewhere in the
+                            // app used a tinted rounded square. Five of them
+                            // on this page alone.
+                            const AppIconTile(
+                              Icons.language,
+                              role: AppIconRole.row,
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -541,16 +478,11 @@ class SettingsPage extends ConsumerWidget {
                         },
                         child: Row(
                           children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: mutedFill,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                isDark ? Icons.dark_mode : Icons.light_mode,
-                                color: textColor,
-                              ),
+                            AppIconTile(
+                              isDark
+                                  ? Icons.dark_mode_rounded
+                                  : Icons.light_mode_rounded,
+                              role: AppIconRole.row,
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -597,16 +529,9 @@ class SettingsPage extends ConsumerWidget {
                       ),
                       Row(
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: mutedFill,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.movie_filter_outlined,
-                              color: textColor,
-                            ),
+                          const AppIconTile(
+                            Icons.movie_filter_outlined,
+                            role: AppIconRole.row,
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -656,16 +581,9 @@ class SettingsPage extends ConsumerWidget {
                             ),
                         child: Row(
                           children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: mutedFill,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.widgets_outlined,
-                                color: textColor,
-                              ),
+                            const AppIconTile(
+                              Icons.widgets_outlined,
+                              role: AppIconRole.row,
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -717,16 +635,9 @@ class SettingsPage extends ConsumerWidget {
                             ),
                         child: Row(
                           children: [
-                            Container(
-                              padding: EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: mutedFill,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.palette_outlined,
-                                color: textColor,
-                              ),
+                            const AppIconTile(
+                              Icons.palette_outlined,
+                              role: AppIconRole.row,
                             ),
                             const SizedBox(width: 16),
                             Expanded(

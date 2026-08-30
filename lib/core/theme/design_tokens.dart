@@ -116,6 +116,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     required this.brandSoft,
     required this.gold,
     required this.goldBright,
+    required this.goldInk,
     required this.onGold,
     required this.danger,
     required this.glassTint,
@@ -156,8 +157,21 @@ class AppTokens extends ThemeExtension<AppTokens> {
   /// Brand at low weight, for fills behind icons.
   final Color brandSoft;
 
+  /// The identity's accent, for fills, ornament and large decorative marks.
+  ///
+  /// Not for text. WCAG asks 3:1 of an icon and 4.5:1 of a word, and this
+  /// clears the first and fails the second on cream — measured at 2.97 against
+  /// groundAlt, which is where a gold caption became a gold-coloured smudge.
   final Color gold;
   final Color goldBright;
+
+  /// The gold you write with.
+  ///
+  /// Same hue, taken down until it passes 4.5:1 on every surface in the light
+  /// theme. Splitting it from [gold] rather than darkening [gold] itself keeps
+  /// the accent that carries the identity — the logo, the hero card, the
+  /// ornament — from going muddy to fix a text problem.
+  final Color goldInk;
 
   /// Text and icons on top of gold. Never white — gold on white fails contrast.
   final Color onGold;
@@ -186,13 +200,18 @@ class AppTokens extends ThemeExtension<AppTokens> {
     surfaceRaised: Color(0xFFFFFFFF),
     ink: Color(0xFF12261F),
     inkMuted: Color(0xFF3E5148),
-    inkFaint: Color(0xFF7A8A80),
+    // Was #7A8A80, which is the colour a caption is set in 102 times across
+    // the app and which failed 4.5:1 on every single surface — 2.96 against
+    // groundAlt. That is the "text is nearly the background" complaint,
+    // measured. This clears 4.5 everywhere.
+    inkFaint: Color(0xFF5F6B63),
     line: Color(0xFFDED2BB),
     brand: Color(0xFF0F6B4F),
     brandDeep: Color(0xFF0A4A37),
     brandSoft: Color(0xFFD8E8E0),
-    gold: Color(0xFFB07C21),
+    gold: Color(0xFFAF7B21),
     goldBright: Color(0xFFD9A233),
+    goldInk: Color(0xFF89611A),
     onGold: Color(0xFF12261F),
     danger: Color(0xFFA3312B),
     glassTint: Color(0x8CFFFCF6),
@@ -210,13 +229,20 @@ class AppTokens extends ThemeExtension<AppTokens> {
     surfaceRaised: Color(0xFF1B2E27),
     ink: Color(0xFFEDE6D7),
     inkMuted: Color(0xFFB7C4BB),
-    inkFaint: Color(0xFF7E8F85),
+    // Was #7E8F85, a hair under 4.5 on surfaceRaised — a card on a card is
+    // where a caption is hardest to read, and it was the one place it failed.
+    inkFaint: Color(0xFF84958B),
     line: Color(0xFF26362F),
     brand: Color(0xFF10B981),
     brandDeep: Color(0xFF064E3B),
     brandSoft: Color(0xFF16352B),
     gold: Color(0xFFE0AE4A),
     goldBright: Color(0xFFF0C063),
+    // The dark theme's gold already reads at 7:1 and better, so writing gold
+    // and accent gold are the same colour here. The split exists for the light
+    // theme; forcing a second value on the dark one would only invent a
+    // difference nobody asked for.
+    goldInk: Color(0xFFE0AE4A),
     onGold: Color(0xFF12261F),
     danger: Color(0xFFE06C64),
     glassTint: Color(0x9914231D),
@@ -242,6 +268,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
     Color? brandSoft,
     Color? gold,
     Color? goldBright,
+    Color? goldInk,
     Color? onGold,
     Color? danger,
     Color? glassTint,
@@ -265,6 +292,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       brandSoft: brandSoft ?? this.brandSoft,
       gold: gold ?? this.gold,
       goldBright: goldBright ?? this.goldBright,
+      goldInk: goldInk ?? this.goldInk,
       onGold: onGold ?? this.onGold,
       danger: danger ?? this.danger,
       glassTint: glassTint ?? this.glassTint,
@@ -297,6 +325,7 @@ class AppTokens extends ThemeExtension<AppTokens> {
       brandSoft: mix(brandSoft, other.brandSoft),
       gold: mix(gold, other.gold),
       goldBright: mix(goldBright, other.goldBright),
+      goldInk: mix(goldInk, other.goldInk),
       onGold: mix(onGold, other.onGold),
       danger: mix(danger, other.danger),
       glassTint: mix(glassTint, other.glassTint),

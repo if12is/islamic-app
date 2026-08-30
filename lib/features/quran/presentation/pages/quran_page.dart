@@ -6,6 +6,8 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
+import '../../../home/domain/custom_wird.dart';
+import '../../../home/presentation/widgets/add_to_wird_button.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/custom_loader.dart';
@@ -382,7 +384,7 @@ class _QuranPageState extends ConsumerState<QuranPage> {
         context.tr('quran'),
         style: AppTextStyles.display(context, fontSize: 18),
       ),
-      leading: const ShellMenuButton(),
+      leading: const ShellThemeButton(),
       actions: const [ShellProfileButton()],
       body: Stack(
         children: [
@@ -581,15 +583,30 @@ class _QuranPageState extends ConsumerState<QuranPage> {
                 '${_formatNumber(context, surah.versesCount)} '
                 '${context.tr('verses')}',
             trailingText: context.isAppRtl ? null : surah.nameAr,
-            trailing: GhostIconButton(
-              icon:
-                  playback.surahNumber == surah.id && playback.playing
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_outline,
-              active: playback.surahNumber == surah.id && playback.playing,
-              size: 24,
-              tooltip: context.tr('play'),
-              onTap: () => _play(surah.id),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Adding a surah to the daily wird belongs where the surah is,
+                // not buried in a screen the reader has to already know about.
+                AddToWirdButton(
+                  kind: WirdKind.surah,
+                  reference: '${surah.id}',
+                  title:
+                      '${context.tr('surah_word')} '
+                      '${context.isAppRtl ? surah.nameAr : surah.nameEn}',
+                  compact: true,
+                ),
+                GhostIconButton(
+                  icon:
+                      playback.surahNumber == surah.id && playback.playing
+                          ? Icons.pause_circle_filled
+                          : Icons.play_circle_outline,
+                  active: playback.surahNumber == surah.id && playback.playing,
+                  size: 24,
+                  tooltip: context.tr('play'),
+                  onTap: () => _play(surah.id),
+                ),
+              ],
             ),
             onTap: () => _openReader(SurahReaderPage(surahNumber: surah.id)),
           ),

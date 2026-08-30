@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/models/adhan_sound.dart';
 import '../../../../core/models/notification_preferences.dart';
@@ -600,28 +602,40 @@ class _NotificationCenterPageState
             ),
           ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final mode in [PrayerAlertMode.adhan, PrayerAlertMode.off])
-              OutlinedButton(
-                onPressed:
-                    _busy
-                        ? null
-                        : () => _apply(
-                          () => ref
-                              .read(notificationPreferencesProvider.notifier)
-                              .setAllPrayers(mode),
+        // One switch, not two buttons. It was a pair of outlined buttons
+        // reading "all prayers: adhan" and "all prayers: off" — two controls
+        // for one two-state decision, sitting at different widths because
+        // their labels are different lengths, and neither showing which state
+        // was current. A switch is the shape of the question being asked.
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          value: _allPrayersOn(prefs),
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .setAllPrayers(
+                          value ? PrayerAlertMode.adhan : PrayerAlertMode.off,
                         ),
-                child: Text(
-                  '${context.tr('apply_to_all')}: ${_modeLabel(mode)}',
-                ),
-              ),
-          ],
+                  ),
+          title: Text(context.tr('all_prayers_adhan')),
+          subtitle: Text(
+            context.tr('all_prayers_adhan_desc'),
+            style: AppTextStyles.caption(context),
+          ),
         ),
       ],
     );
   }
+
+  /// True when every prayer is on the adhan mode, which is what the switch
+  /// reports. A mixed set reads as off, because the switch's job is to say
+  /// "all of them" and a half-on switch would be a lie either way.
+  bool _allPrayersOn(NotificationPreferences prefs) => PrayerIds.obligatory
+      .every((id) => prefs.modeFor(id) == PrayerAlertMode.adhan);
 
   Widget _modeMenu(NotificationPreferences prefs, String prayerId) {
     final current = prefs.modeFor(prayerId);
@@ -775,11 +789,34 @@ class _NotificationCenterPageState
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        // Folded away, because bringing your own adhan is the rare case and it
+        // was taking the loudest two controls on the screen: a filled button
+        // and an outlined one, side by side at different widths, competing
+        // with the list of sounds that is what most people came here to use.
+        // Behind one line it is still one tap from being found.
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 8),
+          shape: const Border(),
+          collapsedShape: const Border(),
+          leading: Icon(
+            Icons.library_music_outlined,
+            size: 20,
+            color: context.tokens.inkMuted,
+          ),
+          title: Text(
+            context.tr('adhan_own_sound'),
+            style: AppTextStyles.body(context, fontSize: 14),
+          ),
+          subtitle: Text(
+            context.tr('adhan_own_sound_desc'),
+            style: AppTextStyles.caption(context),
+          ),
           children: [
-            FilledButton.tonalIcon(
+            // Both actions are the same weight now. They do the same kind of
+            // thing — point at a file — and one being filled and one outlined
+            // said there was a right answer and a wrong one.
+            OutlinedButton.icon(
               onPressed:
                   _busy
                       ? null
@@ -789,8 +826,18 @@ class _NotificationCenterPageState
                       ),
               icon: const Icon(Icons.upload_file, size: 18),
               label: Text(context.tr('import_adhan')),
+              style: OutlinedButton.styleFrom(
+                // Full width, both of them. They were sized by their labels,
+                // so two controls doing equally important things sat at two
+                // different widths and read as unequal.
+                minimumSize: const Size.fromHeight(44),
+              ),
             ),
+            const SizedBox(height: 8),
             OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+              ),
               onPressed:
                   _busy
                       ? null

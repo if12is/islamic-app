@@ -61,7 +61,7 @@ CREAM = "#F6F0E4"
 NIGHT = "#0B1411"
 GREEN = "#0F6B4F"
 GREEN_BRIGHT = "#10B981"
-GOLD = "#B07C21"
+GOLD = "#AF7B21"  # matches AppTokens.light.gold; kept in step deliberately
 GOLD_BRIGHT = "#E0AE4A"
 INK = "#12261F"
 

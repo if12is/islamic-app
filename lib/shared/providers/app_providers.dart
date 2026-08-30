@@ -557,7 +557,9 @@ class MainTabNotifier extends Notifier<int> {
 
   void openHome() => setIndex(0);
 
-  void openSettings() => setIndex(3);
+  /// Tab 3 is the wird, not Settings — Settings is pushed as a page now, so
+  /// there is no tab index to jump to.
+  void openWird() => setIndex(3);
 }
 
 final mainTabIndexProvider = NotifierProvider<MainTabNotifier, int>(

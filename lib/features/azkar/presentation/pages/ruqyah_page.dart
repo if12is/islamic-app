@@ -348,7 +348,7 @@ class _RuqyahPageState extends ConsumerState<RuqyahPage> {
               padding: const EdgeInsets.only(top: AppSpacing.sm),
               child: Text(
                 '${audio.repeatsDone}/${audio.repeatTarget}',
-                style: AppTextStyles.caption(context, color: tokens.gold),
+                style: AppTextStyles.caption(context, color: tokens.goldInk),
               ),
             ),
         ],

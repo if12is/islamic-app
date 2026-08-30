@@ -59,11 +59,48 @@ void main() {
         );
       });
 
-      test('$name: gold is readable as a foreground', () {
-        // Gold is mostly used for icons and short labels on a surface, which
-        // is a 3:1 job, not a 4.5:1 one.
-        expect(_contrast(tokens.gold, tokens.surface), greaterThan(3));
-        expect(_contrast(tokens.gold, tokens.ground), greaterThan(3));
+      test('$name: captions are readable, not decorative', () {
+        // inkFaint sets every caption, every subtitle and every unit label —
+        // 102 places. It was #7A8A80 in the light theme and failed 4.5:1 on
+        // all four surfaces, bottoming out at 2.96 on groundAlt: text the
+        // same weight as its background, which is what a reader called out.
+        for (final (surfaceName, surface) in [
+          ('ground', tokens.ground),
+          ('groundAlt', tokens.groundAlt),
+          ('surface', tokens.surface),
+          ('surfaceRaised', tokens.surfaceRaised),
+        ]) {
+          expect(
+            _contrast(tokens.inkFaint, surface),
+            greaterThanOrEqualTo(4.5),
+            reason: 'inkFaint on $surfaceName',
+          );
+        }
+      });
+
+      test('$name: gold has one value to fill with and one to write with', () {
+        // The accent that carries the identity is a 3:1 job — it fills the
+        // hero card and draws the ornament. A gold *word* is a 4.5:1 job, and
+        // in the light theme the accent cannot do both: it reads 2.97 on
+        // groundAlt. So there are two, and the writing one has to clear 4.5
+        // everywhere or the split bought nothing.
+        for (final (surfaceName, surface) in [
+          ('ground', tokens.ground),
+          ('groundAlt', tokens.groundAlt),
+          ('surface', tokens.surface),
+          ('surfaceRaised', tokens.surfaceRaised),
+        ]) {
+          expect(
+            _contrast(tokens.goldInk, surface),
+            greaterThanOrEqualTo(4.5),
+            reason: 'goldInk on $surfaceName',
+          );
+          expect(
+            _contrast(tokens.gold, surface),
+            greaterThanOrEqualTo(3),
+            reason: 'gold on $surfaceName',
+          );
+        }
       });
 
       test('$name: the brand reads against the ground', () {

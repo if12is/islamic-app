@@ -8,6 +8,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/arc_gauge.dart';
@@ -177,7 +178,6 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
   Widget build(BuildContext context) {
     final locationAsync = ref.watch(currentLocationCoordinatesProvider);
     final selectedMethod = ref.watch(prayerMethodProvider);
-    final completedPrayers = ref.watch(dailyPrayerCompletionProvider);
 
     const fallbackCoordinates = UserCoordinates(
       latitude: 31.0345728,
@@ -406,11 +406,6 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                     time: _formatTime12H(context, slot.time),
                     icon: _getIconForPrayer(slot.prayer.name),
                     isCurrent: currentSlot?.id == slot.id,
-                    isDone: completedPrayers.contains(slot.id),
-                    onToggleDone:
-                        () => ref
-                            .read(dailyPrayerCompletionProvider.notifier)
-                            .togglePrayer(slot.id),
                   );
                 }),
 
@@ -508,53 +503,37 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     required String time,
     required IconData icon,
     required bool isCurrent,
-    required bool isDone,
-    required VoidCallback onToggleDone,
   }) {
     final tokens = context.tokens;
 
     return AppListRow(
       dense: true,
       selected: isCurrent,
-      leading: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color:
-              isCurrent
-                  ? tokens.gold.withValues(alpha: 0.18)
-                  : tokens.groundAlt,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          size: 19,
-          color: isCurrent ? tokens.gold : tokens.inkFaint,
-        ),
+      // The shared tile, not a hand-rolled circle. This one was 38px on a
+      // gold-at-0.18 or a groundAlt fill depending on state — two different
+      // background families for one control — while the row beneath it in the
+      // same list used another set again.
+      leading: AppIconTile(
+        icon,
+        role: AppIconRole.row,
+        tone: isCurrent ? AppIconTone.accent : AppIconTone.neutral,
+        selected: isCurrent,
       ),
       title: name,
       meta: isCurrent ? context.tr('current_prayer') : null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            time,
-            style: AppTextStyles.display(
-              context,
-              fontSize: 15,
-              color: isCurrent ? tokens.ink : tokens.inkMuted,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          GhostIconButton(
-            icon: isDone ? Icons.check_circle : Icons.circle_outlined,
-            active: isDone,
-            onTap: onToggleDone,
-            tooltip: context.tr('mark_prayed'),
-          ),
-        ],
+      // The time alone. There used to be a tick beside every row as well, and
+      // it asked the same question the card above already asks in more
+      // detail — that card records whether a prayer was in the mosque, in
+      // congregation, alone or made up, and this one could only say "done".
+      // Two answers to one question, and the coarser one on top.
+      trailing: Text(
+        time,
+        style: AppTextStyles.display(
+          context,
+          fontSize: 15,
+          color: isCurrent ? tokens.ink : tokens.inkMuted,
+        ),
       ),
-      onTap: onToggleDone,
     );
   }
 }
@@ -630,8 +609,6 @@ class _ShortcutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.symmetric(
@@ -642,7 +619,10 @@ class _ShortcutCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 22, color: tokens.brand),
+          // The same tile the rows above use. These six shortcuts had a bare
+          // 22px glyph while the rows had a filled 38px circle, in the same
+          // scroll, a thumb apart.
+          AppIconTile(icon, role: AppIconRole.card),
           const SizedBox(height: AppSpacing.sm),
           // A fixed two-line box keeps every icon on the same line, whether
           // the label wraps or not.

@@ -962,7 +962,34 @@ class AppLocalizations {
       'asr': 'Asr',
       'maghrib': 'Maghrib',
       'isha': 'Isha',
-      'user_name': 'Ahined Abdullah',
+      // A placeholder that reads as data is worse than a blank: it showed a
+      // stranger's name where the reader's own should be, with no way to tell
+      // it was not theirs.
+      'profile_name_prompt': 'Add your name',
+      'theme_to_dark': 'Switch to dark',
+      'theme_to_light': 'Switch to light',
+      'profile': 'Profile',
+      // The reader's own wird.
+      'wird_title': 'Daily wird',
+      'wird_mine': 'My wird',
+      'wird_mine_desc': 'What you added yourself. Tap a line to count it.',
+      'wird_add': 'Add to my wird',
+      'adhan_own_sound': 'Use your own adhan',
+      'adhan_own_sound_desc': 'From a file, or from the phone\'s own sounds.',
+      'all_prayers_adhan': 'Adhan for every prayer',
+      'all_prayers_adhan_desc':
+          'Turn this off to silence all five at once. Each prayer can still be '
+          'set on its own above.',
+      'wird_in': 'In your wird',
+      'wird_added': 'Added to your daily wird.',
+      'wird_removed': 'Removed from your daily wird.',
+      'wird_empty': 'Your wird is empty so far.',
+      'wird_empty_how':
+          'Add a surah, a juz, an azkar chapter or a tasbih from anywhere in '
+          'the app — look for "Add to my wird".',
+      'wird_reset_note': 'Counts start again at midnight.',
+      'remove': 'Remove',
+      'undo': 'Undo',
       'user_location': 'Cairo, Egypt',
       'adhan_notifications': 'Adhan Notifications',
       'customize_all': 'Customize All',
@@ -2095,7 +2122,30 @@ class AppLocalizations {
       'asr': 'العصر',
       'maghrib': 'المغرب',
       'isha': 'العشاء',
-      'user_name': 'أحمد عبدالله',
+      'profile_name_prompt': 'أضف اسمك',
+      'theme_to_dark': 'التبديل إلى الداكن',
+      'theme_to_light': 'التبديل إلى الفاتح',
+      'profile': 'الملف الشخصي',
+      // ورد المستخدم نفسه.
+      'wird_title': 'الورد اليومي',
+      'wird_mine': 'وردي',
+      'wird_mine_desc': 'ما أضفته بنفسك. اضغط السطر لتعدّه.',
+      'wird_add': 'أضف لوردك اليومي',
+      'adhan_own_sound': 'استخدم أذاناً من عندك',
+      'adhan_own_sound_desc': 'من ملف، أو من أصوات الجهاز نفسه.',
+      'all_prayers_adhan': 'الأذان لكل الصلوات',
+      'all_prayers_adhan_desc':
+          'أطفئه لتُسكت الخمس دفعةً واحدة. ويبقى ضبط كل صلاة على حدة بالأعلى.',
+      'wird_in': 'في وردك',
+      'wird_added': 'أُضيف إلى وردك اليومي.',
+      'wird_removed': 'أُزيل من وردك اليومي.',
+      'wird_empty': 'وردك فارغ حتى الآن.',
+      'wird_empty_how':
+          'أضف سورة أو جزءاً أو باب أذكار أو تسبيحاً من أي مكان في التطبيق — '
+          'ابحث عن «أضف لوردك اليومي».',
+      'wird_reset_note': 'يبدأ العدّ من جديد عند منتصف الليل.',
+      'remove': 'إزالة',
+      'undo': 'تراجع',
       'user_location': 'القاهرة، مصر',
       'adhan_notifications': 'تنبيهات الأذان',
       'customize_all': 'تخصيص الكل',

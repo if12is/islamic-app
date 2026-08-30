@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
 import '../theme/design_tokens.dart';
+import 'app_icon_tile.dart';
 import 'islamic_ornaments.dart';
 import 'seasonal_art.dart';
 
@@ -486,22 +487,25 @@ class AppListRow extends StatelessWidget {
               leading!
             else if (badge != null)
               Container(
-                width: 38,
-                height: 38,
+                // Matched to AppIconTile: same box, same radius, same wash.
+                // The number badge was `groundAlt` when idle and a brand tint
+                // when selected — two unrelated colour families for one slot,
+                // sitting in lists beside icon tiles that used a third.
+                width: AppIconTile.boxFor(AppIconRole.row),
+                height: AppIconTile.boxFor(AppIconRole.row),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color:
-                      selected
-                          ? tokens.brand.withValues(alpha: 0.16)
-                          : tokens.groundAlt,
-                  borderRadius: AppRadii.smAll,
+                  color: tokens.brand.withValues(alpha: selected ? 0.22 : 0.11),
+                  borderRadius: BorderRadius.circular(
+                    AppIconTile.boxFor(AppIconRole.row) / 3,
+                  ),
                 ),
                 child: Text(
                   badge!,
                   style: AppTextStyles.display(
                     context,
                     fontSize: 14,
-                    color: selected ? tokens.brand : tokens.inkMuted,
+                    color: tokens.brand,
                   ),
                 ),
               ),

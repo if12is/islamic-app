@@ -10,6 +10,7 @@ import '../../../../core/services/seasonal_theme.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/arc_gauge.dart';
@@ -30,7 +31,7 @@ import '../../../quran/presentation/pages/quran_page.dart';
 import '../../../quran/presentation/pages/recitation_page.dart';
 import '../../../quran/presentation/pages/surah_reader_page.dart';
 import '../../../quran/presentation/providers/bookmarks_provider.dart';
-import '../../../settings/presentation/pages/settings_page.dart';
+import 'wird_page.dart';
 import '../../../settings/presentation/widgets/app_update_dialog.dart';
 import '../../../../shared/providers/app_update_provider.dart';
 import '../providers/ayah_provider.dart';
@@ -103,7 +104,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       _tabAt(0, _HomeDashboard(onOpenTab: _onTabTapped)),
       _tabAt(1, const QuranPage()),
       _tabAt(2, const AzkarPage()),
-      _tabAt(3, SettingsPage(onBackHome: () => _onTabTapped(0))),
+      _tabAt(3, const WirdPage()),
       _tabAt(4, const PrayerTimesPage()),
     ];
 
@@ -127,16 +128,21 @@ class _HomePageState extends ConsumerState<HomePage> {
               onSelected: _onTabTapped,
               // Visual order; home sits in the middle and is drawn raised.
               items: [
+                // The wird took the Settings slot. Settings was reachable
+                // three ways from every screen and the wird none, which is the
+                // weight of the two exactly backwards.
                 GlassNavItem(
                   tabIndex: 3,
-                  icon: Icons.settings_outlined,
-                  selectedIcon: Icons.settings,
-                  label: context.tr('settings'),
+                  icon: Icons.task_alt_outlined,
+                  selectedIcon: Icons.task_alt,
+                  label: context.tr('wird_title'),
                 ),
                 GlassNavItem(
                   tabIndex: 2,
-                  icon: Icons.auto_awesome_outlined,
-                  selectedIcon: Icons.auto_awesome,
+                  // A sparkle said nothing about adhkar; a rising sun is what
+                  // the morning and evening portions actually are.
+                  icon: Icons.wb_twilight_outlined,
+                  selectedIcon: Icons.wb_twilight,
                   label: context.tr('azkar'),
                 ),
                 GlassNavItem(
@@ -337,7 +343,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
 
     return AppScaffold(
       titleWidget: const _Greeting(),
-      leading: const ShellMenuButton(iconSize: 28),
+      leading: const ShellThemeButton(),
       actions: const [ShellProfileButton()],
       body: prayerTimesAsync.when(
         loading: () => const Center(child: CustomLoader()),
@@ -675,21 +681,14 @@ class _PrayerRow extends StatelessWidget {
     return AppListRow(
       dense: true,
       selected: isCurrent,
-      leading: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color:
-              isCurrent
-                  ? tokens.gold.withValues(alpha: 0.18)
-                  : tokens.groundAlt,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          size: 19,
-          color: isCurrent ? tokens.gold : tokens.inkFaint,
-        ),
+      // The same tile as the prayer screen's list, which is the same list.
+      // The two were drawn separately and had drifted into two different
+      // shapes for the same row.
+      leading: AppIconTile(
+        icon,
+        role: AppIconRole.row,
+        tone: isCurrent ? AppIconTone.accent : AppIconTone.neutral,
+        selected: isCurrent,
       ),
       title: name,
       meta: isCurrent ? context.tr('current_prayer') : null,

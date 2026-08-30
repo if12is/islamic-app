@@ -164,11 +164,15 @@ class _PrayerLogCardState extends State<PrayerLogCard> {
         if (_summary.streak > 0)
           Row(
             children: [
-              Icon(Icons.local_fire_department, size: 15, color: tokens.gold),
+              Icon(
+                Icons.local_fire_department,
+                size: 15,
+                color: tokens.goldInk,
+              ),
               const SizedBox(width: 2),
               Text(
                 '${_summary.streak}',
-                style: AppTextStyles.caption(context, color: tokens.gold),
+                style: AppTextStyles.caption(context, color: tokens.goldInk),
               ),
             ],
           ),
