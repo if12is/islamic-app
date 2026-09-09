@@ -145,34 +145,53 @@ class _ReaderTourState extends State<ReaderTour> {
         ],
       ),
       actionsPadding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
+        AppSpacing.xl,
         0,
+        AppSpacing.xl,
         AppSpacing.lg,
-        AppSpacing.md,
       ),
+      // Laid out by hand rather than left to the dialog's own bar, which puts
+      // three buttons in a column when they will not fit on one line — and
+      // three stacked buttons of equal weight give no clue which is the way
+      // forward. The two that move through the cards share a row; the one that
+      // ends it for good sits under them, quieter.
       actions: [
-        TextButton(
-          onPressed: () async {
-            await ReaderTourStore.dismissForever(appPreferences);
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text(context.tr('tour_never_again')),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(context.tr('skip')),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: FilledButton(
+                onPressed: () {
+                  if (isLast) {
+                    Navigator.of(context).pop();
+                    return;
+                  }
+                  setState(() => _index++);
+                },
+                child: Text(context.tr(isLast ? 'done' : 'tour_next')),
+              ),
+            ),
+          ],
         ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.tr('skip')),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (isLast) {
-              Navigator.of(context).pop();
-              return;
-            }
-            setState(() => _index++);
-          },
-          child: Text(context.tr(isLast ? 'done' : 'next')),
+        Center(
+          child: TextButton(
+            onPressed: () async {
+              await ReaderTourStore.dismissForever(appPreferences);
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+            child: Text(
+              context.tr('tour_never_again'),
+              style: AppTextStyles.caption(context, color: tokens.inkFaint),
+            ),
+          ),
         ),
       ],
     );

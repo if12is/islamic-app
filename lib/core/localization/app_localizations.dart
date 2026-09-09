@@ -202,6 +202,7 @@ class AppLocalizations {
       'reader_paper': 'Page colour',
       // The reading page's walkthrough.
       'tour_never_again': 'I know these',
+      'tour_next': 'Next',
       'tour_zoom_title': 'Pinch to resize',
       'tour_zoom_body':
           'Put two fingers on the page and move them apart to enlarge the '
@@ -1409,6 +1410,9 @@ class AppLocalizations {
       'reader_paper': 'لون الصفحة',
       // جولة صفحة القراءة.
       'tour_never_again': 'أعرفها، لا تُظهرها',
+      // «القادمة» مؤنّثة، وهي الصواب في «السورة القادمة» لا في زر ينتقل
+      // للبطاقة التالية.
+      'tour_next': 'التالي',
       'tour_zoom_title': 'كبّر بإصبعين',
       'tour_zoom_body':
           'ضع إصبعين على الصفحة وباعد بينهما ليكبر الخط، أو قرّبهما ليصغر — '
