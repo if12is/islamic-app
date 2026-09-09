@@ -11,6 +11,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../prayer_times/presentation/widgets/imsakiya_table.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 
 /// Ramadan only: which day it is, how long until imsak or iftar, and a
 /// tarawih check-in.
@@ -290,14 +291,6 @@ class _RamadanCardState extends ConsumerState<RamadanCard> {
     }
     final hours = remaining.inHours.toString().padLeft(2, '0');
     final minutes = (remaining.inMinutes % 60).toString().padLeft(2, '0');
-    return languageCode == 'ar'
-        ? '$hours:$minutes'.split('').map(_arabicDigit).join()
-        : '$hours:$minutes';
-  }
-
-  static String _arabicDigit(String char) {
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    final value = int.tryParse(char);
-    return value == null ? char : digits[value];
+    return localizeDigitsFor(languageCode, '$hours:$minutes');
   }
 }

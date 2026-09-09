@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:islamic_app/core/utils/arabic_numerals.dart';
 import 'package:islamic_app/core/utils/duration_words.dart';
 
 /// Renders in one locale and hands back a context that resolves to it.

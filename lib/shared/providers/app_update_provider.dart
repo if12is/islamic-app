@@ -190,6 +190,16 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
         progress: progress,
       );
     }
+
+    // The stream ended without ever saying it had failed or reached the
+    // installer. That is what a crash inside the platform side looks like from
+    // here, and it used to leave the bar sitting at whatever percent it had
+    // last drawn, forever, with no way to tell that nothing more was coming.
+    // An update that stopped is a failure even when nobody said so.
+    if (state.status == AppUpdateStatus.downloading) {
+      AppLogger.warning('The update stream ended before the install started');
+      state = state.copyWith(status: AppUpdateStatus.failed);
+    }
   }
 
   /// Stop a download in progress and put the offer back.

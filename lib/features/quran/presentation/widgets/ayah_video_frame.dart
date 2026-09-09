@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../domain/ayah_video_spec.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 
 /// One frame of a verse video — and, on its own, the shareable still image.
 ///
@@ -217,14 +218,7 @@ class AyahVideoFrame extends StatelessWidget {
   }
 
   /// ٢٤ — the numerals the rest of the card is set in.
-  static String arabicDigits(int value) {
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  static String arabicDigits(int value) => toArabicDigits('$value');
 }
 
 /// The paint behind a [VideoPalette].

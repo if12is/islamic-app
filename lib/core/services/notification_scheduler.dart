@@ -14,6 +14,7 @@ import 'prayer_calculation_service.dart';
 import 'prayer_settings_store.dart';
 import 'widget_service.dart';
 import 'wird_habit_store.dart';
+import '../utils/arabic_numerals.dart';
 
 /// Outcome of a scheduling pass, surfaced in the notification centre.
 class ScheduleResult {
@@ -502,18 +503,8 @@ class NotificationPlanner {
   static String _number(int value, String languageCode) =>
       _digits(value.toString(), languageCode);
 
-  static String _digits(String value, String languageCode) {
-    if (languageCode != 'ar') {
-      return value;
-    }
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    final buffer = StringBuffer();
-    for (final char in value.split('')) {
-      final digit = int.tryParse(char);
-      buffer.write(digit == null ? char : arabic[digit]);
-    }
-    return buffer.toString();
-  }
+  static String _digits(String value, String languageCode) =>
+      localizeDigitsFor(languageCode, value);
 }
 
 /// Reads stored settings, computes the week ahead, and hands it to the

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/quran_local_service.dart';
 import '../providers/reader_settings_provider.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 
 /// Background styles for a shared verse card.
 enum AyahCardStyle { emerald, night, parchment }
@@ -114,14 +115,7 @@ class AyahShareCard extends StatelessWidget {
     return 78;
   }
 
-  static String _arabicNumber(int value) {
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  static String _arabicNumber(int value) => toArabicDigits('$value');
 
   static _CardTheme _theme(AyahCardStyle style) {
     switch (style) {

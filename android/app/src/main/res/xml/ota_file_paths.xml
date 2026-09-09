@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Where the updater puts the APK it downloaded.
+
+  ota_update writes to `getApplicationInfo().dataDir + "/files/ota_update"`,
+  which is `<files-path>` plus the `ota_update` folder. The path has to match
+  exactly: FileProvider refuses a file outside the roots declared here, and it
+  refuses it by throwing, which is how a finished download turned into an app
+  that quietly returned to the home screen.
+-->
+<paths>
+    <files-path
+        name="ota_update"
+        path="ota_update/" />
+</paths>

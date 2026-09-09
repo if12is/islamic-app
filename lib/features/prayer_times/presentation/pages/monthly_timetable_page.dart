@@ -13,6 +13,7 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../domain/monthly_timetable.dart';
 import '../widgets/monthly_timetable_poster.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 
 /// A whole month of prayer times, for planning ahead and for printing.
 ///
@@ -392,18 +393,7 @@ String formatTableClock(DateTime? time, String language) {
     hour = 12;
   }
   final text = '$hour:${time.minute.toString().padLeft(2, '0')}';
-  return language == 'ar' ? _arabicDigits(text) : text;
-}
-
-String _arabicDigits(String value) {
-  const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  final buffer = StringBuffer();
-  for (final rune in value.runes) {
-    final char = String.fromCharCode(rune);
-    final index = int.tryParse(char);
-    buffer.write(index == null ? char : digits[index]);
-  }
-  return buffer.toString();
+  return localizeDigitsFor(language, text);
 }
 
 class _HeadingRow extends StatelessWidget {

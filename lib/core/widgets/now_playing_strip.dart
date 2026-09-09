@@ -266,31 +266,37 @@ class _Strip extends StatelessWidget {
                       Icon(entry.icon, size: 19, color: tokens.brand),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              entry.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.body(
-                                context,
-                                fontSize: 13.5,
-                              ),
-                            ),
-                            if (entry.subtitle.isNotEmpty)
+                        // What is playing is one announcement — the surah and
+                        // the reciter together — and the two buttons beside it
+                        // stay their own, because they are what a listener
+                        // reaches for.
+                        child: MergeSemantics(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                entry.subtitle,
+                                entry.title,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: AppTextStyles.caption(
+                                style: AppTextStyles.body(
                                   context,
-                                  color: tokens.inkFaint,
-                                  fontSize: 11,
+                                  fontSize: 13.5,
                                 ),
                               ),
-                          ],
+                              if (entry.subtitle.isNotEmpty)
+                                Text(
+                                  entry.subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption(
+                                    context,
+                                    color: tokens.inkFaint,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                       IconButton(

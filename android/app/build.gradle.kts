@@ -35,8 +35,20 @@ android {
     }
 
     defaultConfig {
-        // Store listings key off this, not the Kotlin namespace. The old id
-        // `com.islamicapp.islamic_app` is already taken on Uptodown.
+        // The app's identity to Android, and the one thing here that must
+        // never change again.
+        //
+        // It was `com.islamicapp.islamic_app` until that id turned out to be
+        // taken on Uptodown. Android has no notion of a renamed app: a
+        // different applicationId is a different app, so everyone holding the
+        // old build got a second icon on their home screen and an empty start
+        // rather than an update — settings, bookmarks, downloads and wird all
+        // still sitting in an app the new one cannot see. There is no upgrade
+        // path across the two; the only bridge is the backup file, exported
+        // from the old app and imported into this one.
+        //
+        // Changing it again would do the same thing to everyone a second time.
+        // A test pins this string for that reason.
         applicationId = "com.if12is.fajr"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion

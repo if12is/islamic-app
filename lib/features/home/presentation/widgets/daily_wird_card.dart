@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../azkar/presentation/pages/azkar_details_page.dart';
 import '../../../quran/presentation/pages/surah_reader_page.dart';
 import '../../../quran/presentation/providers/bookmarks_provider.dart';
@@ -62,13 +63,16 @@ class DailyWirdCard extends ConsumerWidget {
               ),
             ),
             Text(
-              AppLocalizations.translate(
-                languageCode,
-                'wird_done_of',
-                replacements: {
-                  'done': wird.completed.toString(),
-                  'total': wird.total.toString(),
-                },
+              localizeDigits(
+                context,
+                AppLocalizations.translate(
+                  languageCode,
+                  'wird_done_of',
+                  replacements: {
+                    'done': wird.completed.toString(),
+                    'total': wird.total.toString(),
+                  },
+                ),
               ),
               style: Theme.of(context).textTheme.labelSmall,
             ),
@@ -123,7 +127,7 @@ class DailyWirdCard extends ConsumerWidget {
             // a count someone is failing to reach.
             Text(
               task.dueNow
-                  ? '${task.done}/${task.target}'
+                  ? localizeDigits(context, '${task.done}/${task.target}')
                   : context.tr('wird_not_due'),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: task.dueNow ? null : colorScheme.onSurfaceVariant,

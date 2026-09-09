@@ -87,6 +87,89 @@ void main() {
     });
   });
 
+  group('Numbers are written in the reader\'s own script', () {
+    test('one digit table, not one per screen', () {
+      // Six screens had grown a private copy of this conversion — `_digits`,
+      // `_localizeDigits`, `_toArabicDigits`, `_formatNumber`,
+      // `_localizedNumber`, and a second `_digits` — and several places had
+      // simply been missed: the daily wird counted "0/31" and the adhkar card
+      // "0 / 30" in an Arabic interface. Six copies is six chances to forget
+      // the seventh call site.
+      const table = "'٠'";
+      final offenders = <String>[];
+
+      for (final (path, source) in _sources()) {
+        if (path == 'lib/core/utils/arabic_numerals.dart') {
+          continue;
+        }
+        if (source.contains(table)) {
+          offenders.add(path);
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'These files carry their own Arabic-Indic digit table. Use '
+            'localizeDigits / toArabicDigits from core/utils/arabic_numerals '
+            'instead:\n${offenders.join('\n')}',
+      );
+    });
+  });
+
+  group('A row is announced as one thing', () {
+    testWidgets('the number, name and meta merge; the button stays apart', (
+      tester,
+    ) async {
+      // Left alone, a screen reader walks the row in painting order and reads
+      // "1", "al-Fatiha", "Meccan, 7 verses" as three unrelated items, leaving
+      // the listener to assemble a surah out of fragments. The controls are
+      // the exception: a play button has to stay its own thing to reach.
+      final handle = tester.ensureSemantics();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.from(AppTokens.light),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: AppListRow(
+                badge: '١',
+                title: 'الفاتحة',
+                meta: 'مكية · ٧ آية',
+                onTap: () {},
+                trailing: IconButton(
+                  tooltip: 'تشغيل',
+                  onPressed: () {},
+                  icon: const Icon(Icons.play_arrow),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final row = tester.getSemantics(find.text('الفاتحة'));
+      expect(row.label, contains('١'));
+      expect(row.label, contains('الفاتحة'));
+      expect(row.label, contains('مكية'));
+      expect(
+        row.label,
+        isNot(contains('تشغيل')),
+        reason: 'the play button was folded into the row and cannot be pressed',
+      );
+
+      // And it is still there, as a node of its own that can be pressed.
+      expect(
+        tester.getSemantics(find.byType(IconButton)),
+        isSemantics(isButton: true, hasTapAction: true, isEnabled: true),
+      );
+
+      handle.dispose();
+    });
+  });
+
   group('Text is allowed to grow', () {
     // Someone who has turned their system font up has done it because they
     // need to. Pinning the scale back to 1 overrides that decision.

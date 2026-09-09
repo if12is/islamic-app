@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../../../core/utils/duration_words.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../home/domain/custom_wird.dart';
@@ -647,17 +647,8 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   }
 
   /// Counts read in the digits of the language on screen.
-  static String _formatCount(BuildContext context, int value) {
-    if (!context.isAppRtl) {
-      return '$value';
-    }
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  static String _formatCount(BuildContext context, int value) =>
+      localizeDigits(context, '$value');
 
   List<String> _azkarList(BuildContext context) {
     return [

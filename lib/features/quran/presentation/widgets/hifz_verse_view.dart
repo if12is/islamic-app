@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_text_styles.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 
 /// How much of the text is hidden while practising.
 enum HifzMask {
@@ -137,12 +138,5 @@ class _HifzVerseViewState extends State<HifzVerseView> {
     return normalized.isEmpty ? 2 : normalized.length.clamp(2, 8);
   }
 
-  static String _arabicNumber(int value) {
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  static String _arabicNumber(int value) => toArabicDigits('$value');
 }

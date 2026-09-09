@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/utils/duration_words.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
@@ -70,32 +71,12 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     super.dispose();
   }
 
-  String _toArabicDigits(String input) {
-    const western = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    var output = input;
-    for (var i = 0; i < western.length; i++) {
-      output = output.replaceAll(western[i], arabic[i]);
-    }
-    return output;
-  }
-
-  String _localizeDigits(BuildContext context, String input) {
-    return context.isAppRtl ? _toArabicDigits(input) : input;
-  }
-
-  String _normalizeToWesternDigits(String input) {
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    var output = input;
-    for (var i = 0; i < arabic.length; i++) {
-      output = output.replaceAll(arabic[i], '$i');
-    }
-    return output;
-  }
+  String _localizeDigits(BuildContext context, String input) =>
+      localizeDigits(context, input);
 
   DateTime _parseTime(String timeStr) {
     try {
-      final clean = _normalizeToWesternDigits(timeStr.split(' ').first);
+      final clean = toWesternDigits(timeStr.split(' ').first);
       final parts = clean.split(':');
       final hour = int.parse(parts[0]);
       final minute = int.parse(parts[1]);
@@ -469,32 +450,37 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
   }) {
     final tokens = context.tokens;
 
-    return AppListRow(
-      dense: true,
-      selected: isCurrent,
-      // The shared tile, not a hand-rolled circle. This one was 38px on a
-      // gold-at-0.18 or a groundAlt fill depending on state — two different
-      // background families for one control — while the row beneath it in the
-      // same list used another set again.
-      leading: AppIconTile(
-        icon,
-        role: AppIconRole.row,
-        tone: isCurrent ? AppIconTone.accent : AppIconTone.neutral,
+    // Nothing in this row is pressable, so the whole of it is one thing to
+    // announce: "Fajr, now, 5:17 am" rather than a name and, separately, a
+    // number with nothing to attach it to.
+    return MergeSemantics(
+      child: AppListRow(
+        dense: true,
         selected: isCurrent,
-      ),
-      title: name,
-      meta: isCurrent ? context.tr('current_prayer') : null,
-      // The time alone. There used to be a tick beside every row as well, and
-      // it asked the same question the card above already asks in more
-      // detail — that card records whether a prayer was in the mosque, in
-      // congregation, alone or made up, and this one could only say "done".
-      // Two answers to one question, and the coarser one on top.
-      trailing: Text(
-        time,
-        style: AppTextStyles.display(
-          context,
-          fontSize: 15,
-          color: isCurrent ? tokens.ink : tokens.inkMuted,
+        // The shared tile, not a hand-rolled circle. This one was 38px on a
+        // gold-at-0.18 or a groundAlt fill depending on state — two different
+        // background families for one control — while the row beneath it in the
+        // same list used another set again.
+        leading: AppIconTile(
+          icon,
+          role: AppIconRole.row,
+          tone: isCurrent ? AppIconTone.accent : AppIconTone.neutral,
+          selected: isCurrent,
+        ),
+        title: name,
+        meta: isCurrent ? context.tr('current_prayer') : null,
+        // The time alone. There used to be a tick beside every row as well, and
+        // it asked the same question the card above already asks in more
+        // detail — that card records whether a prayer was in the mosque, in
+        // congregation, alone or made up, and this one could only say "done".
+        // Two answers to one question, and the coarser one on top.
+        trailing: Text(
+          time,
+          style: AppTextStyles.display(
+            context,
+            fontSize: 15,
+            color: isCurrent ? tokens.ink : tokens.inkMuted,
+          ),
         ),
       ),
     );

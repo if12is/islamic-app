@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/hijri_service.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/islamic_ornaments.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 
 /// One row of the poster.
 class ImsakiyaEntry {
@@ -242,14 +243,7 @@ class ImsakiyaPoster extends StatelessWidget {
     );
   }
 
-  static String _arabicNumber(int value) {
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  static String _arabicNumber(int value) => toArabicDigits('$value');
 
   /// Weekday name for a date, in the poster's language.
   static String weekdayName(DateTime date, List<String> names) =>

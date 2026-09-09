@@ -481,80 +481,94 @@ class AppListRow extends StatelessWidget {
           horizontal: AppSpacing.md + 2,
           vertical: dense ? AppSpacing.sm + 2 : AppSpacing.md,
         ),
+        // The number, the name and the meta line are one thing to a screen
+        // reader — "1, al-Fatiha, Meccan, 7 verses" — not four separate
+        // announcements to reassemble. The trailing controls stay outside the
+        // merge, because a play button is its own thing to reach and press.
         child: Row(
           children: [
-            if (leading != null)
-              leading!
-            else if (badge != null)
-              Container(
-                // Matched to AppIconTile: same box, same radius, same wash.
-                // The number badge was `groundAlt` when idle and a brand tint
-                // when selected — two unrelated colour families for one slot,
-                // sitting in lists beside icon tiles that used a third.
-                width: AppIconTile.boxFor(AppIconRole.row),
-                height: AppIconTile.boxFor(AppIconRole.row),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: tokens.brand.withValues(alpha: selected ? 0.22 : 0.11),
-                  borderRadius: BorderRadius.circular(
-                    AppIconTile.boxFor(AppIconRole.row) / 3,
-                  ),
-                ),
-                child: Text(
-                  badge!,
-                  style: AppTextStyles.display(
-                    context,
-                    fontSize: 14,
-                    color: tokens.brand,
-                  ),
-                ),
-              ),
-            if (leading != null || badge != null)
-              const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.display(
-                      context,
-                      fontSize: 15.5,
-                      color: tokens.ink,
-                    ),
-                  ),
-                  if (meta != null)
-                    Text(
-                      meta!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption(
-                        context,
-                        color: tokens.inkFaint,
+              child: MergeSemantics(
+                child: Row(
+                  children: [
+                    if (leading != null)
+                      leading!
+                    else if (badge != null)
+                      Container(
+                        // Matched to AppIconTile: same box, same radius, same wash.
+                        // The number badge was `groundAlt` when idle and a brand tint
+                        // when selected — two unrelated colour families for one slot,
+                        // sitting in lists beside icon tiles that used a third.
+                        width: AppIconTile.boxFor(AppIconRole.row),
+                        height: AppIconTile.boxFor(AppIconRole.row),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: tokens.brand.withValues(
+                            alpha: selected ? 0.22 : 0.11,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            AppIconTile.boxFor(AppIconRole.row) / 3,
+                          ),
+                        ),
+                        child: Text(
+                          badge!,
+                          style: AppTextStyles.display(
+                            context,
+                            fontSize: 14,
+                            color: tokens.brand,
+                          ),
+                        ),
+                      ),
+                    if (leading != null || badge != null)
+                      const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.display(
+                              context,
+                              fontSize: 15.5,
+                              color: tokens.ink,
+                            ),
+                          ),
+                          if (meta != null)
+                            Text(
+                              meta!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption(
+                                context,
+                                color: tokens.inkFaint,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                ],
-              ),
-            ),
-            if (trailingText != null)
-              ConstrainedBox(
-                // A long Uthmani name would push the row apart otherwise.
-                constraints: const BoxConstraints(maxWidth: 96),
-                child: Text(
-                  trailingText!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: AppTextStyles.quran(
-                    context,
-                    fontSize: 19,
-                    height: 1.4,
-                    color: tokens.inkMuted,
-                  ),
+                    if (trailingText != null)
+                      ConstrainedBox(
+                        // A long Uthmani name would push the row apart.
+                        constraints: const BoxConstraints(maxWidth: 96),
+                        child: Text(
+                          trailingText!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: AppTextStyles.quran(
+                            context,
+                            fontSize: 19,
+                            height: 1.4,
+                            color: tokens.inkMuted,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
+            ),
             if (trailing != null) ...[
               const SizedBox(width: AppSpacing.sm),
               trailing!,

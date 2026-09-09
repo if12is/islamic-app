@@ -24,6 +24,36 @@ class UpdateProgress {
   final String? message;
 }
 
+/// Lets a percent through only when it is one the bar has not already drawn.
+///
+/// The plugin reports progress on every Okio segment it reads — 8 KiB at a
+/// time, which for an 86 MB package is about eleven thousand events. Each one
+/// crossed the platform channel, replaced the provider's state and rebuilt the
+/// dialog, so the phone spent its main thread redrawing a progress bar eleven
+/// thousand times instead of showing the download it was drawing. The network
+/// was never the slow part; the app in front of it was.
+///
+/// A bar is a hundred positions wide, so a hundred events is everything it can
+/// express. The rest are dropped.
+class DownloadThrottle {
+  int? _last;
+
+  /// True when [percent] says something the last one did not.
+  ///
+  /// An unknown percent always passes: it means the size is not known yet, and
+  /// that is a state the dialog shows differently rather than a repeat.
+  bool accept(int? percent) {
+    if (percent == null) {
+      return true;
+    }
+    if (percent == _last) {
+      return false;
+    }
+    _last = percent;
+    return true;
+  }
+}
+
 /// Downloads the new APK and hands it to Android's package installer.
 ///
 /// The install itself is Android's to run, not the app's: it shows its own
@@ -57,6 +87,8 @@ class UpdateInstaller {
       return controller.stream;
     }
 
+    final throttle = DownloadThrottle();
+
     try {
       _subscription?.cancel();
       _subscription = OtaUpdate()
@@ -66,6 +98,9 @@ class UpdateInstaller {
               final percent = int.tryParse(event.value ?? '');
               switch (event.status) {
                 case OtaStatus.DOWNLOADING:
+                  if (!throttle.accept(percent)) {
+                    return;
+                  }
                   controller.add(
                     UpdateProgress(percent: percent, installing: false),
                   );

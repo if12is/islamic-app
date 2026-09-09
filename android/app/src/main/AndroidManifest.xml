@@ -109,6 +109,31 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Hands the downloaded APK to Android's installer.
+
+             Without this the update downloaded to the last byte and then
+             nothing happened: no prompt, no error, the app simply dropped to
+             the home screen, and opening it again started the same download
+             over. The reason is that the updater asks FileProvider for a URI
+             under this authority, and an authority no provider claims throws
+             before the install intent is ever built. The permission to install
+             was already declared, so everything looked correct from the
+             outside — the file just had no way to reach the installer.
+
+             The authority is the one ota_update derives by default, and the
+             path is where it writes: getFilesDir()/ota_update. Its own
+             subclass of FileProvider is used rather than the androidx one, so
+             this cannot collide with another plugin's provider. -->
+        <provider
+            android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="${applicationId}.ota_update_provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/ota_file_paths" />
+        </provider>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

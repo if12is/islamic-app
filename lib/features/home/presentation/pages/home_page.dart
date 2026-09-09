@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/hijri_service.dart';
 import '../../../../core/services/seasonal_theme.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/utils/duration_words.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
@@ -224,25 +225,12 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
     return '';
   }
 
-  String _digits(BuildContext context, String input) {
-    if (!context.isAppRtl) {
-      return input;
-    }
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    var output = input;
-    for (var i = 0; i < arabic.length; i++) {
-      output = output.replaceAll('$i', arabic[i]);
-    }
-    return output;
-  }
+  String _digits(BuildContext context, String input) =>
+      localizeDigits(context, input);
 
   DateTime _parseTime(String raw) {
     try {
-      var clean = raw.split(' ').first;
-      const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-      for (var i = 0; i < arabic.length; i++) {
-        clean = clean.replaceAll(arabic[i], '$i');
-      }
+      final clean = toWesternDigits(raw.split(' ').first);
       final parts = clean.split(':');
       final now = DateTime.now();
       return DateTime(

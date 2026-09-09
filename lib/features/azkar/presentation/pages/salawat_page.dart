@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
@@ -276,15 +277,6 @@ class _SalawatPageState extends State<SalawatPage> {
     );
   }
 
-  static String _digits(BuildContext context, int value) {
-    if (!context.isAppRtl) {
-      return '$value';
-    }
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  static String _digits(BuildContext context, int value) =>
+      localizeDigits(context, '$value');
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../home/domain/custom_wird.dart';
 import '../../../home/presentation/widgets/add_to_wird_button.dart';
@@ -203,12 +204,8 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     return rawType;
   }
 
-  String _formatNumber(BuildContext context, int value) {
-    if (!context.isAppRtl) {
-      return value.toString();
-    }
-    return _toArabicDigits(value);
-  }
+  String _formatNumber(BuildContext context, int value) =>
+      localizeDigits(context, '$value');
 
   /// Coming back from the reader: the last-read card watches the provider, so
   /// this only nudges the rest of the screen to rebuild.
@@ -308,23 +305,12 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     });
   }
 
-  String _normalizeDigits(String input) {
-    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    var normalized = input;
-    for (var i = 0; i < arabicDigits.length; i++) {
-      normalized = normalized.replaceAll(arabicDigits[i], '$i');
-    }
-    return normalized;
-  }
+  String _normalizeDigits(String input) => toWesternDigits(input);
 
-  String _toArabicDigits(int number) {
-    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return number
-        .toString()
-        .split('')
-        .map((char) => arabicDigits[int.parse(char)])
-        .join('');
-  }
+  /// Unconditional, because this is for matching a query and not for showing
+  /// a number: ٢ typed into the search field means al-Baqarah whichever
+  /// language the interface is in.
+  String _toArabicDigits(int number) => toArabicDigits('$number');
 
   void _setMode(QuranIndexMode mode) {
     if (_mode == mode) return;

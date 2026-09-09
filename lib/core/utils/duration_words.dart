@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../localization/app_localizations.dart';
+import 'arabic_numerals.dart';
 
 /// A counted quantity and the word for what it counts.
 ///
@@ -16,22 +17,6 @@ class DurationPart {
 
   final String? value;
   final String unit;
-}
-
-/// Numbers written the way the reader's own language writes them.
-///
-/// Every screen that showed a number had grown its own private copy of this,
-/// which is three chances to forget one.
-String localizeDigits(BuildContext context, String input) {
-  if (Localizations.localeOf(context).languageCode != 'ar') {
-    return input;
-  }
-  const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  var output = input;
-  for (var i = 0; i < arabic.length; i++) {
-    output = output.replaceAll('$i', arabic[i]);
-  }
-  return output;
 }
 
 /// How long is left, split into its counted parts.

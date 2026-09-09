@@ -11,6 +11,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../data/bookmark_store.dart';
 import '../../data/services/quran_local_service.dart';
@@ -775,7 +776,10 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       if (settings.showVerseNumbers) {
         spans.add(
           TextSpan(
-            text: '﴿${_arabicNumber(verse.numberInSurah)}﴾ ',
+            // Unconditional: the verse marker sits inside the Mushaf's own
+            // script, so it stays Arabic-Indic even when the interface is in
+            // English.
+            text: '﴿${toArabicDigits('${verse.numberInSurah}')}﴾ ',
             style: TextStyle(color: palette.accent),
             recognizer: recognizer,
           ),
@@ -1195,17 +1199,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     return '$label ${_localizedNumber(hizb)}';
   }
 
-  String _localizedNumber(int value) =>
-      context.isAppRtl ? _arabicNumber(value) : value.toString();
-
-  static String _arabicNumber(int value) {
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  String _localizedNumber(int value) => localizeDigits(context, '$value');
 }
 
 /// Bookmark colour used by both the reader and the bookmarks list.

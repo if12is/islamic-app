@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../domain/divine_names.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 
 /// The ninety-nine names, to read through or to search.
 ///
@@ -188,15 +189,6 @@ class _DivineNamesPageState extends State<DivineNamesPage> {
     }
   }
 
-  static String _arabicNumber(BuildContext context, int value) {
-    if (!context.isAppRtl) {
-      return '$value';
-    }
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return value
-        .toString()
-        .split('')
-        .map((char) => digits[int.parse(char)])
-        .join();
-  }
+  static String _arabicNumber(BuildContext context, int value) =>
+      localizeDigits(context, '$value');
 }
