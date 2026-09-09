@@ -95,6 +95,52 @@ void main() {
     );
   });
 
+  test('a build number that went backwards reads as nothing new', () {
+    // What a phone on 1.3.0+2045 was told when the newest release was
+    // 1.3.0+47: "you have 1.3.0 (2045), the newest published is 1.3.0 (47),
+    // nothing to install." The comparison is right — 47 is not newer than
+    // 2045 — and the honest answer was to stop numbering builds with
+    // github.run_number, which restarts at 1 whenever the workflow file is
+    // renamed. Android refuses a lower versionCode outright, so the update
+    // could not have installed even if it had been offered.
+    //
+    // Kept as a test because the comparison must NOT be loosened to paper
+    // over it: treating a lower build as newer would offer real downgrades.
+    const published = AppRelease(
+      versionName: '1.3.0',
+      buildNumber: 47,
+      notes: '',
+      pageUrl: '',
+      apkUrl: 'https://example.com/app.apk',
+      apkBytes: 1,
+    );
+
+    expect(
+      UpdateService.isNewer(published, 2045, currentVersionName: '1.3.0'),
+      isFalse,
+    );
+
+    // And the way out, which is what shipping 1.4.0 does: a newer marketing
+    // version reaches every install, whichever counter numbered its build.
+    const next = AppRelease(
+      versionName: '1.4.0',
+      buildNumber: 3519360,
+      notes: '',
+      pageUrl: '',
+      apkUrl: 'https://example.com/app.apk',
+      apkBytes: 1,
+    );
+
+    expect(
+      UpdateService.isNewer(next, 2045, currentVersionName: '1.3.0'),
+      isTrue,
+    );
+    expect(
+      UpdateService.isNewer(next, 47, currentVersionName: '1.3.0'),
+      isTrue,
+    );
+  });
+
   test('formats a size someone can weigh against their data', () {
     expect(UpdateService.formatBytes(52 * 1000000), '52.0 MB');
     expect(UpdateService.formatBytes(0), '');
