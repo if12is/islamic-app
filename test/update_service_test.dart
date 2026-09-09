@@ -82,11 +82,7 @@ void main() {
     );
 
     expect(
-      UpdateService.isNewer(
-        published,
-        2032,
-        currentVersionName: '1.2.0',
-      ),
+      UpdateService.isNewer(published, 2032, currentVersionName: '1.2.0'),
       isTrue,
     );
     expect(

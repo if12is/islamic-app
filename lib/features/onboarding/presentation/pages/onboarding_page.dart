@@ -15,6 +15,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../../../shared/providers/app_text_scale_provider.dart';
 import '../../../home/presentation/pages/home_page.dart';
 
 /// Onboarding page showing welcome screens for new users.
@@ -32,6 +33,13 @@ class OnboardingPage extends ConsumerStatefulWidget {
 }
 
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
+  /// Welcome, text size, location, notifications.
+  static const int _pageCount = 4;
+
+  /// The page that asks for the location permission. Named rather than counted
+  /// at the call sites, which is what broke when a page was inserted before it.
+  static const int _locationPage = 2;
+
   late PageController _pageController;
   int _currentPage = 0;
   bool _isFinishing = false;
@@ -164,6 +172,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                           showMedallion: season == SeasonalEvent.none,
                           useMark: true,
                         ),
+                        // Asked here rather than left in Settings. Someone who
+                        // needs larger text needs it on this screen already,
+                        // and the menu it otherwise lives in is exactly the
+                        // kind of place they will not go looking.
+                        _buildTextSizePage(context),
                         _buildFeaturePage(
                           context,
                           icon: Icons.explore_outlined,
@@ -361,6 +374,98 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     );
   }
 
+  /// The one question worth asking before anything else is shown.
+  ///
+  /// Each choice is drawn at the size it sets, so it can be judged by looking
+  /// rather than by trying — and the sentence above them is set at the chosen
+  /// size too, which turns the row into a preview of the whole app.
+  Widget _buildTextSizePage(BuildContext context) {
+    final tokens = context.tokens;
+    final current = ref.watch(appTextScaleProvider);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      child: Column(
+        children: [
+          const Spacer(flex: 3),
+          Icon(Icons.format_size_rounded, size: 40, color: tokens.goldBright),
+          const Spacer(flex: 2),
+          Text(
+            context.tr('onboarding_text_size_title'),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.display(
+              context,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            context.tr('onboarding_text_size_body'),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.body(
+              context,
+              fontSize: 14.5,
+              color: Colors.white.withValues(alpha: 0.72),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Row(
+            children: [
+              for (final scale in AppTextScale.values) ...[
+                if (scale != AppTextScale.values.first)
+                  const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    selected: scale == current,
+                    label: context.tr(scale.labelKey),
+                    child: Material(
+                      color:
+                          scale == current
+                              ? tokens.goldBright
+                              : Colors.white.withValues(alpha: 0.10),
+                      borderRadius: AppRadii.mdAll,
+                      child: InkWell(
+                        borderRadius: AppRadii.mdAll,
+                        onTap:
+                            () => ref
+                                .read(appTextScaleProvider.notifier)
+                                .set(scale),
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 68),
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          child: Text(
+                            context.tr(scale.labelKey),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            textScaler: TextScaler.noScaling,
+                            style: AppTextStyles.display(
+                              context,
+                              fontSize: 15 * scale.factor,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  scale == current
+                                      ? tokens.onGold
+                                      : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const Spacer(flex: 3),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBottomNavigation(BuildContext context) {
     final tokens = context.tokens;
 
@@ -377,7 +482,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              3,
+              _pageCount,
               (index) => AnimatedContainer(
                 duration: AppMotion.base,
                 curve: AppMotion.enter,
@@ -409,14 +514,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                   _isFinishing
                       ? null
                       : () async {
-                        if (_currentPage == 0) {
+                        if (_currentPage < _locationPage) {
                           await _pageController.nextPage(
                             duration: AppMotion.base,
                             curve: AppMotion.enter,
                           );
                           return;
                         }
-                        if (_currentPage == 1) {
+                        if (_currentPage == _locationPage) {
                           await _handleLocationPermission();
                           return;
                         }
@@ -455,11 +560,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 
   String _primaryActionLabel(BuildContext context) {
-    if (_currentPage == 0) {
+    if (_currentPage < _locationPage) {
       return context.tr('next_btn');
     }
 
-    if (_currentPage == 1) {
+    if (_currentPage == _locationPage) {
       return context.tr('enable_location');
     }
 

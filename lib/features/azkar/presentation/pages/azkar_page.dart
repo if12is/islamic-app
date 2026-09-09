@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/duration_words.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../home/domain/custom_wird.dart';
@@ -39,6 +40,9 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
   bool _isLoading = true;
   List<AzkarCategory> _categories = [];
   AzkarProgressSnapshot? _lastAzkar;
+
+  /// Morning before noon, evening after — whichever one is due now.
+  AzkarProgressSnapshot? _nowAzkar;
 
   @override
   void initState() {
@@ -117,6 +121,38 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     setState(() {
       _lastAzkar = snapshot;
     });
+    await _refreshNowAzkar();
+  }
+
+  /// The set whose time it is, with today's progress on it.
+  ///
+  /// The app knows the hour and was not using it. Morning and evening adhkar
+  /// are the daily habit this tab exists for, and both sat below the fold
+  /// under a tasbeeh counter that filled the top half of the screen — so the
+  /// thing wanted at a known hour every day took a scroll to find, while the
+  /// thing wanted occasionally was unmissable.
+  Future<void> _refreshNowAzkar() async {
+    if (_categories.isEmpty) {
+      return;
+    }
+    final beforeNoon = DateTime.now().hour < 12;
+    final category =
+        beforeNoon
+            ? _getCategory('morning', 'صباح', context.tr('morning_azkar'))
+            : _getCategory('evening', 'مساء', context.tr('evening_azkar'));
+
+    if (category.azkar.isEmpty) {
+      if (mounted) {
+        setState(() => _nowAzkar = null);
+      }
+      return;
+    }
+
+    final snapshot = await AzkarProgressStore.progressFor(category);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _nowAzkar = snapshot);
   }
 
   void _navigateToDetails(AzkarCategory category) {
@@ -148,6 +184,10 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
               : ListView(
                 padding: AppScaffold.scrollPadding,
                 children: [
+                  if (_nowAzkar != null) ...[
+                    _buildNowAzkarCard(_nowAzkar!),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
                   const SmartTasbeehWidget(),
                   const SizedBox(height: AppSpacing.lg),
                   _buildDevotionShortcuts(),
@@ -295,6 +335,31 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     }
 
     return context.tr(fallbackKey);
+  }
+
+  /// The adhkar of this half of the day, at the top, with today's count on it.
+  Widget _buildNowAzkarCard(AzkarProgressSnapshot snapshot) {
+    final beforeNoon = DateTime.now().hour < 12;
+    final title = _displayCategoryName(
+      context,
+      snapshot.category,
+      beforeNoon ? 'morning_azkar' : 'evening_azkar',
+    );
+
+    return HeroCard(
+      label: context.tr('azkar_due_now'),
+      title: title,
+      subtitle:
+          snapshot.isComplete
+              ? context.tr('azkar_session_complete')
+              : localizeDigits(
+                context,
+                '${snapshot.completedCount} / ${snapshot.totalCount}',
+              ),
+      ornament: beforeNoon ? HeroOrnament.mosque : HeroOrnament.crescent,
+      height: 132,
+      onTap: () => _navigateToDetails(snapshot.category),
+    );
   }
 
   Widget _buildContinueAzkarCard(AzkarProgressSnapshot snapshot) {

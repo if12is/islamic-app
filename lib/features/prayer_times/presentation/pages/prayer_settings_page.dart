@@ -63,7 +63,15 @@ class PrayerSettingsPage extends ConsumerWidget {
                       RadioListTile<int>(
                         contentPadding: EdgeInsets.zero,
                         value: entry.key,
-                        title: Text(entry.value),
+                        title: Text(context.tr(entry.value)),
+                        // Which one is yours is a question about where you
+                        // live, not about which body issued the table.
+                        subtitle: Text(
+                          context.tr(
+                            AppConstants.prayerCalculationRegions[entry.key] ??
+                                '',
+                          ),
+                        ),
                       ),
                   ],
                 ),

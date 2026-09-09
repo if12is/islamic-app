@@ -305,6 +305,18 @@ class HintPill extends StatelessWidget {
 enum HintTone { neutral, accent, success }
 
 /// A borderless icon action, for rows of verse tools.
+///
+/// Two things here are about the hand rather than the eye.
+///
+/// The box is never smaller than [minTarget] however small the glyph inside
+/// it is. Drawn from the icon outwards it came to 34 by 34 — and on the surah
+/// rows it sat directly beside a 48px button of a different function, one of
+/// which starts a recitation. A target under 48 is measured against a steady
+/// adult finger; it is not the finger this app is most often used by.
+///
+/// And the tint was `inkFaint`, the colour of secondary *text*. These are live
+/// controls, not footnotes, so they take the colour of muted ink instead: a
+/// button that reads as a caption gets treated as one.
 class GhostIconButton extends StatelessWidget {
   const GhostIconButton({
     super.key,
@@ -321,6 +333,9 @@ class GhostIconButton extends StatelessWidget {
   final bool active;
   final double size;
 
+  /// The smallest a touch target may be, in either direction.
+  static const double minTarget = 48;
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -329,13 +344,23 @@ class GhostIconButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkResponse(
         onTap: onTap,
-        radius: 22,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Icon(
-            icon,
-            size: size,
-            color: active ? tokens.brand : tokens.inkFaint,
+        radius: minTarget / 2,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: minTarget,
+            minHeight: minTarget,
+          ),
+          child: Center(
+            widthFactor: 1,
+            heightFactor: 1,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Icon(
+                icon,
+                size: size,
+                color: active ? tokens.brand : tokens.inkMuted,
+              ),
+            ),
           ),
         ),
       ),

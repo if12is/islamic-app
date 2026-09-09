@@ -54,11 +54,29 @@ class AppConstants {
   /// 7: Kuwait, 8: Qatar, 9: Majlis Ugama Islam Singapura
   /// 10: Tunisia, 11: Turkey, 12: Singapore, 13: MUIS
   /// 14: JAKIM, 15: BABULS
+  /// The methods offered, as translation keys — not as display text.
+  ///
+  /// These were English strings baked in here, which put "Muslim World League"
+  /// in Latin script on the most consequential button in an Arabic interface:
+  /// this setting decides whether the Fajr adhan is right for where the reader
+  /// lives. Someone who does not read Latin script will not touch it, and so
+  /// will never learn that their times can be corrected at all.
   static const Map<int, String> prayerCalculationMethods = {
-    2: 'ISNA',
-    3: 'Muslim World League',
-    4: 'Umm al-Qura',
-    5: 'Egyptian Authority',
+    2: 'calc_method_isna',
+    3: 'calc_method_mwl',
+    4: 'calc_method_makkah',
+    5: 'calc_method_egypt',
+  };
+
+  /// Where each method is the one normally followed.
+  ///
+  /// The name of an authority tells you nothing about whether it is yours.
+  /// "The one used in Egypt" does.
+  static const Map<int, String> prayerCalculationRegions = {
+    2: 'calc_region_isna',
+    3: 'calc_region_mwl',
+    4: 'calc_region_makkah',
+    5: 'calc_region_egypt',
   };
 
   // ========================
@@ -83,6 +101,9 @@ class AppConstants {
 
   /// Key for storing selected theme mode
   static const String themeModeKey = 'theme_mode';
+
+  /// How large the app's own text is set, app-wide.
+  static const String appTextScaleKey = 'app_text_scale';
 
   /// Key for storing selected prayer calculation method
   static const String prayerMethodKey = 'prayer_method';

@@ -7,11 +7,13 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/duration_words.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/arc_gauge.dart';
+import '../../../../core/widgets/shortcut_grid.dart';
 import 'hijri_calendar_page.dart';
 import 'monthly_timetable_page.dart';
 import 'nearby_mosques_page.dart';
@@ -135,30 +137,10 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     return Icons.light_mode_rounded;
   }
 
-  /// "٤٢ د" or "٢:١٥" — what is left before the next prayer.
+  /// What is left before the next prayer, in words.
   String _remainingLabel(BuildContext context, Duration duration) {
-    if (duration.isNegative) {
-      return '';
-    }
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final text =
-        hours > 0
-            ? '$hours:${minutes.toString().padLeft(2, '0')}'
-            : '$minutes ${context.tr('minute_short')}';
-    return _localizeDigits(context, text);
-  }
-
-  /// The clock split from its marker, for the arc's centre.
-  (String, String) _clockParts(BuildContext context, DateTime time) {
-    final suffix =
-        time.hour >= 12 ? context.tr('pm_short') : context.tr('am_short');
-    var hour = time.hour % 12;
-    if (hour == 0) {
-      hour = 12;
-    }
-    final minutes = time.minute.toString().padLeft(2, '0');
-    return (_localizeDigits(context, '$hour:$minutes'), suffix);
+    final words = remainingInWords(context, duration);
+    return words.isEmpty ? context.tr('prayer_time_now') : words;
   }
 
   String _formatTime12H(BuildContext context, DateTime time) {
@@ -326,26 +308,24 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                     headline:
                         nextSlot == null
                             ? '—'
-                            : _clockParts(context, nextSlot.time).$1,
-                    headlineSuffix:
-                        nextSlot == null
-                            ? null
-                            : _clockParts(context, nextSlot.time).$2,
-                    caption:
-                        nextSlot == null
-                            ? null
-                            : _getPrayerDisplayName(
-                              context,
-                              nextSlot.prayer.name,
-                            ),
-                    footnote: locationText,
-                    remaining:
-                        nextSlot == null
-                            ? null
                             : _remainingLabel(
                               context,
                               nextSlot.time.difference(_currentTime),
                             ),
+                    headlineParts:
+                        nextSlot == null
+                            ? const []
+                            : remainingParts(
+                              context,
+                              nextSlot.time.difference(_currentTime),
+                            ),
+                    caption:
+                        nextSlot == null
+                            ? null
+                            : '${context.tr('until_word')} '
+                                '${_getPrayerDisplayName(context, nextSlot.prayer.name)}'
+                                ' · ${_formatTime12H(context, nextSlot.time)}',
+                    footnote: locationText,
                     startLabel:
                         currentSlot == null
                             ? null
@@ -380,6 +360,81 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
+                // The five times, written out, before anything else asks for
+                // attention. This tab is opened to read a time, and until now
+                // it opened on a picture of one: the arc, the location card
+                // and the log card all came first, so a reader had to scroll
+                // before a single number appeared in words.
+                SectionHeader(title: context.tr('prayer_times_today')),
+                ...slots.map((slot) {
+                  return _buildPrayerTimeTile(
+                    context: context,
+                    name: _getPrayerDisplayName(context, slot.prayer.name),
+                    time: _formatTime12H(context, slot.time),
+                    icon: _getIconForPrayer(slot.prayer.name),
+                    isCurrent: currentSlot?.id == slot.id,
+                  );
+                }),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // The six tools, straight after the times rather than at the
+                // foot of the page. They were about seventeen hundred pixels
+                // down — two full screens — and two of them, the mosques
+                // nearby and the travel mode, are wanted precisely when the
+                // reader is somewhere unfamiliar and in a hurry.
+                SectionHeader(title: context.tr('prayer_tools')),
+                ShortcutGrid(
+                  items: [
+                    ShortcutItem(
+                      icon: Icons.explore_outlined,
+                      label: context.tr('qibla_direction'),
+                      onTap:
+                          () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const QiblaPage(),
+                            ),
+                          ),
+                    ),
+                    ShortcutItem(
+                      icon: Icons.calendar_month_outlined,
+                      label: context.tr('hijri_calendar'),
+                      onTap:
+                          () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const HijriCalendarPage(),
+                            ),
+                          ),
+                    ),
+                    ShortcutItem(
+                      icon: Icons.tune,
+                      label: context.tr('prayer_settings'),
+                      onTap:
+                          () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const PrayerSettingsPage(),
+                            ),
+                          ),
+                    ),
+                    ShortcutItem(
+                      icon: Icons.calendar_view_month_outlined,
+                      label: context.tr('monthly_timetable'),
+                      onTap: () => MonthlyTimetablePage.open(context),
+                    ),
+                    ShortcutItem(
+                      icon: Icons.mosque_outlined,
+                      label: context.tr('nearby_mosques'),
+                      onTap: () => NearbyMosquesPage.open(context),
+                    ),
+                    ShortcutItem(
+                      icon: Icons.flight_takeoff_outlined,
+                      label: context.tr('travel_mode'),
+                      onTap: () => TravelModePage.open(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
                 const CityChangeBanner(),
 
                 _LocationCard(
@@ -397,98 +452,6 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
 
                 const PrayerLogCard(),
                 const SizedBox(height: AppSpacing.lg),
-
-                SectionHeader(title: context.tr('prayer_times_today')),
-                ...slots.map((slot) {
-                  return _buildPrayerTimeTile(
-                    context: context,
-                    name: _getPrayerDisplayName(context, slot.prayer.name),
-                    time: _formatTime12H(context, slot.time),
-                    icon: _getIconForPrayer(slot.prayer.name),
-                    isCurrent: currentSlot?.id == slot.id,
-                  );
-                }),
-
-                const SizedBox(height: AppSpacing.lg),
-                // IntrinsicHeight, then stretch: a bare `stretch` inside a
-                // ListView asks for infinite height and crashes. This measures
-                // the tallest card first, so all three match.
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _ShortcutCard(
-                          icon: Icons.explore_outlined,
-                          label: context.tr('qibla_direction'),
-                          onTap:
-                              () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const QiblaPage(),
-                                ),
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _ShortcutCard(
-                          icon: Icons.calendar_month_outlined,
-                          label: context.tr('hijri_calendar'),
-                          onTap:
-                              () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const HijriCalendarPage(),
-                                ),
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _ShortcutCard(
-                          icon: Icons.tune,
-                          label: context.tr('prayer_settings'),
-                          onTap:
-                              () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const PrayerSettingsPage(),
-                                ),
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _ShortcutCard(
-                          icon: Icons.calendar_view_month_outlined,
-                          label: context.tr('monthly_timetable'),
-                          onTap: () => MonthlyTimetablePage.open(context),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _ShortcutCard(
-                          icon: Icons.mosque_outlined,
-                          label: context.tr('nearby_mosques'),
-                          onTap: () => NearbyMosquesPage.open(context),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _ShortcutCard(
-                          icon: Icons.flight_takeoff_outlined,
-                          label: context.tr('travel_mode'),
-                          onTap: () => TravelModePage.open(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           );
@@ -580,55 +543,6 @@ class _LocationCard extends StatelessWidget {
           Text(
             context.tr('change'),
             style: AppTextStyles.caption(context, color: tokens.brand),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A square shortcut under the day's list.
-class _ShortcutCard extends StatelessWidget {
-  const _ShortcutCard({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // The same tile the rows above use. These six shortcuts had a bare
-          // 22px glyph while the rows had a filled 38px circle, in the same
-          // scroll, a thumb apart.
-          AppIconTile(icon, role: AppIconRole.card),
-          const SizedBox(height: AppSpacing.sm),
-          // A fixed two-line box keeps every icon on the same line, whether
-          // the label wraps or not.
-          SizedBox(
-            height: 32,
-            child: Center(
-              child: Text(
-                label,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption(context, fontSize: 11.5),
-              ),
-            ),
           ),
         ],
       ),

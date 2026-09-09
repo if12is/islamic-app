@@ -15,7 +15,7 @@ import '../../../../core/widgets/ayah_block.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/widgets/islamic_icon.dart';
 import '../../../../core/widgets/motif_icon.dart';
-import '../../../../core/widgets/story_rail.dart';
+import '../../../../core/widgets/shortcut_grid.dart';
 import '../../../../shared/providers/app_providers.dart';
 
 /// Every component in the library, on one screen.
@@ -140,27 +140,27 @@ class _DesignGalleryPageState extends ConsumerState<DesignGalleryPage> {
           ),
 
           const SizedBox(height: AppSpacing.lg),
-          _label(context, 'StoryRail'),
-          StoryRail(
+          _label(context, 'ShortcutGrid'),
+          ShortcutGrid(
             items: [
-              StoryItem(
+              ShortcutItem(
                 icon: Icons.menu_book,
                 label: context.tr('last_read'),
                 onTap: () {},
                 highlighted: true,
               ),
-              StoryItem(
+              ShortcutItem(
                 icon: Icons.checklist_rtl,
                 label: context.tr('daily_wird'),
                 onTap: () {},
                 badge: '٣',
               ),
-              StoryItem(
+              ShortcutItem(
                 icon: Icons.explore_outlined,
                 label: context.tr('qibla_direction'),
                 onTap: () {},
               ),
-              StoryItem(
+              ShortcutItem(
                 icon: Icons.radio_button_checked,
                 label: context.tr('azkar_tasbeeh'),
                 onTap: () {},

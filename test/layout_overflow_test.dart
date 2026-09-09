@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/core/theme/app_theme.dart';
 import 'package:islamic_app/core/theme/design_tokens.dart';
+import 'package:islamic_app/core/utils/duration_words.dart';
 import 'package:islamic_app/core/widgets/app_cards.dart';
 import 'package:islamic_app/core/widgets/app_section.dart';
 import 'package:islamic_app/core/widgets/arc_gauge.dart';
 import 'package:islamic_app/core/widgets/ayah_block.dart';
-import 'package:islamic_app/core/widgets/story_rail.dart';
+import 'package:islamic_app/core/widgets/shortcut_grid.dart';
 
 /// The yellow-and-black stripe is a bug, not a warning.
 ///
@@ -88,9 +89,8 @@ void main() {
           const Center(
             child: ArcGauge(
               progress: 0.5,
-              headline: '٥:٤٨',
-              caption: 'المغرب',
-              remaining: '٤٢ د',
+              headline: 'ساعتان و٤٢ دقيقة',
+              caption: 'حتى المغرب · ٥:٤٨ م',
               startLabel: 'العصر',
               endLabel: 'المغرب',
             ),
@@ -99,9 +99,54 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      // The gap between the two feet is where it belongs, and it has to be
-      // on screen — it was wired up once and silently never rendered.
-      expect(find.text('٤٢ د'), findsOneWidget);
+      // The countdown is the headline now, not a pill at the foot of the arc,
+      // and it is the one number the screen exists to show.
+      expect(find.text('ساعتان و٤٢ دقيقة'), findsOneWidget);
+    });
+
+    testWidgets('the countdown stays inside the arc', (tester) async {
+      // The headline is words now, and Arabic words are long: "ساعتان و٥٩
+      // دقيقة" is three times the width of the "٥:٤٨" that used to sit here.
+      // It has to shrink to fit rather than run out over the arc's stroke.
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        host(
+          const Center(
+            child: ArcGauge(
+              progress: 0.5,
+              headline: 'ساعتان و٥٩ دقيقة',
+              headlineParts: [
+                DurationPart(unit: 'ساعتان'),
+                DurationPart(value: '٥٩', unit: 'دقيقة'),
+              ],
+              caption: 'حتى العصر · ٤:٢٧ م',
+              footnote: 'دمنهور، البحيرة، مصر',
+              startLabel: 'الظهر',
+              startTime: '١٢:٥٦ م',
+              endLabel: 'العصر',
+              endTime: '٤:٢٧ م',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+
+      // The digits must still be reading size after the fit. Set as one
+      // string this line shrank to about 17px — smaller than the caption
+      // under it, which is the opposite of what promoting it was for.
+      final digits = tester.getRect(find.text('٥٩'));
+      expect(
+        digits.height,
+        greaterThan(24),
+        reason:
+            'the countdown shrank to ${digits.height}px tall, which is '
+            'smaller than the caption beneath it',
+      );
     });
 
     testWidgets('the arc gauge, in both directions', (tester) async {
@@ -112,9 +157,8 @@ void main() {
             const Center(
               child: ArcGauge(
                 progress: 0.62,
-                headline: '٥:٤٨',
-                headlineSuffix: 'م',
-                caption: 'المغرب · ٤٢ د',
+                headline: 'ساعة و٤٢ دقيقة',
+                caption: 'حتى المغرب · ٥:٤٨ م',
                 footnote: 'دمنهور، البحيرة، مصر',
                 startLabel: 'العصر',
                 startTime: '٣:٢٠ م',
@@ -144,11 +188,11 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the shortcuts rail', (tester) async {
+    testWidgets('the shortcuts grid', (tester) async {
       await pumpTight(
         tester,
         host(
-          StoryRail(
+          ShortcutGrid(
             items: [
               for (final label in [
                 'آخر قراءة',
@@ -156,13 +200,17 @@ void main() {
                 'اتجاه القبلة',
                 'عداد التسبيح',
                 'التقويم الهجري',
+                'تعرّف على التلاوة',
               ])
-                StoryItem(icon: Icons.star, label: label, onTap: () {}),
+                ShortcutItem(icon: Icons.star, label: label, onTap: () {}),
             ],
           ),
         ),
       );
       expect(tester.takeException(), isNull);
+      // Nothing scrolls sideways and nothing is clipped, so every shortcut is
+      // on screen — which is the whole reason the rail became a grid.
+      expect(find.text('تعرّف على التلاوة'), findsOneWidget);
     });
 
     testWidgets('a section header carrying a pill selector', (tester) async {

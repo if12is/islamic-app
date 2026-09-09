@@ -7,6 +7,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/hijri_service.dart';
 import '../../../../core/services/seasonal_theme.dart';
+import '../../../../core/utils/duration_words.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
@@ -17,10 +18,13 @@ import '../../../../core/widgets/arc_gauge.dart';
 import '../../../../core/widgets/ayah_block.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../../../core/widgets/seasonal_banner.dart';
-import '../../../../core/widgets/story_rail.dart';
+import '../../../../core/widgets/shortcut_grid.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
 import '../../../azkar/presentation/pages/azkar_page.dart';
+import '../../../broadcasts/presentation/pages/broadcasts_page.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../settings/presentation/pages/zakat_page.dart';
 import '../../../prayer_times/domain/entities/prayer_times_entity.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../prayer_times/presentation/pages/prayer_times_page.dart';
@@ -292,17 +296,10 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
     return '${parts.$1} ${parts.$2}';
   }
 
-  String _remaining(BuildContext context, Duration duration) {
-    if (duration.isNegative) {
-      return '';
-    }
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final text =
-        hours > 0
-            ? '$hours:${minutes.toString().padLeft(2, '0')}'
-            : '$minutes ${context.tr('minute_short')}';
-    return _digits(context, text);
+  /// The countdown for the arc's centre, or "it is time" at the moment itself.
+  String _countdown(BuildContext context, Duration duration) {
+    final words = remainingInWords(context, duration);
+    return words.isEmpty ? context.tr('prayer_time_now') : words;
   }
 
   @override
@@ -423,15 +420,15 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
               Center(
                 child: ArcGauge(
                   progress: progress,
-                  headline:
-                      next == null ? '—' : _clockParts(context, next.time).$1,
-                  headlineSuffix:
-                      next == null ? null : _clockParts(context, next.time).$2,
+                  headline: next == null ? '—' : _countdown(context, until),
+                  headlineParts:
+                      next == null ? const [] : remainingParts(context, until),
                   caption:
                       next == null
                           ? null
-                          : _prayerName(context, next.prayer.name),
-                  remaining: next == null ? null : _remaining(context, until),
+                          : '${context.tr('until_word')} '
+                              '${_prayerName(context, next.prayer.name)}'
+                              ' · ${_clock(context, next.time)}',
                   footnote: locationLabel.isEmpty ? null : locationLabel,
                   startLabel:
                       current == null
@@ -527,7 +524,7 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-/// The four things people open every day, one tap away.
+/// The things people open every day, one tap away and all of them visible.
 class _DashboardRail extends ConsumerWidget {
   const _DashboardRail({required this.onOpenTab});
 
@@ -539,9 +536,9 @@ class _DashboardRail extends ConsumerWidget {
     final wird = ref.watch(dailyWirdProvider).value;
     final left = wird == null ? 0 : wird.total - wird.completed;
 
-    return StoryRail(
+    return ShortcutGrid(
       items: [
-        StoryItem(
+        ShortcutItem(
           icon: Icons.auto_stories_outlined,
           label: context.tr('last_read'),
           highlighted: lastRead != null,
@@ -561,14 +558,14 @@ class _DashboardRail extends ConsumerWidget {
             );
           },
         ),
-        StoryItem(
+        ShortcutItem(
           icon: Icons.checklist_rtl,
           label: context.tr('daily_wird'),
           badge: left > 0 ? '$left' : null,
           highlighted: left > 0,
           onTap: () => onOpenTab(2),
         ),
-        StoryItem(
+        ShortcutItem(
           icon: Icons.explore_outlined,
           label: context.tr('qibla_direction'),
           onTap:
@@ -576,12 +573,12 @@ class _DashboardRail extends ConsumerWidget {
                 MaterialPageRoute<void>(builder: (_) => const QiblaPage()),
               ),
         ),
-        StoryItem(
+        ShortcutItem(
           icon: Icons.radio_button_checked,
           label: context.tr('tasbeeh_counter'),
           onTap: () => onOpenTab(2),
         ),
-        StoryItem(
+        ShortcutItem(
           icon: Icons.mic_none,
           label: context.tr('recite_mode_identify'),
           onTap:
@@ -591,7 +588,7 @@ class _DashboardRail extends ConsumerWidget {
                 ),
               ),
         ),
-        StoryItem(
+        ShortcutItem(
           icon: Icons.calendar_month_outlined,
           label: context.tr('hijri_calendar'),
           onTap:
@@ -599,6 +596,33 @@ class _DashboardRail extends ConsumerWidget {
                 MaterialPageRoute<void>(
                   builder: (_) => const HijriCalendarPage(),
                 ),
+              ),
+        ),
+        // These three were whole features filed as settings, behind an
+        // unlabelled 36px avatar and six hundred pixels of scrolling. Zakat is
+        // a calculator and the broadcasts are Quran radio; neither is a
+        // preference, and nobody looking for either would think to press a
+        // picture of themselves. They keep their rows in Settings for anyone
+        // who learned them there, and gain a name here.
+        ShortcutItem(
+          icon: Icons.calculate_outlined,
+          label: context.tr('zakat'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ZakatPage()),
+              ),
+        ),
+        ShortcutItem(
+          icon: Icons.radio_outlined,
+          label: context.tr('broadcasts'),
+          onTap: () => BroadcastsPage.open(context),
+        ),
+        ShortcutItem(
+          icon: Icons.settings_outlined,
+          label: context.tr('settings'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SettingsPage()),
               ),
         ),
       ],

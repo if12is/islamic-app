@@ -10,13 +10,27 @@ import '../providers/reading_progress_provider.dart';
 ///
 /// The daily portion is re-spread over the days that are left, so a missed day
 /// nudges tomorrow instead of leaving an impossible pile at the end.
-class KhatmahCard extends ConsumerWidget {
+///
+/// With no plan running it stays folded to a single row. Open, it was a block
+/// of five choices between the search field and the index — so the surah list,
+/// which is what this tab is for, began at the bottom edge of the screen.
+/// Someone who came to read had to scroll past a planning tool to reach the
+/// Fatiha. Folded, it still says it is there, which is all it needs to do
+/// until someone wants it.
+class KhatmahCard extends ConsumerStatefulWidget {
   const KhatmahCard({super.key});
 
   static const List<int> _presets = [7, 15, 30, 60];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<KhatmahCard> createState() => _KhatmahCardState();
+}
+
+class _KhatmahCardState extends ConsumerState<KhatmahCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
     final plan = ref.watch(khatmahPlanProvider);
     final summary = ref.watch(readingProgressProvider).value;
     final colorScheme = Theme.of(context).colorScheme;
@@ -36,41 +50,62 @@ class KhatmahCard extends ConsumerWidget {
   }
 
   Widget _setup(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _header(context, context.tr('khatmah_plan')),
-        const SizedBox(height: 6),
-        Text(
-          context.tr('khatmah_plan_desc'),
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Row(
+            children: [
+              Expanded(child: _header(context, context.tr('khatmah_plan'))),
+              Text(
+                context.tr('khatmah_not_started'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Icon(
+                _expanded ? Icons.expand_less : Icons.expand_more,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final days in _presets)
-              ActionChip(
-                label: Text(
-                  AppLocalizations.translate(
-                    Localizations.localeOf(context).languageCode,
-                    'khatmah_in_days',
-                    replacements: {'days': days.toString()},
-                  ),
-                ),
-                onPressed:
-                    () => ref.read(khatmahPlanProvider.notifier).start(days),
-              ),
-            ActionChip(
-              avatar: const Icon(Icons.edit, size: 16),
-              label: Text(context.tr('khatmah_custom')),
-              onPressed: () => _askForDays(context, ref),
+        if (_expanded) ...[
+          const SizedBox(height: 6),
+          Text(
+            context.tr('khatmah_plan_desc'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final days in KhatmahCard._presets)
+                ActionChip(
+                  label: Text(
+                    AppLocalizations.translate(
+                      Localizations.localeOf(context).languageCode,
+                      'khatmah_in_days',
+                      replacements: {'days': days.toString()},
+                    ),
+                  ),
+                  onPressed:
+                      () => ref.read(khatmahPlanProvider.notifier).start(days),
+                ),
+              ActionChip(
+                avatar: const Icon(Icons.edit, size: 16),
+                label: Text(context.tr('khatmah_custom')),
+                onPressed: () => _askForDays(context, ref),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

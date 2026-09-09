@@ -19,24 +19,30 @@ void main() {
 
       expect(ReaderTourStore.shouldShow(prefs, now: now), isFalse);
       expect(
-        ReaderTourStore.shouldShow(prefs, now: now.add(const Duration(days: 7))),
+        ReaderTourStore.shouldShow(
+          prefs,
+          now: now.add(const Duration(days: 7)),
+        ),
         isFalse,
       );
     });
 
-    test('it comes back after a month, for a feature since forgotten', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final now = DateTime(2026, 9, 9);
-      await ReaderTourStore.markShown(prefs, now: now);
+    test(
+      'it comes back after a month, for a feature since forgotten',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final now = DateTime(2026, 9, 9);
+        await ReaderTourStore.markShown(prefs, now: now);
 
-      expect(
-        ReaderTourStore.shouldShow(
-          prefs,
-          now: now.add(ReaderTourStore.repeatAfter),
-        ),
-        isTrue,
-      );
-    });
+        expect(
+          ReaderTourStore.shouldShow(
+            prefs,
+            now: now.add(ReaderTourStore.repeatAfter),
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('"I know these" ends it for good', () async {
       // Anything that reappears with no way to stop it teaches people to
@@ -45,13 +51,7 @@ void main() {
       await ReaderTourStore.dismissForever(prefs);
 
       expect(ReaderTourStore.shouldShow(prefs), isFalse);
-      expect(
-        ReaderTourStore.shouldShow(
-          prefs,
-          now: DateTime(2030),
-        ),
-        isFalse,
-      );
+      expect(ReaderTourStore.shouldShow(prefs, now: DateTime(2030)), isFalse);
     });
 
     test('dismissing outranks being due', () async {
@@ -61,7 +61,10 @@ void main() {
       await ReaderTourStore.dismissForever(prefs);
 
       expect(
-        ReaderTourStore.shouldShow(prefs, now: now.add(const Duration(days: 90))),
+        ReaderTourStore.shouldShow(
+          prefs,
+          now: now.add(const Duration(days: 90)),
+        ),
         isFalse,
       );
     });

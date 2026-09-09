@@ -19,6 +19,7 @@ import 'core/utils/app_logger.dart';
 import 'features/quran/data/services/reciter_catalogue.dart';
 import 'features/onboarding/presentation/pages/splash_screen.dart';
 import 'shared/providers/app_providers.dart';
+import 'shared/providers/app_text_scale_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -144,10 +145,14 @@ class IslamicApp extends ConsumerWidget {
           NotificationRouter.flushPending();
         });
         // One place tells the whole tree which season it is; every scaffold
-        // and the nav bar pick their decoration up from here.
-        return SeasonalDecorScope(
-          event: season,
-          child: child ?? const SizedBox.shrink(),
+        // and the nav bar pick their decoration up from here. And one place
+        // tells it how large to set its own text, so the choice reaches the
+        // screens that never had a size control of their own.
+        return AppTextScaleScope(
+          child: SeasonalDecorScope(
+            event: season,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
 

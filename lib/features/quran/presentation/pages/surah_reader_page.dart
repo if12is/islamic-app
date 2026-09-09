@@ -1060,25 +1060,24 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
           ),
         ],
       ),
+      // Eight bare glyphs in a row, every one of them explained by a tooltip
+      // — and a tooltip on a phone needs a long press that nobody performs.
+      // Five named buttons instead: the four adjustments and actions people
+      // reach for while reading, and one honest "more" holding the rest. A
+      // walkthrough once a month does not substitute for a word that is
+      // always there.
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // The three adjustments people actually make, on the page.
-          //
-          // All three lived behind the settings sheet: a menu, a scroll, a
-          // control, and a trip back to see the result. They are one tap each
-          // now, and they show what they did where it happens. Everything
-          // finer — line spacing, margins, the font itself — is still in the
-          // sheet, which is the right place for a setting chosen once.
           _ReaderQuickButton(
             palette: palette,
-            tooltip: context.tr('reader_paper'),
+            label: context.tr('reader_paper'),
             icon: Icons.contrast_rounded,
             onTap: _cycleReaderTheme,
           ),
           _ReaderQuickButton(
             palette: palette,
-            tooltip: context.tr('show_tajweed'),
+            label: context.tr('show_tajweed'),
             icon: Icons.palette_outlined,
             active: ref.watch(readerSettingsProvider).showTajweed,
             onTap:
@@ -1090,40 +1089,17 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
           ),
           _ReaderQuickButton(
             palette: palette,
-            tooltip: context.tr('text_size'),
+            label: context.tr('text_size'),
             icon: Icons.format_size_rounded,
             onTap: _stepFontSize,
           ),
-          _divider(palette),
-          IconButton(
-            tooltip: context.tr('reader_settings'),
-            icon: Icon(Icons.tune, color: palette.text),
-            onPressed: () => ReaderSettingsSheet.show(context),
-          ),
-          _divider(palette),
-          IconButton(
-            tooltip: context.tr(_autoScrolling ? 'stop_scroll' : 'auto_scroll'),
-            icon: Icon(
-              _autoScrolling ? Icons.pause_circle : Icons.swipe_vertical,
-              color: _autoScrolling ? palette.accent : palette.text,
-            ),
-            onPressed: _toggleAutoScroll,
-          ),
-          _divider(palette),
-          IconButton(
-            tooltip: context.tr('listen'),
-            icon:
-                audio.loading
-                    ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                    : Icon(
-                      audio.playing ? Icons.pause : Icons.play_arrow,
-                      color: audio.playing ? palette.accent : palette.text,
-                    ),
-            onPressed: () {
+          _ReaderQuickButton(
+            palette: palette,
+            label: context.tr('listen'),
+            icon: audio.playing ? Icons.pause : Icons.play_arrow,
+            active: audio.playing,
+            busy: audio.loading,
+            onTap: () {
               if (audio.hasQueue) {
                 ref.read(quranAudioProvider.notifier).toggle();
                 return;
@@ -1135,40 +1111,58 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
               _playFrom(start);
             },
           ),
-          _divider(palette),
-          IconButton(
-            tooltip: context.tr('player'),
-            icon: Icon(
-              Icons.graphic_eq,
-              color:
-                  audio.isRepeatingRange || audio.hasSleepTimer
-                      ? palette.accent
-                      : palette.text,
-            ),
-            onPressed: () => PlayerSheet.show(context, _verses),
-          ),
-          _divider(palette),
-          IconButton(
-            tooltip: context.tr('add_bookmark'),
-            icon: Icon(Icons.bookmark_add_outlined, color: palette.text),
-            onPressed: () {
-              final verse = _verses.firstWhere(
-                (item) => item.key == _selectedKey,
-                orElse: () => _firstVisibleVerse() ?? _verses.first,
-              );
-              _openActions(verse);
-            },
+          MenuAnchor(
+            menuChildren: [
+              MenuItemButton(
+                leadingIcon: const Icon(Icons.bookmark_add_outlined, size: 20),
+                onPressed: () {
+                  final verse = _verses.firstWhere(
+                    (item) => item.key == _selectedKey,
+                    orElse: () => _firstVisibleVerse() ?? _verses.first,
+                  );
+                  _openActions(verse);
+                },
+                child: Text(context.tr('add_bookmark')),
+              ),
+              MenuItemButton(
+                leadingIcon: const Icon(Icons.graphic_eq, size: 20),
+                onPressed: () => PlayerSheet.show(context, _verses),
+                child: Text(context.tr('player')),
+              ),
+              MenuItemButton(
+                leadingIcon: Icon(
+                  _autoScrolling ? Icons.pause_circle : Icons.swipe_vertical,
+                  size: 20,
+                ),
+                onPressed: _toggleAutoScroll,
+                child: Text(
+                  context.tr(_autoScrolling ? 'stop_scroll' : 'auto_scroll'),
+                ),
+              ),
+              MenuItemButton(
+                leadingIcon: const Icon(Icons.tune, size: 20),
+                onPressed: () => ReaderSettingsSheet.show(context),
+                child: Text(context.tr('reader_settings')),
+              ),
+            ],
+            builder:
+                (context, controller, _) => _ReaderQuickButton(
+                  palette: palette,
+                  label: context.tr('more_word'),
+                  icon: Icons.more_horiz_rounded,
+                  active:
+                      _autoScrolling ||
+                      audio.isRepeatingRange ||
+                      audio.hasSleepTimer,
+                  onTap:
+                      () =>
+                          controller.isOpen
+                              ? controller.close()
+                              : controller.open(),
+                ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _divider(ReaderPalette palette) {
-    return Container(
-      width: 1,
-      height: 22,
-      color: palette.text.withValues(alpha: 0.15),
     );
   }
 
@@ -1285,43 +1279,78 @@ class _SurahHeaderPainter extends CustomPainter {
 /// three are toggles. The tinted ground is what says so — the same device the
 /// rest of the app uses for a selected state, in the reader's own palette
 /// rather than the app's, because this bar sits on paper or on night.
+/// One control on the reader's bar: a glyph with its name under it.
 class _ReaderQuickButton extends StatelessWidget {
   const _ReaderQuickButton({
     required this.palette,
-    required this.tooltip,
+    required this.label,
     required this.icon,
     required this.onTap,
     this.active = false,
+    this.busy = false,
   });
 
   final ReaderPalette palette;
-  final String tooltip;
+  final String label;
   final IconData icon;
   final VoidCallback onTap;
   final bool active;
 
+  /// Shows a spinner where the glyph goes, without losing the name.
+  final bool busy;
+
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 24,
-        child: Container(
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color:
-                active
-                    ? palette.accent.withValues(alpha: 0.18)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(13),
-          ),
-          child: Icon(
-            icon,
-            size: 21,
-            color: active ? palette.accent : palette.text,
+    final tint = active ? palette.accent : palette.text;
+
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      child: ExcludeSemantics(
+        child: InkResponse(
+          onTap: onTap,
+          radius: 28,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 62, minHeight: 52),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+            decoration: BoxDecoration(
+              color:
+                  active
+                      ? palette.accent.withValues(alpha: 0.18)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (busy)
+                  SizedBox(
+                    width: 21,
+                    height: 21,
+                    child: CircularProgressIndicator.adaptive(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(tint),
+                    ),
+                  )
+                else
+                  Icon(icon, size: 21, color: tint),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontFamily,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: tint,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

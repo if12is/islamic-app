@@ -15,11 +15,7 @@ void main() {
           surahNumber: 18,
           bytes: 1000,
         ),
-        DownloadedSurah(
-          reciterCode: 'ar.husary',
-          surahNumber: 36,
-          bytes: 1000,
-        ),
+        DownloadedSurah(reciterCode: 'ar.husary', surahNumber: 36, bytes: 1000),
       ],
     );
 
@@ -32,10 +28,7 @@ void main() {
     });
 
     test('the chosen voice wins when it is the one on disk', () {
-      expect(
-        state.offlineVoiceFor(18, preferred: 'ar.alafasy'),
-        'ar.alafasy',
-      );
+      expect(state.offlineVoiceFor(18, preferred: 'ar.alafasy'), 'ar.alafasy');
     });
 
     test('another downloaded voice stands in when the chosen one is not', () {

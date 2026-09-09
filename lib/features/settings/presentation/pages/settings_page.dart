@@ -27,6 +27,7 @@ import 'seasonal_preview_page.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/input_validators.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../widgets/app_text_scale_card.dart';
 
 class SettingsPage extends ConsumerWidget {
   final VoidCallback? onBackHome;
@@ -111,6 +112,12 @@ class SettingsPage extends ConsumerWidget {
               children: [
                 ProfileHeader(onEdit: () => _editProfile(context, ref)),
                 const SizedBox(height: 32),
+
+                // First on the page, above everything else, because someone
+                // who cannot read the page cannot use the rest of it. It shows
+                // its own effect: each choice is drawn at the size it sets.
+                const AppTextScaleCard(),
+                const SizedBox(height: 16),
 
                 // Adhan Notifications
                 // AppCard, not a hand-built one. These were radius 32 with 24
@@ -270,9 +277,11 @@ class SettingsPage extends ConsumerWidget {
                             },
                             icon: const Icon(Icons.expand_more),
                             label: Text(
-                              AppConstants
-                                      .prayerCalculationMethods[prayerMethod] ??
-                                  context.tr('egyptian_general_authority'),
+                              context.tr(
+                                AppConstants
+                                        .prayerCalculationMethods[prayerMethod] ??
+                                    'calc_method_egypt',
+                              ),
                             ),
                           );
                         },
@@ -285,7 +294,7 @@ class SettingsPage extends ConsumerWidget {
                                           .read(prayerMethodProvider.notifier)
                                           .setMethod(entry.key);
                                     },
-                                    child: Text(entry.value),
+                                    child: Text(context.tr(entry.value)),
                                   ),
                                 )
                                 .toList(),

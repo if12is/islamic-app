@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
+import '../../../../shared/providers/app_providers.dart';
 import '../../domain/custom_wird.dart';
 import '../providers/custom_wird_provider.dart';
 import '../widgets/daily_wird_card.dart';
@@ -204,11 +205,18 @@ class _WirdRow extends ConsumerWidget {
   }
 }
 
-class _EmptyWird extends StatelessWidget {
+/// Nothing added yet — and a way to add something, right here.
+///
+/// This used to be two sentences of prose ending in "look for 'add to your
+/// daily wird'", which is an instruction, not an interface. It asked the
+/// reader to go and hunt through other screens for a button whose appearance
+/// they had never seen. An empty screen is the moment someone is most ready
+/// to act, and the only thing missing was somewhere to press.
+class _EmptyWird extends ConsumerWidget {
   const _EmptyWird();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,9 +225,41 @@ class _EmptyWird extends StatelessWidget {
             context.tr('wird_empty'),
             style: AppTextStyles.body(context, fontSize: 13.5),
           ),
+          const SizedBox(height: AppSpacing.md),
+          // Two peers, not a choice with a right answer — so one is filled and
+          // one outlined rather than both solid, which reads as a slip.
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed:
+                        () => ref
+                            .read(mainTabIndexProvider.notifier)
+                            .setIndex(_quranTab),
+                    icon: const Icon(Icons.menu_book_outlined, size: 20),
+                    label: Text(context.tr('quran')),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        () => ref
+                            .read(mainTabIndexProvider.notifier)
+                            .setIndex(_azkarTab),
+                    icon: const Icon(Icons.wb_twilight_outlined, size: 20),
+                    label: Text(context.tr('azkar')),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.sm),
-          // Naming the places is the whole message: an empty state that only
-          // says "nothing here" leaves the reader to hunt for the button.
           Text(
             context.tr('wird_empty_how'),
             style: AppTextStyles.caption(context),
@@ -228,4 +268,8 @@ class _EmptyWird extends StatelessWidget {
       ),
     );
   }
+
+  /// The shell's tab order, which is where the add buttons actually live.
+  static const int _quranTab = 1;
+  static const int _azkarTab = 2;
 }

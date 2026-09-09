@@ -12,12 +12,17 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/custom_loader.dart';
 import '../../../../core/widgets/glass_container.dart';
+import '../../../../core/widgets/shortcut_grid.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
 import '../../data/services/quran_local_service.dart';
 import '../providers/downloads_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import '../providers/surah_audio_provider.dart';
+import 'bookmarks_page.dart';
 import 'downloads_page.dart';
+import 'hifz_page.dart';
+import 'notes_page.dart';
+import 'reading_stats_page.dart';
 import '../widgets/khatmah_card.dart';
 import '../widgets/last_read_card.dart';
 import '../widgets/reciter_picker_sheet.dart';
@@ -439,6 +444,8 @@ class _QuranPageState extends ConsumerState<QuranPage> {
                 const SizedBox(height: AppSpacing.lg),
                 const LastReadCard(),
                 const SizedBox(height: AppSpacing.md),
+                _buildQuranShortcuts(),
+                const SizedBox(height: AppSpacing.md),
                 const KhatmahCard(),
                 const SizedBox(height: AppSpacing.lg),
                 _buildSurahIndexHeader(),
@@ -486,6 +493,70 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     );
   }
 
+  /// The five places this tab can send you, each with its name written on it.
+  ///
+  /// Three of these had no entrance outside an open surah. Bookmarks,
+  /// reflections and memorisation lived as 20px glyphs in the reader's app
+  /// bar, so seeing your own bookmarks meant first opening some surah — very
+  /// possibly not the one the bookmark is in. A thing you saved that you
+  /// cannot find is a thing you did not save.
+  Widget _buildQuranShortcuts() {
+    return ShortcutGrid(
+      items: [
+        ShortcutItem(
+          icon: Icons.my_location,
+          label: context.tr('jump_to_short'),
+          onTap: _openJumpSheet,
+        ),
+        ShortcutItem(
+          icon: Icons.download_for_offline_outlined,
+          label: context.tr('downloads_short'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const DownloadsPage()),
+              ),
+        ),
+        ShortcutItem(
+          icon: Icons.bookmarks_outlined,
+          label: context.tr('bookmarks'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const BookmarksPage()),
+              ),
+        ),
+        ShortcutItem(
+          icon: Icons.edit_note,
+          label: context.tr('my_reflections'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NotesPage()),
+              ),
+        ),
+        ShortcutItem(
+          icon: Icons.psychology_alt_outlined,
+          label: context.tr('hifz'),
+          onTap:
+              () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute<void>(builder: (_) => const HifzPage())),
+        ),
+        // Only reachable from a small icon inside the khatmah card until now,
+        // which meant it existed for readers who had already started a plan
+        // and for nobody else.
+        ShortcutItem(
+          icon: Icons.insights_outlined,
+          label: context.tr('reading_stats'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ReadingStatsPage(),
+                ),
+              ),
+        ),
+      ],
+    );
+  }
+
   /// Surah · Juz · Hizb · Page · Sajdah, as a pill track.
   Widget _buildModeToggle() {
     return Row(
@@ -519,23 +590,9 @@ class _QuranPageState extends ConsumerState<QuranPage> {
             ],
           ),
         ),
-        const SizedBox(width: AppSpacing.sm),
-        GhostIconButton(
-          icon: Icons.my_location,
-          tooltip: context.tr('jump_to'),
-          onTap: _openJumpSheet,
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        // Offline downloads were three taps deep behind a card, which is a
-        // long way to walk for the screen you want before a flight.
-        GhostIconButton(
-          icon: Icons.download_for_offline_outlined,
-          tooltip: context.tr('offline_downloads'),
-          onTap:
-              () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const DownloadsPage()),
-              ),
-        ),
+        // The jump and downloads buttons used to sit here as two bare glyphs
+        // with nothing but a tooltip, and a tooltip on a phone needs a long
+        // press nobody thinks to try. They are named tiles above the index now.
       ],
     );
   }
