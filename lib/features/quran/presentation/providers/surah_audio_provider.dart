@@ -268,13 +268,34 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
     try {
       AppAudio.claim(AudioOwner.surah);
       final name = QuranLocalService.surahInfo(surahNumber).nameAr;
+
+      // Prefer any voice already on the disk over the network.
+      //
+      // The chosen reciter wins whenever their copy is downloaded. When it is
+      // not, and some other reciter's is, that one plays instead of a URL that
+      // needs a connection nobody may have — which is the case this got wrong:
+      // a surah downloaded under one reciter, the app set to another, no
+      // signal, and "try again" on top of a perfectly playable file.
+      final playable = await _downloads.playableReciterFor(
+        surahNumber,
+        preferred: voice,
+      );
+      final effective = playable ?? voice;
+      if (effective != voice) {
+        AppLogger.info(
+          'Playing surah $surahNumber from the downloaded $effective '
+          'because $voice is not on disk',
+        );
+        state = state.copyWith(reciterId: effective);
+      }
+
       // A downloaded surah plays from storage; otherwise stream it.
-      final source = await _downloads.sourceFor(voice, surahNumber);
+      final source = await _downloads.sourceFor(effective, surahNumber);
       await QuranMedia.prepareSession();
       final tag = await QuranMedia.item(
-        id: 'surah_${surahNumber}_$voice',
+        id: 'surah_${surahNumber}_$effective',
         title: 'سورة $name',
-        artist: displayNameFor(voice),
+        artist: displayNameFor(effective),
       );
 
       await _player.setAudioSource(

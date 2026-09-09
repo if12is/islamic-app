@@ -342,7 +342,10 @@ class UpdateService {
     int currentBuild, {
     String currentVersionName = '',
   }) {
-    final nameCmp = compareVersionNames(release.versionName, currentVersionName);
+    final nameCmp = compareVersionNames(
+      release.versionName,
+      currentVersionName,
+    );
     if (nameCmp != 0) {
       return nameCmp > 0;
     }

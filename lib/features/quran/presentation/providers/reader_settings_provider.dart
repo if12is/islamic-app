@@ -64,6 +64,7 @@ class ReaderSettings {
     this.brightnessOverride,
     this.showVerseNumbers = true,
     this.reciterCode = 'ar.alafasy',
+    this.reciterChosen = false,
     this.viewMode = ReaderViewMode.continuous,
     this.showTajweed = false,
   });
@@ -95,6 +96,15 @@ class ReaderSettings {
   /// Reciter used for verse-by-verse playback.
   final String reciterCode;
 
+  /// Whether the reader has ever picked a voice.
+  ///
+  /// [reciterCode] alone cannot answer this: it holds a default from the first
+  /// launch, so "Al-Afasy because nobody asked" and "Al-Afasy because I chose
+  /// him" look identical. Without the difference the app starts a recitation in
+  /// a stranger's voice on the first tap, which is not a small thing when the
+  /// voice is the whole point of the tap.
+  final bool reciterChosen;
+
   /// Continuous scroll or page-by-page.
   final ReaderViewMode viewMode;
 
@@ -113,6 +123,7 @@ class ReaderSettings {
     bool clearBrightnessOverride = false,
     bool? showVerseNumbers,
     String? reciterCode,
+    bool? reciterChosen,
     ReaderViewMode? viewMode,
     bool? showTajweed,
   }) {
@@ -132,6 +143,7 @@ class ReaderSettings {
               : (brightnessOverride ?? this.brightnessOverride),
       showVerseNumbers: showVerseNumbers ?? this.showVerseNumbers,
       reciterCode: reciterCode ?? this.reciterCode,
+      reciterChosen: reciterChosen ?? this.reciterChosen,
       viewMode: viewMode ?? this.viewMode,
       showTajweed: showTajweed ?? this.showTajweed,
     );
@@ -148,6 +160,7 @@ class ReaderSettings {
     'brightnessOverride': brightnessOverride,
     'showVerseNumbers': showVerseNumbers,
     'reciterCode': reciterCode,
+    'reciterChosen': reciterChosen,
     'viewMode': viewMode.name,
     'showTajweed': showTajweed,
   };
@@ -182,6 +195,11 @@ class ReaderSettings {
           json['reciterCode'] is String
               ? json['reciterCode'] as String
               : 'ar.alafasy',
+      // Anyone upgrading who already has a stored reciter is treated as having
+      // chosen it, so the picker does not open on a settled habit.
+      reciterChosen:
+          json['reciterChosen'] == true ||
+          (json['reciterChosen'] == null && json['reciterCode'] is String),
       viewMode: ReaderViewMode.values.firstWhere(
         (mode) => mode.name == json['viewMode'],
         orElse: () => ReaderViewMode.continuous,
@@ -321,8 +339,13 @@ class ReaderSettingsNotifier extends Notifier<ReaderSettings> {
   Future<void> setShowVerseNumbers(bool value) =>
       update(state.copyWith(showVerseNumbers: value));
 
+  /// Remember a voice, and that it was actually picked.
+  ///
+  /// Every route into this is a deliberate choice — a name tapped in the
+  /// picker — so the flag is set here rather than at each call site, where it
+  /// would be forgotten at one of them.
   Future<void> setReciter(String code) =>
-      update(state.copyWith(reciterCode: code));
+      update(state.copyWith(reciterCode: code, reciterChosen: true));
 
   Future<void> setViewMode(ReaderViewMode mode) =>
       update(state.copyWith(viewMode: mode));

@@ -22,6 +22,8 @@ import '../providers/reading_progress_provider.dart';
 import '../widgets/ayah_actions_sheet.dart';
 import '../widgets/player_sheet.dart';
 import '../widgets/reader_settings_sheet.dart';
+import '../widgets/reader_tour.dart';
+import '../widgets/reader_zoom.dart';
 import '../widgets/tajweed_text.dart';
 import 'bookmarks_page.dart';
 import 'hifz_page.dart';
@@ -85,6 +87,13 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
   Ticker? _autoScrollTicker;
   bool _autoScrolling = false;
+
+  /// When the size readout should disappear, or null when it is hidden.
+  ///
+  /// A timestamp rather than a timer that gets cancelled and remade on every
+  /// frame of a pinch: the pinch fires many times a second, and the badge only
+  /// needs to know whether the last change was recent.
+  DateTime? _zoomBadgeUntil;
 
   /// Elapsed time at the previous tick, so movement follows the clock.
   Duration _lastTick = Duration.zero;
@@ -207,6 +216,13 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
                   (verse) => verse.numberInSurah == widget.initialVerse,
                 );
         await _playFrom(verses[index < 0 ? 0 : index]);
+      }
+
+      // After the page is up, not before: a walkthrough over a blank screen
+      // describes nothing. Never over an autoplay, which the reader started
+      // on purpose and should not have to dismiss a card to hear.
+      if (mounted && !widget.autoPlay && _errorKey.isEmpty) {
+        await ReaderTour.maybeShow(context);
       }
     } catch (e, stack) {
       AppLogger.error('Failed to load verses', e, stack);
@@ -503,16 +519,40 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
                   ],
                 ),
               )
-            else if (settings.viewMode == ReaderViewMode.pages)
-              _pagesView(settings, palette, bookmarkedKeys, audio)
             else
-              _readingView(settings, palette, bookmarkedKeys, audio),
+              // Two fingers on the page resize the script, the way they do on
+              // a photograph. It was reachable only through a settings sheet,
+              // which is a long way round for the adjustment people make most.
+              ReaderZoom(
+                onChanged: _onZoom,
+                child:
+                    settings.viewMode == ReaderViewMode.pages
+                        ? _pagesView(settings, palette, bookmarkedKeys, audio)
+                        : _readingView(
+                          settings,
+                          palette,
+                          bookmarkedKeys,
+                          audio,
+                        ),
+              ),
             if (!_loading && _errorKey.isEmpty)
               Positioned(
                 left: 0,
                 right: 0,
                 bottom: 24,
                 child: Center(child: _toolbar(palette, audio)),
+              ),
+            if (!_loading && _errorKey.isEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 12,
+                child: Center(
+                  child: ZoomBadge(
+                    fontSize: settings.fontSize,
+                    visible: _zoomBadgeUntil != null,
+                  ),
+                ),
               ),
           ],
         ),
@@ -962,6 +1002,50 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     );
   }
 
+  /// Step through the reading surfaces: paper, sepia, night, and back.
+  ///
+  /// A cycle rather than a menu. There are four, they are easy to tell apart
+  /// on sight, and tapping until it looks right is faster than reading a list
+  /// of names for colours.
+  void _cycleReaderTheme() {
+    const order = ReaderTheme.values;
+    final current = ref.read(readerSettingsProvider).theme;
+    final next = order[(order.indexOf(current) + 1) % order.length];
+    ref.read(readerSettingsProvider.notifier).setTheme(next);
+  }
+
+  /// Step the script up, and wrap back to the smallest at the top.
+  ///
+  /// The pinch is the fine control; this is the one for a reader who does not
+  /// know the pinch is there, or has one hand on a bus rail.
+  void _stepFontSize() {
+    const steps = [22.0, 26.0, 30.0, 34.0, 40.0, 46.0];
+    final current = ref.read(readerSettingsProvider).fontSize;
+    final next = steps.firstWhere(
+      (size) => size > current + 0.5,
+      orElse: () => steps.first,
+    );
+    ref.read(readerSettingsProvider.notifier).setFontSize(next);
+    _onZoom(next);
+  }
+
+  /// Show the size for a moment after a pinch, then let it fade.
+  void _onZoom(double size) {
+    final until = DateTime.now().add(const Duration(milliseconds: 900));
+    setState(() => _zoomBadgeUntil = until);
+
+    Future.delayed(const Duration(milliseconds: 950), () {
+      if (!mounted) {
+        return;
+      }
+      // Only the last pinch clears it: an earlier one whose timer fires while
+      // the fingers are still moving would blink the badge off mid-gesture.
+      if (_zoomBadgeUntil == until) {
+        setState(() => _zoomBadgeUntil = null);
+      }
+    });
+  }
+
   Widget _toolbar(ReaderPalette palette, QuranAudioState audio) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -979,6 +1063,38 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // The three adjustments people actually make, on the page.
+          //
+          // All three lived behind the settings sheet: a menu, a scroll, a
+          // control, and a trip back to see the result. They are one tap each
+          // now, and they show what they did where it happens. Everything
+          // finer — line spacing, margins, the font itself — is still in the
+          // sheet, which is the right place for a setting chosen once.
+          _ReaderQuickButton(
+            palette: palette,
+            tooltip: context.tr('reader_paper'),
+            icon: Icons.contrast_rounded,
+            onTap: _cycleReaderTheme,
+          ),
+          _ReaderQuickButton(
+            palette: palette,
+            tooltip: context.tr('show_tajweed'),
+            icon: Icons.palette_outlined,
+            active: ref.watch(readerSettingsProvider).showTajweed,
+            onTap:
+                () => ref
+                    .read(readerSettingsProvider.notifier)
+                    .setShowTajweed(
+                      !ref.read(readerSettingsProvider).showTajweed,
+                    ),
+          ),
+          _ReaderQuickButton(
+            palette: palette,
+            tooltip: context.tr('text_size'),
+            icon: Icons.format_size_rounded,
+            onTap: _stepFontSize,
+          ),
+          _divider(palette),
           IconButton(
             tooltip: context.tr('reader_settings'),
             icon: Icon(Icons.tune, color: palette.text),
@@ -1161,4 +1277,54 @@ class _SurahHeaderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SurahHeaderPainter old) => old.color != color;
+}
+
+/// One control in the reading toolbar.
+///
+/// A plain [IconButton] cannot show that a setting is on, and two of these
+/// three are toggles. The tinted ground is what says so — the same device the
+/// rest of the app uses for a selected state, in the reader's own palette
+/// rather than the app's, because this bar sits on paper or on night.
+class _ReaderQuickButton extends StatelessWidget {
+  const _ReaderQuickButton({
+    required this.palette,
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final ReaderPalette palette;
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 24,
+        child: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color:
+                active
+                    ? palette.accent.withValues(alpha: 0.18)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(
+            icon,
+            size: 21,
+            color: active ? palette.accent : palette.text,
+          ),
+        ),
+      ),
+    );
+  }
 }

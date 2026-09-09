@@ -14,17 +14,15 @@ import '../../../../core/widgets/custom_loader.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
 import '../../data/services/quran_local_service.dart';
-import '../providers/quran_audio_provider.dart';
+import '../providers/downloads_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import '../providers/surah_audio_provider.dart';
 import 'downloads_page.dart';
 import '../widgets/khatmah_card.dart';
 import '../widgets/last_read_card.dart';
 import '../widgets/reciter_picker_sheet.dart';
-import 'now_playing_page.dart';
 import 'recitation_page.dart';
 import 'surah_reader_page.dart';
-import 'package:just_audio/just_audio.dart';
 
 /// What the index is listing right now.
 enum QuranIndexMode { surahs, juz, hizb, pages, sajdah }
@@ -111,8 +109,6 @@ class _QuranPageState extends ConsumerState<QuranPage> {
   // The session itself now lives in [surahAudioProvider] rather than in this
   // State: it used to be thrown away every time the tab changed, which lost
   // the bar, the reciter and the sleep timer while the audio carried on.
-  AudioPlayer get _audioPlayer => ref.read(quranAudioPlayerProvider);
-
   SurahAudioController get _playback => ref.read(surahAudioProvider.notifier);
 
   List<Surah> _allSurahs = [];
@@ -340,7 +336,35 @@ class _QuranPageState extends ConsumerState<QuranPage> {
   }
 
   /// Start or toggle a surah, and say something useful when it will not play.
+  ///
+  /// The first tap opens the reciter picker instead of playing. A recitation is
+  /// chosen by voice before it is chosen by surah, and starting one in whoever
+  /// the app happened to default to is a decision made on the reader's behalf
+  /// about the one thing they came to decide.
   Future<void> _play(int surahId) async {
+    final playing = ref.read(surahAudioProvider);
+    final settings = ref.read(readerSettingsProvider);
+
+    // Only when nothing is loaded: pausing what is already playing must not
+    // open a sheet.
+    if (!settings.reciterChosen && playing.surahNumber != surahId) {
+      final chosen = await ReciterPickerSheet.show(
+        context,
+        settings.reciterCode,
+      );
+      if (chosen == null || !mounted) {
+        return;
+      }
+      await ref.read(readerSettingsProvider.notifier).setReciter(chosen.id);
+      if (!mounted) {
+        return;
+      }
+      final started = await _playback.play(surahId, reciterId: chosen.id);
+      if (started || !mounted) {
+        return;
+      }
+    }
+
     final ok = await _playback.play(surahId);
     if (ok || !mounted) {
       return;
@@ -429,21 +453,11 @@ class _QuranPageState extends ConsumerState<QuranPage> {
               ],
             ),
 
-          // The player floats above the list while something is playing.
-          if (ref.watch(surahAudioProvider).hasSurah)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: AppSpacing.navClearance,
-                    left: AppSpacing.xl,
-                    right: AppSpacing.xl,
-                  ),
-                  child: _buildAudioPlayerBar(),
-                ),
-              ),
-            ),
+          // No player here. The shell already carries one above the nav bar on
+          // every screen, and this page drew a second, larger one on top of
+          // it — two bars for one recitation, each with its own play button,
+          // stacked a thumb apart. The shared strip is the survivor: it is the
+          // one that exists everywhere else, so it is the one people learn.
         ],
       ),
     );
@@ -571,6 +585,15 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     }
 
     final playback = ref.watch(surahAudioProvider);
+    // Before the index has been read, nothing is known to be downloaded, which
+    // is the right thing to say: an offline mark that appears a moment late is
+    // better than one that appears and then vanishes.
+    final downloads = ref
+        .watch(downloadsProvider)
+        .maybeWhen(
+          data: (value) => value,
+          orElse: () => const DownloadsState(),
+        );
 
     return Column(
       children: [
@@ -581,7 +604,11 @@ class _QuranPageState extends ConsumerState<QuranPage> {
             meta:
                 '${_localizedSurahType(context, surah.type)} · '
                 '${_formatNumber(context, surah.versesCount)} '
-                '${context.tr('verses')}',
+                '${context.tr('verses')}'
+                // Saying so on the row is what makes the list usable with no
+                // signal: the reader can see which recitations will start
+                // instead of finding out one failed tap at a time.
+                '${downloads.hasAnyVoice(surah.id) ? ' · ${context.tr('downloaded_offline')}' : ''}',
             trailingText: context.isAppRtl ? null : surah.nameAr,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1094,134 +1121,6 @@ class _QuranPageState extends ConsumerState<QuranPage> {
           ),
         );
       },
-    );
-  }
-
-  /// The mini bar: what is playing, one control, and a way into the full
-  /// player. Everything else — speed, repeat, the sleep timer, seeking — lives
-  /// one tap away rather than crammed into a strip over the list.
-  Widget _buildAudioPlayerBar() {
-    final tokens = context.tokens;
-    final playback = ref.watch(surahAudioProvider);
-    final surahNumber = playback.surahNumber;
-    if (surahNumber == null) {
-      return const SizedBox.shrink();
-    }
-    final info = QuranLocalService.surahInfo(surahNumber);
-
-    return Material(
-      color: tokens.surfaceRaised,
-      elevation: 0,
-      borderRadius: AppRadii.lgAll,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => NowPlayingPage.open(context),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: AppRadii.lgAll,
-            border: Border.all(color: tokens.line),
-            boxShadow: AppShadows.soft(tokens.ink),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      tooltip:
-                          playback.playing
-                              ? context.tr('pause')
-                              : context.tr('play'),
-                      icon: Icon(
-                        playback.playing
-                            ? Icons.pause_circle_filled_rounded
-                            : Icons.play_circle_fill_rounded,
-                        color: tokens.brand,
-                        size: 40,
-                      ),
-                      onPressed: _playback.toggle,
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.isAppRtl ? info.nameAr : info.nameEn,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.display(
-                              context,
-                              fontSize: 15,
-                              color: tokens.ink,
-                            ),
-                          ),
-                          ReciterChooser(
-                            compact: true,
-                            selectedId: playback.reciterId,
-                            onSelected: (voice) {
-                              _playback.setReciter(voice.id);
-                              ref
-                                  .read(readerSettingsProvider.notifier)
-                                  .setReciter(voice.id);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: context.tr('now_playing'),
-                      icon: Icon(
-                        Icons.keyboard_arrow_up_rounded,
-                        size: 22,
-                        color: tokens.inkMuted,
-                      ),
-                      onPressed: () => NowPlayingPage.open(context),
-                    ),
-                    IconButton(
-                      tooltip: context.tr('close'),
-                      icon: Icon(Icons.close_rounded, color: tokens.inkMuted),
-                      onPressed: _playback.stop,
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
-                  child: StreamBuilder<Duration>(
-                    stream: _audioPlayer.positionStream,
-                    builder: (context, snapshot) {
-                      final position = snapshot.data ?? Duration.zero;
-                      final duration = _audioPlayer.duration ?? Duration.zero;
-                      final progress =
-                          duration.inMilliseconds > 0
-                              ? position.inMilliseconds /
-                                  duration.inMilliseconds
-                              : 0.0;
-                      return ClipRRect(
-                        borderRadius: AppRadii.pillAll,
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 4,
-                          backgroundColor: tokens.groundAlt,
-                          valueColor: AlwaysStoppedAnimation(tokens.gold),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

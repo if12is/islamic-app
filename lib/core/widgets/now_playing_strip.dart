@@ -54,7 +54,7 @@ class NowPlayingStrip extends ConsumerWidget {
       child:
           entry == null
               ? const SizedBox(width: double.infinity)
-              : _Strip(entry: entry),
+              : _Progress(entry: entry),
     );
   }
 
@@ -172,10 +172,46 @@ class _NowPlaying {
   final VoidCallback onOpen;
 }
 
-class _Strip extends StatelessWidget {
-  const _Strip({required this.entry});
+/// Feeds the strip the play position, and nothing else.
+///
+/// Kept apart from the strip so the position stream — which ticks several
+/// times a second — rebuilds only the two-and-a-half pixel line, not the row
+/// of controls above it.
+class _Progress extends ConsumerWidget {
+  const _Progress({required this.entry});
 
   final _NowPlaying entry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final player = ref.watch(quranAudioPlayerProvider);
+
+    return StreamBuilder<Duration>(
+      stream: player.positionStream,
+      builder: (context, snapshot) {
+        final total = player.duration;
+        final position = snapshot.data ?? Duration.zero;
+        // A live stream reports no duration, and a bar with nothing to measure
+        // against should not be drawn rather than sit at zero forever.
+        final progress =
+            (total == null || total.inMilliseconds <= 0)
+                ? null
+                : (position.inMilliseconds / total.inMilliseconds).clamp(
+                  0.0,
+                  1.0,
+                );
+
+        return _Strip(entry: entry, progress: progress);
+      },
+    );
+  }
+}
+
+class _Strip extends StatelessWidget {
+  const _Strip({required this.entry, this.progress});
+
+  final _NowPlaying entry;
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -202,68 +238,95 @@ class _Strip extends StatelessWidget {
             ),
             child: SizedBox(
               height: NowPlayingStrip.height,
-              child: Row(
+              child: Stack(
                 children: [
-                  const SizedBox(width: AppSpacing.md),
-                  Icon(entry.icon, size: 19, color: tokens.brand),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.body(context, fontSize: 13.5),
+                  // How far through, along the bottom edge.
+                  //
+                  // The Quran screen used to draw a second, larger bar of its
+                  // own purely to have this, so one recitation had two bars
+                  // stacked a thumb apart, each with its own play button. The
+                  // line belongs to the strip that is already on every screen.
+                  if (progress != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 2.5,
+                        backgroundColor: Colors.transparent,
+                        valueColor: AlwaysStoppedAnimation(
+                          tokens.brand.withValues(alpha: 0.55),
                         ),
-                        if (entry.subtitle.isNotEmpty)
-                          Text(
-                            entry.subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption(
-                              context,
-                              color: tokens.inkFaint,
-                              fontSize: 11,
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: context.tr(entry.playing ? 'pause' : 'play'),
-                    onPressed: entry.onToggle,
-                    icon:
-                        entry.loading
-                            ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                valueColor: AlwaysStoppedAnimation(
-                                  tokens.brand,
+                  Row(
+                    children: [
+                      const SizedBox(width: AppSpacing.md),
+                      Icon(entry.icon, size: 19, color: tokens.brand),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entry.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.body(
+                                context,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            if (entry.subtitle.isNotEmpty)
+                              Text(
+                                entry.subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.caption(
+                                  context,
+                                  color: tokens.inkFaint,
+                                  fontSize: 11,
                                 ),
                               ),
-                            )
-                            : Icon(
-                              entry.playing
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: tokens.brand,
-                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: context.tr(entry.playing ? 'pause' : 'play'),
+                        onPressed: entry.onToggle,
+                        icon:
+                            entry.loading
+                                ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      tokens.brand,
+                                    ),
+                                  ),
+                                )
+                                : Icon(
+                                  entry.playing
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  color: tokens.brand,
+                                ),
+                      ),
+                      IconButton(
+                        tooltip: context.tr('stop'),
+                        onPressed: entry.onStop,
+                        icon: Icon(
+                          Icons.close_rounded,
+                          size: 19,
+                          color: tokens.inkFaint,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: context.tr('stop'),
-                    onPressed: entry.onStop,
-                    icon: Icon(
-                      Icons.close_rounded,
-                      size: 19,
-                      color: tokens.inkFaint,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
                 ],
               ),
             ),

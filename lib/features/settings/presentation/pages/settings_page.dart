@@ -900,8 +900,7 @@ class SettingsPage extends ConsumerWidget {
           language,
           'app_update_current',
           replacements: {
-            'installed':
-                state.currentLabel.isEmpty ? '—' : state.currentLabel,
+            'installed': state.currentLabel.isEmpty ? '—' : state.currentLabel,
             'latest': state.release?.label ?? '—',
           },
         );

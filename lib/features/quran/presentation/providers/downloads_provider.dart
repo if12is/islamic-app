@@ -58,6 +58,27 @@ class DownloadsState {
         item.reciterCode == reciterCode && item.surahNumber == surahNumber,
   );
 
+  /// Whether this surah is on the disk in any voice at all.
+  ///
+  /// This is the question the surah list actually asks. With no connection,
+  /// what matters is whether the recitation can be played — not whether it can
+  /// be played by the reciter the app happens to be set to.
+  bool hasAnyVoice(int surahNumber) =>
+      downloads.any((item) => item.surahNumber == surahNumber);
+
+  /// The voice that will be used offline for this surah, if any.
+  String? offlineVoiceFor(int surahNumber, {required String preferred}) {
+    if (has(preferred, surahNumber)) {
+      return preferred;
+    }
+    for (final item in downloads) {
+      if (item.surahNumber == surahNumber) {
+        return item.reciterCode;
+      }
+    }
+    return null;
+  }
+
   DownloadProgress? progressOf(String reciterCode, int surahNumber) =>
       progress['$reciterCode/$surahNumber'];
 

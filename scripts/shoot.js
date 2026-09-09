@@ -76,6 +76,24 @@ const SCREENS = [
   { name: 'prayer_tools', nav: 0, steps: [{ scroll: 1700 }] },
   { name: 'prayer_log', nav: 0, steps: [{ scroll: 380 }] },
 
+  // The full player. Reached by starting a surah from the index and then
+  // tapping the strip the shell puts above the nav bar.
+  {
+    name: 'player',
+    nav: 1,
+    steps: [
+      // Al-Fatiha's play button, where it sits with the page unscrolled.
+      { tap: { x: 67, y: 681 } },
+      { wait: 2500 },
+      // The reciter picker opens on a first-ever play; pick the first voice.
+      { tap: { x: 195, y: 330 } },
+      { wait: 4000 },
+      // The now-playing strip, just above the bar.
+      { tap: { x: 195, y: 736 } },
+      { wait: 3000 },
+    ],
+  },
+
   // ---- the reader, which is the app's largest screen --------------------
   {
     name: 'reader',

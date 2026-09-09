@@ -83,6 +83,58 @@ class AudioDownloadService {
         );
   }
 
+  /// Every reciter with this surah already on disk.
+  ///
+  /// Downloads are laid out one directory per reciter, so the answer is the
+  /// list of directories holding `<surah>.mp3`. It is read from the filesystem
+  /// rather than from the downloads index because the index lives in memory
+  /// and the files outlive it.
+  Future<List<String>> downloadedRecitersFor(int surahNumber) async {
+    if (!isSupported) {
+      return const [];
+    }
+    try {
+      final root = await getApplicationDocumentsDirectory();
+      final base = Directory('${root.path}/$_folder');
+      if (!base.existsSync()) {
+        return const [];
+      }
+
+      final found = <String>[];
+      for (final entry in base.listSync()) {
+        if (entry is! Directory) {
+          continue;
+        }
+        if (File('${entry.path}/$surahNumber.mp3').existsSync()) {
+          found.add(entry.path.split(Platform.pathSeparator).last);
+        }
+      }
+      found.sort();
+      return found;
+    } catch (e) {
+      AppLogger.warning('Could not list downloaded reciters: $e');
+      return const [];
+    }
+  }
+
+  /// A voice that can be played from disk, preferring [preferred].
+  ///
+  /// The point of asking is the case this app kept getting wrong: a surah
+  /// downloaded under one reciter, the app set to another, and no connection.
+  /// [sourceFor] answered with a URL — perfectly correct and completely
+  /// useless — and the player came back with "try again" while a playable copy
+  /// sat on the disk.
+  Future<String?> playableReciterFor(
+    int surahNumber, {
+    required String preferred,
+  }) async {
+    if (await localPathIfAvailable(preferred, surahNumber) != null) {
+      return preferred;
+    }
+    final others = await downloadedRecitersFor(surahNumber);
+    return others.isEmpty ? null : others.first;
+  }
+
   /// Download a surah, reporting bytes as they arrive.
   ///
   /// [onProgress] receives the bytes received and the total, where the total

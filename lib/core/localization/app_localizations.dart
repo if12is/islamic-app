@@ -199,6 +199,29 @@ class AppLocalizations {
       'divine_names': 'The ninety-nine names',
       'divine_names_search_hint': 'Search a name or its meaning…',
       // Tajweed colouring.
+      'reader_paper': 'Page colour',
+      // The reading page's walkthrough.
+      'tour_never_again': 'I know these',
+      'tour_zoom_title': 'Pinch to resize',
+      'tour_zoom_body':
+          'Put two fingers on the page and move them apart to enlarge the '
+          'script, or together to shrink it — the same as on a photograph.',
+      'tour_tajweed_title': 'Colour the tajweed',
+      'tour_tajweed_body':
+          'The palette button colours the rules as you read, and the key names '
+          'every colour.',
+      'tour_paper_title': 'Change the paper',
+      'tour_paper_body':
+          'Tap the contrast button to move between paper, sepia, green and '
+          'night. Line spacing and margins are in the settings beside it.',
+      'tour_verse_title': 'Tap a verse',
+      'tour_verse_body':
+          'One tap selects it, a second opens its tools: tafsir, bookmark, '
+          'memorise, share as an image, or export as a video.',
+      'tour_listen_title': 'Listen along',
+      'tour_listen_body':
+          'The play button recites from the verse you are on and follows it '
+          'down the page. It keeps going with the screen off.',
       'show_tajweed': 'Tajweed colours',
       'show_tajweed_desc': 'Colour the rules on the page as you read.',
       'tajweed_key': 'Colour key',
@@ -1383,6 +1406,28 @@ class AppLocalizations {
       'divine_names': 'أسماء الله الحسنى',
       'divine_names_search_hint': 'ابحث عن اسم أو معناه…',
       // تلوين التجويد.
+      'reader_paper': 'لون الصفحة',
+      // جولة صفحة القراءة.
+      'tour_never_again': 'أعرفها، لا تُظهرها',
+      'tour_zoom_title': 'كبّر بإصبعين',
+      'tour_zoom_body':
+          'ضع إصبعين على الصفحة وباعد بينهما ليكبر الخط، أو قرّبهما ليصغر — '
+          'كما تفعل بالصورة تماماً.',
+      'tour_tajweed_title': 'لوّن التجويد',
+      'tour_tajweed_body':
+          'زر الألوان يلوّن الأحكام وأنت تقرأ، ومفتاح الألوان يسمّي لك كل لون.',
+      'tour_paper_title': 'غيّر لون الصفحة',
+      'tour_paper_body':
+          'اضغط زر التباين لتنتقل بين الورقي والبنّي والأخضر والليلي. وتباعد '
+          'السطور والهوامش في الإعدادات بجانبه.',
+      'tour_verse_title': 'اضغط على الآية',
+      'tour_verse_body':
+          'ضغطة تحدّدها، وضغطة ثانية تفتح أدواتها: التفسير، والحفظ، والمشاركة '
+          'صورةً، والتصدير فيديو.',
+      'tour_listen_title': 'استمع وأنت تقرأ',
+      'tour_listen_body':
+          'زر التشغيل يتلو من الآية التي أنت عندها ويتابعها في الصفحة. ويكمل '
+          'والشاشة مغلقة.',
       'show_tajweed': 'تلوين التجويد',
       'show_tajweed_desc': 'يلوّن الأحكام على الصفحة أثناء قراءتك.',
       'tajweed_key': 'مفتاح الألوان',
