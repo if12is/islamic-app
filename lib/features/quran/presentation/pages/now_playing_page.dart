@@ -141,8 +141,7 @@ class NowPlayingPage extends ConsumerWidget {
       builder: (context, snapshot) {
         final voices = snapshot.data ?? ReciterCatalogue.bundled;
         final voice = ReciterCatalogue.byId(state.reciterId, voices);
-        final name =
-            voice?.nameAr ?? QuranReciter.byCode(state.reciterId).nameAr;
+        final name = ReciterCatalogue.displayName(state.reciterId, voices);
         final style = voice?.styleAr ?? '';
 
         return Material(

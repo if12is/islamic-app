@@ -6,7 +6,6 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../data/services/reciter_catalogue.dart';
-import '../providers/quran_audio_provider.dart';
 
 /// Choose from every reciter, not from a shortlist of seven.
 ///
@@ -225,10 +224,8 @@ class ReciterChooser extends StatelessWidget {
       builder: (context, snapshot) {
         final voices = snapshot.data ?? ReciterCatalogue.bundled;
         final voice = ReciterCatalogue.byId(selectedId, voices);
-        final bundled = QuranReciter.byCode(selectedId);
         final label =
-            voice?.label ??
-            (context.isAppRtl ? bundled.nameAr : bundled.nameEn);
+            voice?.label ?? ReciterCatalogue.displayName(selectedId, voices);
 
         if (compact) {
           return InkWell(

@@ -349,7 +349,7 @@ class QuranAudioController extends Notifier<QuranAudioState> {
       await QuranMedia.prepareSession();
       final art = await QuranMedia.coverUri();
       final verseCode = QuranReciter.verseAudioCode(reciterCode);
-      final reciterName = QuranReciter.byCode(verseCode).nameAr;
+      final reciterName = VerseReciters.byId(verseCode).nameAr;
       final sources = [
         for (final verse in verses)
           AudioSource.uri(
@@ -362,9 +362,12 @@ class QuranAudioController extends Notifier<QuranAudioState> {
             ),
             tag: MediaItem(
               id: '${verseCode}_${verse.key}',
-              album: verse.surahNameAr,
-              title: 'الآية ${verse.numberInSurah}',
+              album: QuranMedia.albumName,
+              title: 'سورة ${verse.surahNameAr} · الآية ${verse.numberInSurah}',
               artist: reciterName,
+              displayTitle:
+                  'سورة ${verse.surahNameAr} · الآية ${verse.numberInSurah}',
+              displaySubtitle: reciterName,
               artUri: art,
             ),
           ),

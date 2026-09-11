@@ -22,6 +22,9 @@ class QuranMedia {
   static const String albumName = 'القرآن الكريم';
   static const String coverAsset = 'assets/images/quran_cover.png';
 
+  /// Bumped so a previous session's cached star logo is not reused.
+  static const String _coverFileName = 'quran_cover_fajr.png';
+
   static Uri? _artUri;
   static bool _permissionAsked = false;
   static bool _batteryAsked = false;
@@ -72,7 +75,7 @@ class QuranMedia {
     }
     try {
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/quran_cover.png');
+      final file = File('${dir.path}/$_coverFileName');
       if (!await file.exists()) {
         final data = await rootBundle.load(coverAsset);
         await file.writeAsBytes(
@@ -93,6 +96,7 @@ class QuranMedia {
     required String title,
     required String artist,
     String album = albumName,
+    String? displaySubtitle,
   }) async {
     return MediaItem(
       id: id,
@@ -100,6 +104,9 @@ class QuranMedia {
       artist: artist,
       album: album,
       artUri: await coverUri(),
+      displayTitle: title,
+      displaySubtitle: displaySubtitle ?? artist,
+      displayDescription: album,
     );
   }
 }

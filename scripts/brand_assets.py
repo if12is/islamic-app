@@ -238,6 +238,11 @@ SOURCES = ROOT / "assets" / "brand"
 # sheet.
 LAUNCHER_SCALE = 0.68
 
+# Media notifications circular-crop the square. Keep the mark inside the
+# inner ~70% so the book is not clipped at the sides, but large enough to
+# read as the Al-Fajr mark rather than a green disc with a speck on it.
+MEDIA_COVER_SCALE = 0.78
+
 # The adaptive foreground has to account for three separate shrinkings, and
 # getting it wrong by ignoring any one of them leaves a mark swimming in an
 # empty circle. In order:
@@ -270,6 +275,16 @@ def main() -> None:
     _write(mark_night, SOURCES / "mark-night.png")
     _write(mark_ink, SOURCES / "mark-ink.png")
     _write(mark_white, SOURCES / "mark-white.png")
+
+    # Lock-screen / shade album art. Android crops this to a circle, so the
+    # mark sits on the brand green rather than cream — cream would read as a
+    # pale disc in a dark shade. The book is cream so it still separates from
+    # the ground; the sun stays gold.
+    mark_on_green = _draw_mark(1024, book=CREAM, sun=GOLD, kerf=False)
+    _write(
+        _on_ground(1024, GREEN, mark_on_green, MEDIA_COVER_SCALE),
+        ROOT / "assets" / "images" / "quran_cover.png",
+    )
 
     # The launcher icon: the mark on cream, which is the app's own ground.
     _write(

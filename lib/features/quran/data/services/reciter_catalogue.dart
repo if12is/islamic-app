@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/data_saver.dart';
 import '../../../../core/utils/app_logger.dart';
 import 'quran_local_service.dart';
+import 'verse_reciters.dart';
 
 /// One recording of the whole Mushaf by one reciter.
 ///
@@ -170,6 +171,30 @@ class ReciterCatalogue {
       }
     }
     return null;
+  }
+
+  /// Voices already in memory (fetched or cached), else the seven that ship.
+  static List<ReciterVoice> get known => _memory ?? bundled;
+
+  /// Arabic name for a reciter id from any list the app uses.
+  ///
+  /// Catalogue ids are storage keys (`mp3quran:259:259`). They must never
+  /// appear on a lock screen or a now-playing row.
+  static String displayName(String id, [List<ReciterVoice>? voices]) {
+    final voice = byId(id, voices ?? known);
+    if (voice != null) {
+      final name = voice.nameAr.trim();
+      if (name.isNotEmpty && name != id) {
+        return name;
+      }
+    }
+    if (VerseReciters.has(id)) {
+      return VerseReciters.byId(id).nameAr;
+    }
+    if (id.startsWith('mp3quran:')) {
+      return 'قارئ القرآن';
+    }
+    return id;
   }
 
   static bool _isStale(SharedPreferences prefs) {

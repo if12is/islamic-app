@@ -12,7 +12,6 @@ import '../../data/services/quran_local_service.dart';
 import '../../data/services/reciter_catalogue.dart';
 import '../widgets/reciter_picker_sheet.dart';
 import '../providers/downloads_provider.dart';
-import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
 
 /// The reciter library: pick a reciter, download surahs, listen offline.
@@ -46,7 +45,7 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
   }
 
   String get _reciterName =>
-      _reciterLabel ?? QuranReciter.byCode(_reciterCode).nameAr;
+      _reciterLabel ?? ReciterCatalogue.displayName(_reciterCode);
 
   Future<void> _pickReciter() async {
     final voice = await ReciterPickerSheet.show(context, _reciterCode);

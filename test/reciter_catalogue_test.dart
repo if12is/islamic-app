@@ -156,6 +156,35 @@ void main() {
     });
   });
 
+  group('Display names', () {
+    test('catalogue ids become Arabic names, never the storage key', () {
+      final voices = ReciterCatalogue.parse(_payload);
+
+      expect(
+        ReciterCatalogue.displayName('mp3quran:30:41', voices),
+        'محمود خليل الحصري',
+      );
+      expect(
+        ReciterCatalogue.displayName('mp3quran:30:41', voices).contains(
+          'mp3quran',
+        ),
+        isFalse,
+      );
+    });
+
+    test('bundled ids keep their Arabic names without a catalogue', () {
+      expect(ReciterCatalogue.displayName('ar.alafasy'), 'مشاري العفاسي');
+    });
+
+    test('unknown catalogue ids do not leak the key onto the lock screen', () {
+      expect(ReciterCatalogue.displayName('mp3quran:259:259'), 'قارئ القرآن');
+    });
+
+    test('verse-audio ids resolve through the per-ayah list', () {
+      expect(ReciterCatalogue.displayName('alafasy'), 'مشاري راشد العفاسي');
+    });
+  });
+
   test('duplicate moshaf ids are kept once', () {
     final voices = ReciterCatalogue.parse({
       'reciters': [

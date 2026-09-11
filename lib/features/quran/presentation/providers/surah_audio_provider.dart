@@ -8,6 +8,7 @@ import '../../../../core/services/quran_media.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/audio_download_service.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../data/services/reciter_catalogue.dart';
 import 'quran_audio_provider.dart';
 
 /// What is playing, when a whole surah is playing.
@@ -296,6 +297,7 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
         id: 'surah_${surahNumber}_$effective',
         title: 'سورة $name',
         artist: displayNameFor(effective),
+        displaySubtitle: displayNameFor(effective),
       );
 
       await _player.setAudioSource(
@@ -507,7 +509,7 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
 
   /// The reciter's name, whichever list it came from.
   static String displayNameFor(String reciterId) =>
-      QuranReciter.byCode(reciterId).nameAr;
+      ReciterCatalogue.displayName(reciterId);
 
   /// Turn the exception into something the listener can act on.
   ///
