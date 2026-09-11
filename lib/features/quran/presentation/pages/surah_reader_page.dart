@@ -19,6 +19,7 @@ import '../../domain/tajweed_palette.dart';
 import '../providers/bookmarks_provider.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import '../providers/reading_history_provider.dart';
 import '../providers/reading_progress_provider.dart';
 import '../widgets/ayah_actions_sheet.dart';
 import '../widgets/player_sheet.dart';
@@ -44,6 +45,7 @@ class SurahReaderPage extends ConsumerStatefulWidget {
     this.pageNumber,
     this.initialVerse,
     this.autoPlay = false,
+    this.historyId,
   }) : assert(
          surahNumber != null ||
              juzNumber != null ||
@@ -62,6 +64,12 @@ class SurahReaderPage extends ConsumerStatefulWidget {
 
   /// Start reciting as soon as the passage is loaded (notification actions).
   final bool autoPlay;
+
+  /// The reading-history line this session continues, when it was opened
+  /// from one ("continue", the history sheet, the wird). Without it a new
+  /// line starts, so a verse opened from a search does not drag the reader's
+  /// khatmah along with it.
+  final String? historyId;
 
   @override
   ConsumerState<SurahReaderPage> createState() => _SurahReaderPageState();
@@ -113,9 +121,18 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   double? _previousBrightness;
   int _lastRecordedPage = 0;
 
+  /// This sitting's line in the reading history.
+  String? _historyId;
+
+  /// The page at the top of the screen, and the timer that logs it once it
+  /// has stayed there long enough to have been read.
+  int _dwellPage = 0;
+  Timer? _pageDwell;
+
   @override
   void initState() {
     super.initState();
+    _historyId = widget.historyId;
     WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
     _startReadingClock();
@@ -154,6 +171,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _saveDebounce?.cancel();
+    _pageDwell?.cancel();
     _readingClock?.cancel();
     _autoScrollTicker?.dispose();
     for (final recognizer in _tapRecognizers.values) {
@@ -327,6 +345,24 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     _saveDebounce = Timer(const Duration(milliseconds: 600), () {
       _persistPosition(topVerse);
     });
+
+    // The debounce above only fires once the page stops moving, and under
+    // auto-scroll it never stops: every frame restarts it, so a surah read
+    // hands-free logged its first page and its last. A page that has stayed
+    // at the top for a few seconds has been read, whether a finger or the
+    // ticker put it there — and a fling past twenty pages is never there
+    // long enough to count.
+    if (topVerse.page != _dwellPage) {
+      _dwellPage = topVerse.page;
+      _pageDwell?.cancel();
+      _pageDwell = Timer(const Duration(seconds: 3), () {
+        if (!mounted || topVerse.page == _lastRecordedPage) {
+          return;
+        }
+        _lastRecordedPage = topVerse.page;
+        ref.read(readingProgressProvider.notifier).recordPage(topVerse.page);
+      });
+    }
   }
 
   QuranVerse? _firstVisibleVerse() {
@@ -352,6 +388,17 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
           verseNumber: verse.numberInSurah,
           scrollOffset:
               _scrollController.hasClients ? _scrollController.offset : 0,
+        );
+
+    // And the history, so this place is still there to come back to after
+    // the next search moves "last read" somewhere else.
+    _historyId = ref
+        .read(readingHistoryProvider.notifier)
+        .record(
+          sessionId: _historyId,
+          surah: verse.surahNumber,
+          verse: verse.numberInSurah,
+          page: verse.page,
         );
 
     // Feed the reading log, which drives the streak and the khatmah plan.
@@ -997,7 +1044,14 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
         onPressed:
             () => Navigator.of(context).pushReplacement(
               MaterialPageRoute<void>(
-                builder: (_) => SurahReaderPage(surahNumber: currentSurah + 1),
+                // The same sitting, carried on: a khatmah read surah by surah
+                // is one line in the history, and the pinned wird has to
+                // cross from al-Baqarah into Al Imran with the reader.
+                builder:
+                    (_) => SurahReaderPage(
+                      surahNumber: currentSurah + 1,
+                      historyId: _historyId,
+                    ),
               ),
             ),
         icon: const Icon(Icons.arrow_back_ios_new, size: 16),

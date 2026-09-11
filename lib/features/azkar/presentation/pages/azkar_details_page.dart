@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +9,7 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/arabic_text_block.dart';
 import '../../data/azkar_progress_store.dart';
 import '../../data/models/azkar_models.dart';
+import '../../data/tasbeeh_link.dart';
 
 class AzkarDetailsPage extends StatefulWidget {
   final AzkarCategory category;
@@ -32,68 +32,46 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
     AzkarProgressStore.markOpened(widget.category.id);
   }
 
-  /// Shared with the daily wird card, so both agree on when azkar reset.
-  String get _currentSessionKey => AzkarProgressStore.sessionKey();
-
+  /// Today's counts, from the store the daily wird card reads too, so both
+  /// agree on when azkar reset — and on what the misbaha already counted.
   Future<void> _initAndLoadProgress() async {
-    _prefs = await SharedPreferences.getInstance();
-
-    final categoryId = widget.category.id;
-    final savedSession = _prefs!.getString('azkar_session_$categoryId');
-
-    if (AzkarProgressStore.sameSession(savedSession)) {
-      // Same period, load saved counts
-      final savedCountsStr = _prefs!.getString('azkar_counts_$categoryId');
-      if (savedCountsStr != null) {
-        try {
-          final Map<String, dynamic> decoded = json.decode(savedCountsStr);
-          final Map<int, int> loadedCounts = {};
-          decoded.forEach((key, value) {
-            loadedCounts[int.parse(key)] = value as int;
-          });
-          setState(() {
-            _counts = loadedCounts;
-          });
-        } catch (e) {
-          // Fallback to empty if parse fails
-          _counts = {};
-        }
-      }
-    } else {
-      // New period, start fresh & save new session
-      _counts = {};
-      await _saveProgressData(); // Initial save avoids overwriting with old data later
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final counts = AzkarProgressStore.countsToday(prefs, widget.category.id);
+    if (!mounted) {
+      return;
     }
-
     setState(() {
+      _counts = counts;
       _isLoading = false;
     });
   }
 
   Future<void> _saveProgressData() async {
-    if (_prefs == null) return;
+    final prefs = _prefs;
+    if (prefs == null) return;
 
-    final categoryId = widget.category.id;
-    final currentSession = _currentSessionKey;
-
-    await _prefs!.setString('azkar_session_$categoryId', currentSession);
-
-    final stringKeyedMap = _counts.map(
-      (key, value) => MapEntry(key.toString(), value),
-    );
-    await _prefs!.setString(
-      'azkar_counts_$categoryId',
-      json.encode(stringKeyedMap),
+    // Through the store, so the daily wird and the misbaha hear about it.
+    await AzkarProgressStore.saveCounts(
+      prefs,
+      widget.category.id,
+      Map<int, int>.from(_counts),
     );
   }
 
-  void _increment(ZekrItem zekr) {
+  Future<void> _increment(ZekrItem zekr) async {
     if ((_counts[zekr.id] ?? 0) < zekr.targetCount) {
       HapticFeedback.lightImpact();
       setState(() {
         _counts[zekr.id] = (_counts[zekr.id] ?? 0) + 1;
       });
-      _saveProgressData();
+      await _saveProgressData();
+      // The wird's سبحان الله is the misbaha's سبحان الله: one count, two
+      // places to see it.
+      final prefs = _prefs;
+      if (prefs != null) {
+        await TasbeehLink.onWirdCount(prefs, widget.category.id, zekr);
+      }
     }
   }
 

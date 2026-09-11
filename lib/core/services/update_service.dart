@@ -18,6 +18,7 @@ class AppRelease {
     required this.pageUrl,
     required this.apkUrl,
     required this.apkBytes,
+    this.whatsNew = const {},
   });
 
   /// "1.0.1" — the marketing version.
@@ -37,6 +38,20 @@ class AppRelease {
 
   /// Its size, so the download can be weighed before it starts.
   final int apkBytes;
+
+  /// What changed, as short lines a reader would write, keyed by language.
+  ///
+  /// The release notes themselves are written for the repository — commit
+  /// hashes, version codes, signing flags, half of it in backticks — and the
+  /// update dialog used to print them as they were: English inside an Arabic
+  /// interface, with numbers nobody could use. These lines are the part meant
+  /// for the person holding the phone.
+  final Map<String, List<String>> whatsNew;
+
+  /// The changes in [languageCode], or nothing. Never the other language:
+  /// half a dialog in English is exactly what this replaced.
+  List<String> whatsNewIn(String languageCode) =>
+      whatsNew[languageCode] ?? const [];
 
   String get label =>
       buildNumber > 0 ? '$versionName ($buildNumber)' : versionName;
@@ -247,17 +262,68 @@ class UpdateService {
       return null;
     }
 
+    final body = (json['body'] as String? ?? '').trim();
     return AppRelease(
       versionName: version.$1,
       buildNumber: version.$2,
-      notes: (json['body'] as String? ?? '').trim(),
+      notes: body,
       pageUrl:
           json['html_url'] as String? ??
           'https://github.com/$_owner/$_repo/releases',
       apkUrl: apk?['browser_download_url'] as String?,
       apkBytes: (apk?['size'] as num?)?.toInt() ?? 0,
+      whatsNew: parseWhatsNew(body),
     );
   }
+
+  /// The reader-facing change list CI tucks into the release body.
+  ///
+  /// It rides in an HTML comment — invisible on the GitHub page, which keeps
+  /// its notes for developers — holding `whats_new.json` from the repository:
+  ///
+  /// ```
+  /// <!-- whats-new {"ar": ["…"], "en": ["…"]} -->
+  /// ```
+  ///
+  /// Anything malformed yields nothing rather than a half-read list.
+  static Map<String, List<String>> parseWhatsNew(String body) {
+    final match = RegExp(
+      r'<!--\s*whats-new\s*([\s\S]*?)-->',
+    ).firstMatch(body);
+    if (match == null) {
+      return const {};
+    }
+    try {
+      final decoded = jsonDecode(match.group(1)!.trim());
+      if (decoded is! Map) {
+        return const {};
+      }
+      final result = <String, List<String>>{};
+      for (final language in const ['ar', 'en']) {
+        final raw = decoded[language];
+        if (raw is! List) {
+          continue;
+        }
+        final lines = [
+          for (final line in raw)
+            if (line is String && line.trim().isNotEmpty)
+              line.trim().length > whatsNewLineLimit
+                  ? '${line.trim().substring(0, whatsNewLineLimit)}…'
+                  : line.trim(),
+        ].take(whatsNewMaxLines).toList();
+        if (lines.isNotEmpty) {
+          result[language] = lines;
+        }
+      }
+      return result;
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// A dialog, not a changelog: a handful of short lines.
+  static const int whatsNewMaxLines = 8;
+  static const int whatsNewLineLimit = 140;
 
   /// Prefer the APK built for this phone's CPU over the fat universal file.
   static Map<String, dynamic>? _pickApk(

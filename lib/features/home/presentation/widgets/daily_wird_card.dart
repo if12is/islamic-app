@@ -6,6 +6,7 @@ import '../../../../core/utils/arabic_numerals.dart';
 import '../../../azkar/presentation/pages/azkar_details_page.dart';
 import '../../../quran/presentation/pages/surah_reader_page.dart';
 import '../../../quran/presentation/providers/bookmarks_provider.dart';
+import '../../../quran/presentation/providers/reading_history_provider.dart';
 import '../../../quran/presentation/providers/reading_progress_provider.dart';
 import '../providers/daily_wird_provider.dart';
 
@@ -160,15 +161,21 @@ class DailyWirdCard extends ConsumerWidget {
       return;
     }
 
-    // The Quran row resumes where the reader stopped.
-    final lastRead = ref.read(lastReadProvider);
+    // The Quran row resumes the reader's own wird — the line they pinned in
+    // the reading history — and the last place read only when there is none.
+    // "Last read" moves every time a verse is looked up; a wird should not.
+    final resume = resumeForWird(
+      ref.read(lastReadProvider),
+      ref.read(readingHistoryProvider),
+    );
     Navigator.of(context)
         .push(
           MaterialPageRoute<void>(
             builder:
                 (_) => SurahReaderPage(
-                  surahNumber: lastRead?.surahNumber ?? 1,
-                  initialVerse: lastRead?.verseNumber,
+                  surahNumber: resume?.surah ?? 1,
+                  initialVerse: resume?.verse,
+                  historyId: resume?.historyId,
                 ),
           ),
         )

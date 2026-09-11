@@ -70,10 +70,14 @@ class NotificationPreferences {
     this.adhanSound = AdhanSoundSelection.system,
     this.fajrAdhanSound,
     this.islamicEventsEnabled = false,
-    this.fridayRemindersEnabled = false,
+    this.kahfRemindersEnabled = true,
+    this.fridaySalawatEnabled = true,
     this.fastingRemindersEnabled = false,
     this.surahRemindersEnabled = false,
     this.surahReminderHour = 20,
+    this.prayerLogRemindersEnabled = true,
+    this.prayerLogDelayMinutes = 30,
+    this.prayerLogFollowUps = 2,
   });
 
   /// Master switch. When off, nothing is scheduled.
@@ -127,8 +131,16 @@ class NotificationPreferences {
   /// Ashura, Arafah, the two Eids, Ramadan, the white days.
   final bool islamicEventsEnabled;
 
-  /// Surah Al-Kahf and salawat on Friday.
-  final bool fridayRemindersEnabled;
+  /// Surah Al-Kahf through Friday, until it has been read.
+  ///
+  /// This replaced a single Friday reminder an hour after Fajr, which was off
+  /// unless someone went looking for it and said its piece once whether the
+  /// surah was read or not. On by default, because it now stops by itself.
+  final bool kahfRemindersEnabled;
+
+  /// Salawat upon the Prophet ﷺ through Friday, until the day's count is
+  /// reached on the salawat counter.
+  final bool fridaySalawatEnabled;
 
   /// The night before Monday, Thursday, and the white days.
   final bool fastingRemindersEnabled;
@@ -136,6 +148,17 @@ class NotificationPreferences {
   /// A daily nudge towards a surah worth reading, with why it is worth it.
   final bool surahRemindersEnabled;
   final int surahReminderHour;
+
+  /// After each prayer, ask how it was prayed — and ask again until it is in
+  /// the log, so no prayer of the day slips by unnoticed.
+  final bool prayerLogRemindersEnabled;
+
+  /// How long after the adhan the first ask comes: time to pray first.
+  final int prayerLogDelayMinutes;
+
+  /// How many more times to ask if it is still not logged. Never past the
+  /// end of the day.
+  final int prayerLogFollowUps;
 
   /// The adhan a given prayer should play.
   AdhanSoundSelection soundForPrayer(String prayerId) {
@@ -200,10 +223,14 @@ class NotificationPreferences {
     AdhanSoundSelection? fajrAdhanSound,
     bool clearFajrAdhanSound = false,
     bool? islamicEventsEnabled,
-    bool? fridayRemindersEnabled,
+    bool? kahfRemindersEnabled,
+    bool? fridaySalawatEnabled,
     bool? fastingRemindersEnabled,
     bool? surahRemindersEnabled,
     int? surahReminderHour,
+    bool? prayerLogRemindersEnabled,
+    int? prayerLogDelayMinutes,
+    int? prayerLogFollowUps,
   }) {
     return NotificationPreferences(
       masterEnabled: masterEnabled ?? this.masterEnabled,
@@ -230,8 +257,8 @@ class NotificationPreferences {
       fajrAdhanSound:
           clearFajrAdhanSound ? null : (fajrAdhanSound ?? this.fajrAdhanSound),
       islamicEventsEnabled: islamicEventsEnabled ?? this.islamicEventsEnabled,
-      fridayRemindersEnabled:
-          fridayRemindersEnabled ?? this.fridayRemindersEnabled,
+      kahfRemindersEnabled: kahfRemindersEnabled ?? this.kahfRemindersEnabled,
+      fridaySalawatEnabled: fridaySalawatEnabled ?? this.fridaySalawatEnabled,
       fastingRemindersEnabled:
           fastingRemindersEnabled ?? this.fastingRemindersEnabled,
       surahRemindersEnabled:
@@ -240,8 +267,19 @@ class NotificationPreferences {
         0,
         23,
       ),
+      prayerLogRemindersEnabled:
+          prayerLogRemindersEnabled ?? this.prayerLogRemindersEnabled,
+      prayerLogDelayMinutes: (prayerLogDelayMinutes ??
+              this.prayerLogDelayMinutes)
+          .clamp(5, 120),
+      prayerLogFollowUps: (prayerLogFollowUps ?? this.prayerLogFollowUps)
+          .clamp(0, maxPrayerLogFollowUps),
     );
   }
+
+  /// The most follow-ups a prayer can have. The notification ids leave room
+  /// for this many and no more.
+  static const int maxPrayerLogFollowUps = 4;
 
   Map<String, dynamic> toJson() => {
     'masterEnabled': masterEnabled,
@@ -267,10 +305,14 @@ class NotificationPreferences {
     'adhanSound': adhanSound.toJson(),
     if (fajrAdhanSound != null) 'fajrAdhanSound': fajrAdhanSound!.toJson(),
     'islamicEventsEnabled': islamicEventsEnabled,
-    'fridayRemindersEnabled': fridayRemindersEnabled,
+    'kahfRemindersEnabled': kahfRemindersEnabled,
+    'fridaySalawatEnabled': fridaySalawatEnabled,
     'fastingRemindersEnabled': fastingRemindersEnabled,
     'surahRemindersEnabled': surahRemindersEnabled,
     'surahReminderHour': surahReminderHour,
+    'prayerLogRemindersEnabled': prayerLogRemindersEnabled,
+    'prayerLogDelayMinutes': prayerLogDelayMinutes,
+    'prayerLogFollowUps': prayerLogFollowUps,
   };
 
   String encode() => jsonEncode(toJson());
@@ -325,10 +367,27 @@ class NotificationPreferences {
       adhanSound: _readSound(json['adhanSound']) ?? AdhanSoundSelection.system,
       fajrAdhanSound: _readSound(json['fajrAdhanSound']),
       islamicEventsEnabled: json['islamicEventsEnabled'] == true,
-      fridayRemindersEnabled: json['fridayRemindersEnabled'] == true,
+      // New in this version, so absent from every stored file: absent means
+      // on. The old single "Friday reminder" key is not carried over — it was
+      // off by default and meant something smaller, and a false there says
+      // nothing about whether someone wants a reminder that stops by itself.
+      kahfRemindersEnabled: json['kahfRemindersEnabled'] != false,
+      fridaySalawatEnabled: json['fridaySalawatEnabled'] != false,
       fastingRemindersEnabled: json['fastingRemindersEnabled'] == true,
       surahRemindersEnabled: json['surahRemindersEnabled'] == true,
       surahReminderHour: (json['surahReminderHour'] as num?)?.toInt() ?? 20,
+      prayerLogRemindersEnabled: json['prayerLogRemindersEnabled'] != false,
+      prayerLogDelayMinutes: intOr(
+        'prayerLogDelayMinutes',
+        30,
+        min: 5,
+        max: 120,
+      ),
+      prayerLogFollowUps: intOr(
+        'prayerLogFollowUps',
+        2,
+        max: maxPrayerLogFollowUps,
+      ),
     );
   }
 

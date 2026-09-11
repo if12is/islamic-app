@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/hijri_service.dart';
+import '../../../../core/services/notification_router.dart';
+import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/seasonal_theme.dart';
 import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/utils/duration_words.dart';
@@ -36,6 +38,8 @@ import '../../../quran/presentation/pages/quran_page.dart';
 import '../../../quran/presentation/pages/recitation_page.dart';
 import '../../../quran/presentation/pages/surah_reader_page.dart';
 import '../../../quran/presentation/providers/bookmarks_provider.dart';
+import '../../../quran/presentation/providers/reading_history_provider.dart';
+import '../../../quran/presentation/widgets/reading_history_sheet.dart';
 import 'wird_page.dart';
 import '../../../settings/presentation/widgets/app_update_dialog.dart';
 import '../../../../shared/providers/app_update_provider.dart';
@@ -66,15 +70,35 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   final Set<int> _openedTabs = {0};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Only now is it safe to open what a notification asked for: anything
+      // pushed over the splash went when the splash was replaced.
+      NotificationRouter.markReady();
       unawaited(_offerUpdateIfDue());
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Kept alive in the background, the app is never launched again, and the
+    // week it planned on the day it was opened slowly runs out.
+    if (state == AppLifecycleState.resumed) {
+      unawaited(NotificationScheduler.refreshIfStale());
+    }
   }
 
   Future<void> _offerUpdateIfDue() async {
@@ -296,7 +320,6 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
     final locationAsync = ref.watch(currentLocationCoordinatesProvider);
     final locationLabel = ref.watch(locationLabelProvider).value ?? '';
     final selectedMethod = ref.watch(prayerMethodProvider);
-    final completedPrayers = ref.watch(dailyPrayerCompletionProvider);
 
     const fallback = UserCoordinates(
       latitude: 31.0345728,
@@ -456,17 +479,12 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                 onTrailingTap: () => widget.onOpenTab(4),
               ),
               ...slots.map((slot) {
-                final isCurrent = current?.id == slot.id;
                 return _PrayerRow(
                   name: _prayerName(context, slot.prayer.name),
                   time: _clock(context, slot.time),
                   icon: _prayerIcon(slot.prayer.name),
-                  isCurrent: isCurrent,
-                  isDone: completedPrayers.contains(slot.id),
-                  onToggleDone:
-                      () => ref
-                          .read(dailyPrayerCompletionProvider.notifier)
-                          .togglePrayer(slot.id),
+                  isCurrent: current?.id == slot.id,
+                  onTap: () => widget.onOpenTab(4),
                 );
               }),
 
@@ -535,12 +553,17 @@ class _DashboardRail extends ConsumerWidget {
               onOpenTab(1);
               return;
             }
+            final resume = resumeForLastRead(
+              lastRead,
+              ref.read(readingHistoryProvider),
+            );
             Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder:
                     (_) => SurahReaderPage(
                       surahNumber: lastRead.surahNumber,
                       initialVerse: lastRead.verseNumber,
+                      historyId: resume?.historyId,
                     ),
               ),
             );
@@ -625,6 +648,7 @@ class _LastReadHero extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lastRead = ref.watch(lastReadProvider);
+    final history = ref.watch(readingHistoryProvider);
     if (lastRead == null) {
       return const SizedBox.shrink();
     }
@@ -632,6 +656,7 @@ class _LastReadHero extends ConsumerWidget {
     final surah = QuranLocalService.surahInfo(lastRead.surahNumber);
     final verse = lastRead.verseNumber.clamp(1, surah.versesCount);
     final languageCode = Localizations.localeOf(context).languageCode;
+    final resume = resumeForLastRead(lastRead, history);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -642,16 +667,20 @@ class _LastReadHero extends ConsumerWidget {
           languageCode,
           'last_read_position',
           replacements: {
-            'verse': verse.toString(),
-            'total': surah.versesCount.toString(),
-            'page':
-                QuranLocalService.verse(
-                  lastRead.surahNumber,
-                  verse,
-                ).page.toString(),
+            'verse': localizeDigits(context, '$verse'),
+            'total': localizeDigits(context, '${surah.versesCount}'),
+            'page': localizeDigits(
+              context,
+              '${QuranLocalService.verse(lastRead.surahNumber, verse).page}',
+            ),
           },
         ),
         actionLabel: context.tr('continue_reading'),
+        // Every earlier place, one tap away: the khatmah someone left to look
+        // a verse up is still there to go back to.
+        secondaryLabel: history.length > 1 ? context.tr('history_open') : null,
+        secondaryIcon: Icons.history,
+        onSecondaryTap: () => ReadingHistorySheet.show(context),
         ornament: HeroOrnament.book,
         onTap:
             () => Navigator.of(context).push(
@@ -660,6 +689,7 @@ class _LastReadHero extends ConsumerWidget {
                     (_) => SurahReaderPage(
                       surahNumber: lastRead.surahNumber,
                       initialVerse: verse,
+                      historyId: resume?.historyId,
                     ),
               ),
             ),
@@ -669,62 +699,57 @@ class _LastReadHero extends ConsumerWidget {
 }
 
 /// One prayer in the day's list.
+///
+/// A name and a time, and a tap that opens the prayer tab. There used to be a
+/// circle at the end of every row that ticked the prayer off — a second,
+/// coarser copy of the log on the prayer screen, which records whether it was
+/// prayed in the mosque, in congregation, alone or made up. The circle could
+/// only say "done", saved to a store nothing else read, and looked like five
+/// empty checkboxes asking to be pressed.
 class _PrayerRow extends StatelessWidget {
   const _PrayerRow({
     required this.name,
     required this.time,
     required this.icon,
     required this.isCurrent,
-    required this.isDone,
-    required this.onToggleDone,
+    required this.onTap,
   });
 
   final String name;
   final String time;
   final IconData icon;
   final bool isCurrent;
-  final bool isDone;
-  final VoidCallback onToggleDone;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
-    return AppListRow(
-      dense: true,
-      selected: isCurrent,
-      // The same tile as the prayer screen's list, which is the same list.
-      // The two were drawn separately and had drifted into two different
-      // shapes for the same row.
-      leading: AppIconTile(
-        icon,
-        role: AppIconRole.row,
-        tone: isCurrent ? AppIconTone.accent : AppIconTone.neutral,
+    return MergeSemantics(
+      child: AppListRow(
+        dense: true,
         selected: isCurrent,
-      ),
-      title: name,
-      meta: isCurrent ? context.tr('current_prayer') : null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            time,
-            style: AppTextStyles.display(
-              context,
-              fontSize: 15,
-              color: isCurrent ? tokens.ink : tokens.inkMuted,
-            ),
+        // The same tile as the prayer screen's list, which is the same list.
+        // The two were drawn separately and had drifted into two different
+        // shapes for the same row.
+        leading: AppIconTile(
+          icon,
+          role: AppIconRole.row,
+          tone: isCurrent ? AppIconTone.accent : AppIconTone.neutral,
+          selected: isCurrent,
+        ),
+        title: name,
+        meta: isCurrent ? context.tr('current_prayer') : null,
+        trailing: Text(
+          time,
+          style: AppTextStyles.display(
+            context,
+            fontSize: 15,
+            color: isCurrent ? tokens.ink : tokens.inkMuted,
           ),
-          const SizedBox(width: AppSpacing.xs),
-          GhostIconButton(
-            icon: isDone ? Icons.check_circle : Icons.circle_outlined,
-            active: isDone,
-            onTap: onToggleDone,
-            tooltip: context.tr('mark_prayed'),
-          ),
-        ],
+        ),
+        onTap: onTap,
       ),
-      onTap: onToggleDone,
     );
   }
 }

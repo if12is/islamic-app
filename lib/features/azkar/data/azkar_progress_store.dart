@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -21,6 +23,21 @@ class AzkarProgressSnapshot {
 
 class AzkarProgressStore {
   AzkarProgressStore._();
+
+  /// Moves whenever a count is written, so anything showing a count — the
+  /// daily wird, the misbaha — can read it again instead of going stale.
+  ///
+  /// Debounced: a run of taps is one change, not thirty-three, because every
+  /// listener re-reads the stores and the dashboard is always listening.
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+  static Timer? _pendingNotify;
+
+  static void notifyChanged() {
+    _pendingNotify?.cancel();
+    _pendingNotify = Timer(const Duration(milliseconds: 350), () {
+      revision.value++;
+    });
+  }
 
   /// Azkar reset at midnight, not at Dhuhr. Morning recited before noon
   /// must still be there after the adhan.
@@ -67,6 +84,63 @@ class AzkarProgressStore {
       completedCount: completed,
       totalCount: category.azkar.length,
     );
+  }
+
+  /// Today's count for every dhikr in a category, keyed by dhikr id.
+  static Map<int, int> countsToday(
+    SharedPreferences prefs,
+    String categoryId, {
+    DateTime? now,
+  }) {
+    final saved = prefs.getString('azkar_session_$categoryId');
+    return sameSession(saved, now)
+        ? _countsFor(prefs, categoryId)
+        : <int, int>{};
+  }
+
+  /// Write a category's counts for today.
+  ///
+  /// Both writes are started before either is awaited. The store updates its
+  /// cache when a write starts, so this way the new counts are readable at
+  /// once — awaiting the session first left a gap in which a second quick tap
+  /// read the old counts and one of the two was lost.
+  static Future<void> saveCounts(
+    SharedPreferences prefs,
+    String categoryId,
+    Map<int, int> counts, {
+    DateTime? now,
+  }) async {
+    final session = prefs.setString(
+      'azkar_session_$categoryId',
+      sessionKey(now),
+    );
+    final values = prefs.setString(
+      'azkar_counts_$categoryId',
+      json.encode(counts.map((key, value) => MapEntry('$key', value))),
+    );
+    notifyChanged();
+    await Future.wait([session, values]);
+  }
+
+  /// Add one to a single dhikr, stopping at [cap], and hand back its count.
+  ///
+  /// Used when the count comes from somewhere other than the chapter's own
+  /// screen — the misbaha counting a phrase the wird also asks for.
+  static Future<int> addOne(
+    SharedPreferences prefs,
+    String categoryId,
+    int zekrId, {
+    required int cap,
+    DateTime? now,
+  }) async {
+    final counts = countsToday(prefs, categoryId, now: now);
+    final current = counts[zekrId] ?? 0;
+    if (current >= cap) {
+      return current;
+    }
+    counts[zekrId] = current + 1;
+    await saveCounts(prefs, categoryId, counts, now: now);
+    return current + 1;
   }
 
   static Future<void> markOpened(String categoryId) async {

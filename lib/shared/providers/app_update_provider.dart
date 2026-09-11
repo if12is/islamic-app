@@ -22,6 +22,7 @@ class AppUpdateState {
     this.status = AppUpdateStatus.idle,
     this.release,
     this.currentLabel = '',
+    this.currentVersionName = '',
     this.progress,
     this.messageKey,
   });
@@ -29,6 +30,10 @@ class AppUpdateState {
   final AppUpdateStatus status;
   final AppRelease? release;
   final String currentLabel;
+
+  /// The installed marketing version alone ("1.4.0"), so the offer can say
+  /// "version 1.5.0" only when that is actually a different version.
+  final String currentVersionName;
   final UpdateProgress? progress;
 
   /// Why the check or the download did not work, when it did not.
@@ -46,6 +51,7 @@ class AppUpdateState {
     AppUpdateStatus? status,
     AppRelease? release,
     String? currentLabel,
+    String? currentVersionName,
     UpdateProgress? progress,
     String? messageKey,
     bool clearRelease = false,
@@ -56,6 +62,7 @@ class AppUpdateState {
       status: status ?? this.status,
       release: clearRelease ? null : (release ?? this.release),
       currentLabel: currentLabel ?? this.currentLabel,
+      currentVersionName: currentVersionName ?? this.currentVersionName,
       progress: clearProgress ? null : (progress ?? this.progress),
       messageKey: clearMessage ? null : (messageKey ?? this.messageKey),
     );
@@ -86,10 +93,12 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
     );
 
     var label = state.currentLabel;
+    var name = state.currentVersionName;
     try {
       final currentBuild = await UpdateService.currentBuildNumber();
       final currentName = await UpdateService.currentVersionName();
       label = '$currentName ($currentBuild)';
+      name = currentName;
 
       final release = await UpdateService.fetchLatest();
       // Only a check that actually reached GitHub resets the timer. Marking a
@@ -111,6 +120,7 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
           status: AppUpdateStatus.current,
           release: release,
           currentLabel: label,
+          currentVersionName: name,
         );
         return;
       }
@@ -121,6 +131,7 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
           status: AppUpdateStatus.current,
           release: release,
           currentLabel: label,
+          currentVersionName: name,
         );
         return;
       }
@@ -129,6 +140,7 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
         status: AppUpdateStatus.available,
         release: release,
         currentLabel: label,
+        currentVersionName: name,
       );
     } on UpdateCheckException catch (e) {
       // Not knowing is not the same as there being nothing, and saying "you
@@ -138,6 +150,7 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
       state = AppUpdateState(
         status: AppUpdateStatus.failed,
         currentLabel: label,
+        currentVersionName: name,
         messageKey: e.messageKey,
       );
     } catch (e, stack) {
@@ -145,6 +158,7 @@ class AppUpdateNotifier extends Notifier<AppUpdateState> {
       state = AppUpdateState(
         status: AppUpdateStatus.failed,
         currentLabel: label,
+        currentVersionName: name,
         messageKey: 'update_check_failed',
       );
     }

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/services/azkar_data_service.dart';
 import '../../../azkar/data/azkar_progress_store.dart';
+import '../../../azkar/data/tasbeeh_link.dart';
 import '../../../azkar/data/tasbeeh_store.dart';
 import '../../../azkar/data/models/azkar_models.dart';
 import '../../../quran/presentation/providers/reading_progress_provider.dart';
@@ -67,11 +68,17 @@ class DailyWird {
 /// Pages a day when no khatmah plan is running — a gentle default.
 const int _defaultDailyPages = 4;
 
-/// How many phrases make up a full round of tasbeeh; matches the counter.
-const int _tasbeehPhrases = 6;
+/// How many phrases the misbaha holds, for a dataset with no tasbeeh chapter.
+const int _misbahaPhrases = 6;
 
 /// Builds today's wird from the reading log and the azkar progress.
 final dailyWirdProvider = FutureProvider<DailyWird>((ref) async {
+  // Any count written anywhere — a chapter's screen, the misbaha — moves the
+  // card, rather than it waiting for someone to reopen the tab.
+  void reread() => ref.invalidateSelf();
+  AzkarProgressStore.revision.addListener(reread);
+  ref.onDispose(() => AzkarProgressStore.revision.removeListener(reread));
+
   final summary = await ref.watch(readingProgressProvider.future);
   final plan = ref.watch(khatmahPlanProvider);
 
@@ -126,25 +133,64 @@ final dailyWirdProvider = FutureProvider<DailyWird>((ref) async {
     );
   }
 
-  // The tasbeeh line reads the counter itself, so counting on the beads and
-  // counting in the wird are the same act. They used to be two separate
-  // stores, and thirty-three on one showed as nothing on the other.
-  final prefs = await SharedPreferences.getInstance();
-  final tasbeehDone = TasbeehStore.roundsCompleted(prefs, _tasbeehPhrases);
-  tasks.add(
-    WirdTask(
-      id: 'tasbeeh',
-      titleKey: 'wird_tasbeeh',
-      done: tasbeehDone,
-      target: _tasbeehPhrases,
-      category: _findCategory(categories, 'tasbeeh', 'تسبيح'),
-    ),
-  );
+  // The tasbeeh line counts the chapter it opens. It used to count the
+  // misbaha's six phrases while opening a list of seven, so finishing every
+  // line of that list still read "0/6". The misbaha feeds this chapter now
+  // for the phrases the two share (see TasbeehLink), so the beads still count.
+  //
+  // Matched on the id alone: a name search for "تسبيح" lands on the travel
+  // chapter, "التكبير و التسبيح في سير السفر", which comes first.
+  final tasbeeh = _findById(categories, TasbeehLink.wirdCategoryId);
+  if (tasbeeh != null && tasbeeh.azkar.isNotEmpty) {
+    final progress = await AzkarProgressStore.progressFor(tasbeeh);
+    tasks.add(
+      WirdTask(
+        id: 'tasbeeh',
+        titleKey: 'wird_tasbeeh',
+        done: progress.completedCount,
+        target: progress.totalCount,
+        category: tasbeeh,
+      ),
+    );
+  } else {
+    final prefs = await SharedPreferences.getInstance();
+    tasks.add(
+      WirdTask(
+        id: 'tasbeeh',
+        titleKey: 'wird_tasbeeh',
+        done: TasbeehStore.roundsCompleted(prefs, _misbahaPhrases),
+        target: _misbahaPhrases,
+      ),
+    );
+  }
 
   return DailyWird(tasks: tasks);
 });
 
+/// The Hisn, parsed once. The card re-reads its counts on every change, and
+/// three hundred supplications do not need decoding again each time.
+Future<List<AzkarCategory>>? _categoriesCache;
+
 Future<List<AzkarCategory>> _azkarCategories(Ref ref) async {
+  final cached = _categoriesCache ??= _loadCategories();
+  try {
+    return await cached;
+  } catch (_) {
+    _categoriesCache = null;
+    rethrow;
+  }
+}
+
+AzkarCategory? _findById(List<AzkarCategory> categories, String id) {
+  for (final category in categories) {
+    if (category.id == id) {
+      return category;
+    }
+  }
+  return null;
+}
+
+Future<List<AzkarCategory>> _loadCategories() async {
   final data = await AzkarDataService().loadAzkarData();
   final raw = data['categories'] as List? ?? const [];
 

@@ -240,6 +240,14 @@ long; the reader writes to it as the user scrolls. Everything else is derived fr
 the khatmah plan's progress, the streak and year heat map, and the daily wird card on the
 dashboard. Never ask the user to "mark" a page — if they read it, it counts.
 
+"Last read" is one position and moves every time a verse is opened — including from a search.
+`ReadingHistoryStore` (`reading_history_v1`, pure list logic, unit-tested) keeps every place read
+from as a line that moves forward while it is read. A reader session continues the line it was
+opened from (`SurahReaderPage(historyId:)` — "continue", the history sheet, the wird); anything
+else starts a new line, so a looked-up verse never drags the khatmah along. One line can be
+pinned as the reader's wird: the daily wird's Quran row and `quran:wird` resume it
+(`resumeForWird`). `ReadingHistorySheet` is reached from the last-read cards.
+
 ### Home-screen widget
 
 `WidgetService` pushes the next prayer, the countdown, today's timetable, and the Hijri date to
@@ -261,8 +269,23 @@ calculated week into a list of `ScheduledNotification`s, and `NotificationSchedu
 to stored preferences. Refreshes are serialized, and run on launch, on any settings change, and
 whenever the location or calculation method changes. Never call `zonedSchedule` from a page.
 
+Some reminders ask again until something is done: "how did you pray Fajr?" after each prayer
+(then every two hours, never past midnight) until it is in the prayer log; Al-Kahf through Friday
+until it has been read (75% of its pages in the reading log, or the "I've read it" button); and
+salawat through Friday until the counter reaches `FridayProgress.salawatGoal`. Their ids are
+numbered by date (`NotificationPlanner.prayerLogIds`, `kahfIds`, `fridaySalawatIds`), so
+`FollowUpReminders` cancels the rest of a series — sent and pending — the moment it is done,
+without rebuilding the week (after `NotificationScheduler.whenIdle()`, so a pass planned before
+the event cannot queue it again). The planner skips a series that is already done when it queues.
+Prayer-log asks cover only the first three days of the horizon: the plugin rewrites its whole
+stored schedule for every alarm, so a pass costs the square of its length. `HomePage` calls
+`NotificationScheduler.refreshIfStale()` on resume so an app kept alive in the background still
+slides the window forward each day.
+
 Notification taps and action buttons are resolved by `NotificationRouter` through
-`appNavigatorKey`, using payloads like `quran:verse:2:255:play`. Adhan sounds are declared in
+`appNavigatorKey`, using payloads like `quran:verse:2:255:play` or `log:fajr:2026-09-11:mosque`.
+A payload that arrives before `HomePage` is up waits for `NotificationRouter.markReady()` —
+anything pushed over the splash is replaced along with it. Adhan sounds are declared in
 `NotificationService.adhanSounds` and shipped in `android/app/src/main/res/raw/` (see
 `android/adhan_sounds.md` before adding one). Users can also import any audio file: `MainActivity` copies it into the
 MediaStore notifications collection and returns a `content://` URI, because Android only plays a
@@ -358,6 +381,16 @@ gh workflow run android-apk.yml -f update_latest=true -f create_versioned_releas
 ```
 
 Never delete versioned tags (`v1.x.x`) unless the user asks. Only `apk-latest` is deleted/recreated.
+
+### What's new (shown in the in-app update dialog)
+
+`whats_new.json` at the repo root holds the change list the update dialog shows, in the app's
+language: `{"ar": [...], "en": [...]}`, at most 8 short lines each, written for the person
+holding the phone — no version codes, commit hashes, backticks, or English inside the Arabic
+list. CI compacts it into an HTML comment in the release body (`<!-- whats-new {...} -->`),
+invisible on GitHub; `UpdateService.parseWhatsNew` reads it back. **Update it whenever you push
+something a user would notice** — the rolling release reuses whatever the file says at that
+commit. `test/whats_new_test.dart` checks the shape.
 
 The default `GITHUB_TOKEN` cannot write repository secrets. The **Signing key** workflow needs `SIGNING_KEY_ADMIN_TOKEN` (PAT with Secrets: Read and write), or run `./scripts/mint-signing-key.sh` locally.
 

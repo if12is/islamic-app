@@ -172,7 +172,6 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
     Future<void> refreshAll() async {
       ref.invalidate(currentLocationCoordinatesProvider);
       ref.invalidate(prayerTimesProvider(params));
-      await ref.read(dailyPrayerCompletionProvider.notifier).reloadToday();
     }
 
     return AppScaffold(

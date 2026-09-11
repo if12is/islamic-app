@@ -104,6 +104,8 @@ class BackupService {
     'last_read_verse_num',
     'last_read_scroll_offset',
     'last_read_surah_nameAr',
+    // Every earlier place read from, and the pinned wird among them.
+    'reading_history_v1',
     'location_is_manual',
     'recitation_locale_id',
     'stt_selected_model',

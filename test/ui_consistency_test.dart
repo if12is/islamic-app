@@ -165,5 +165,17 @@ void main() {
           ).readAsStringSync();
       expect(page, isNot(contains("tooltip: context.tr('mark_prayed')")));
     });
+
+    test('and it is gone from the home screen too', () {
+      // The dashboard kept its own copy: five empty circles at the end of the
+      // prayer rows, writing to a store nothing else read. They looked like
+      // checkboxes asking to be pressed and recorded less than the log.
+      final home =
+          File(
+            'lib/features/home/presentation/pages/home_page.dart',
+          ).readAsStringSync();
+      expect(home, isNot(contains('mark_prayed')));
+      expect(home, isNot(contains('dailyPrayerCompletionProvider')));
+    });
   });
 }

@@ -123,7 +123,6 @@ class AppLocalizations {
       'greeting_afternoon': 'Peace be upon you',
       'greeting_evening': 'Good evening',
       'ayah_of_day': 'Verse of the day',
-      'mark_prayed': 'Mark as prayed',
       'minute_short': 'min',
       'hour_short': 'hr',
       // Arabic counts in four forms; English needs only the two, so these
@@ -413,6 +412,7 @@ class AppLocalizations {
       // The full-screen player.
       'now_playing': 'Now playing',
       'verses_short': 'verses',
+      'verses_plural_few': 'verses',
       'back_ten': '10s back',
       'forward_ten': '10s on',
       'repeat_surah': 'Repeat',
@@ -458,13 +458,79 @@ class AppLocalizations {
       'details': 'Details',
       'zakat': 'Zakat',
       'prayer_log': 'Today\'s prayers',
-      'prayer_log_desc': 'Tap each one to record how it was prayed.',
+      'prayer_log_desc':
+          'Tap each one to record how it was prayed, or hold it to see every option.',
       'prayer_log_none': 'not recorded',
       'prayer_log_mosque': 'at the mosque',
       'prayer_log_congregation': 'in congregation',
       'prayer_log_alone': 'alone',
       'prayer_log_missed': 'made up later',
       'prayer_log_summary': '{percent}% on time over {days} days',
+      'prayer_log_saved': '{prayer} logged: {how}.',
+      'tasbeeh_counts_in_wird': 'Counts toward your daily tasbeeh',
+      'prayer_log_clear': 'Clear this record',
+      'prayer_log_not_yet': 'I haven\'t prayed it yet',
+      // Follow-up reminders: they ask again until the thing is done.
+      'follow_up_reminders': 'Until it\'s done',
+      'follow_up_reminders_desc':
+          'These ask again until you log or read — then stop by themselves.',
+      'prayer_log_reminder': 'Ask how I prayed',
+      'prayer_log_reminder_desc':
+          'After each prayer, then again while it is not logged. Never after midnight.',
+      'prayer_log_reminder_delay': 'First ask, after the adhan:',
+      'prayer_log_reminder_repeat':
+          'If it is still not logged, ask again every two hours:',
+      'prayer_log_repeat_0': 'Don\'t repeat',
+      'prayer_log_repeat_1': 'Once',
+      'prayer_log_repeat_2': 'Twice',
+      'prayer_log_repeat_3': '3 times',
+      'kahf_reminder': 'Surah Al-Kahf on Friday',
+      'kahf_reminder_desc':
+          'Up to five times through Friday — they stop once you\'ve read it.',
+      'friday_salawat_reminder': 'Salawat on Friday',
+      'friday_salawat_reminder_desc':
+          'Four times through Friday — they stop when the salawat counter reaches {goal} for the day.',
+      'salawat_friday_goal':
+          'Friday\'s reminders stop once today\'s count reaches {goal}.',
+      'notif_kind_log': 'Prayer log',
+      'notif_kind_friday': 'Friday',
+      'notif_log_title': 'How did you pray {prayer}?',
+      'notif_log_body': 'Log it now, so no prayer of the day slips by.',
+      'notif_log_again_body': '{prayer} isn\'t logged yet — did you pray it?',
+      'notif_kahf_title': 'Surah Al-Kahf',
+      'notif_kahf_body':
+          '“Whoever reads Surah al-Kahf on Friday, a light will shine for him '
+          'between the two Fridays.” — al-Hakim; graded sahih by al-Albani.',
+      'notif_kahf_again_body':
+          'You haven\'t read Al-Kahf yet today. There is still time.',
+      'notif_kahf_last_body': 'Maghrib is near and Al-Kahf is still unread.',
+      'notif_kahf_read': 'Read now',
+      'notif_kahf_done': 'I\'ve read it',
+      'kahf_marked_read':
+          'May Allah accept it. No more Al-Kahf reminders today.',
+      'notif_salawat_title': 'Salawat upon the Prophet ﷺ',
+      'notif_salawat_body':
+          '“Send much prayer upon me on Friday, for your prayers are shown to '
+          'me.” — Abu Dawud; graded sahih by al-Albani.',
+      'notif_salawat_again_body':
+          'Allahumma salli wa sallim on our Prophet Muhammad — make it much this Friday.',
+      'notif_salawat_open': 'Count now',
+      // Reading history: every place read from, and the pinned wird.
+      'history_title': 'Reading history',
+      'history_desc':
+          'Every place you have read from. Tap one to carry on from there, and pin your wird so it stays at the top.',
+      'history_empty':
+          'Nothing yet. Start reading and your place will be kept here.',
+      'history_open': 'History',
+      'history_mark_title': '{surah} · verse {verse}',
+      'history_page': 'Page {page}',
+      'history_pages': 'Pages {from}–{to}',
+      'history_pinned': 'My wird',
+      'history_pin': 'Pin as my wird',
+      'history_unpin': 'Unpin',
+      'history_remove': 'Remove from history',
+      'history_options': 'Options',
+      'yesterday': 'Yesterday',
       'zakat_tool_desc': 'Work out what is due on your wealth',
       'salawat': 'The prayer upon the Prophet ﷺ',
       'salawat_today': 'today',
@@ -639,9 +705,7 @@ class AppLocalizations {
       'wird_unavailable': 'The wird is unavailable right now.',
       'occasion_reminders': 'Occasions and fasting',
       'occasion_reminders_desc':
-          'Friday, the recommended fasting days, and the Hijri occasions.',
-      'friday_reminder': 'Friday reminder',
-      'friday_reminder_desc': 'Surah Al-Kahf, an hour after Fajr.',
+          'A surah worth reading, the recommended fasting days, and the Hijri occasions.',
       'fasting_reminder': 'Fasting reminder',
       'fasting_reminder_desc':
           'The night before Monday, Thursday, and the white days.',
@@ -649,9 +713,6 @@ class AppLocalizations {
       'islamic_events_desc':
           'Ashura, Arafah, the two Eids, Ramadan, and the white days.',
       'notif_kind_event': 'Occasion',
-      'notif_friday_title': 'Friday',
-      'notif_friday_body':
-          'Read Surah Al-Kahf and send salawat upon the Prophet ﷺ.',
       'notif_event_body': 'Open the calendar to see what today is.',
       'notif_event_fasting_body': 'A recommended day to fast.',
       'notif_fasting_title': 'Fasting tomorrow?',
@@ -908,11 +969,13 @@ class AppLocalizations {
           'You have {installed}, and {latest} is the newest published. '
           'Nothing to install.',
       'app_update_downloaded': '{done} of {total}',
-      'app_update_available': 'Version {version} is ready ({size}).',
-      'app_update_available_title': 'A new version is ready',
-      'app_update_installed': 'Installed now: {version}',
-      'app_update_size_hint':
-          'Only the package for this phone is downloaded — not the full 150 MB file.',
+      'app_update_available': 'Version {version} is ready · {size}',
+      'app_update_available_title': 'A new update is ready',
+      'app_update_version': 'Version {version}',
+      'app_update_size': 'Download size: {size}',
+      'app_update_whats_new': 'What\'s new',
+      'size_mb': '{value} MB',
+      'size_kb': '{value} KB',
       'app_update_later': 'Later',
       'app_update_skip': 'Skip this version',
       'app_update_now': 'Download and install',
@@ -1376,7 +1439,6 @@ class AppLocalizations {
       'greeting_afternoon': 'السلام عليكم',
       'greeting_evening': 'مساء الخير',
       'ayah_of_day': 'آية اليوم',
-      'mark_prayed': 'تحديد كمُؤدّاة',
       'minute_short': 'د',
       'hour_short': 'س',
       // المثنى في العربية يحمل العدد في الكلمة نفسها، فلا يُسبق برقم:
@@ -1656,6 +1718,8 @@ class AppLocalizations {
       // المشغّل الكامل.
       'now_playing': 'قيد التشغيل الآن',
       'verses_short': 'آية',
+      // Three to ten verses take the plural: "٧ آيات", not "٧ آية".
+      'verses_plural_few': 'آيات',
       'back_ten': '١٠ ث للخلف',
       'forward_ten': '١٠ ث للأمام',
       'repeat_surah': 'تكرار',
@@ -1701,13 +1765,72 @@ class AppLocalizations {
       'details': 'التفاصيل',
       'zakat': 'الزكاة',
       'prayer_log': 'صلوات اليوم',
-      'prayer_log_desc': 'اضغط كل صلاة لتسجّل كيف صلّيتها.',
+      'prayer_log_desc':
+          'اضغط كل صلاة لتسجّل كيف صلّيتها، أو اضغط مطوّلاً لترى كل الخيارات.',
       'prayer_log_none': 'لم تُسجَّل',
       'prayer_log_mosque': 'في المسجد',
       'prayer_log_congregation': 'جماعة',
       'prayer_log_alone': 'منفرداً',
       'prayer_log_missed': 'قضاءً',
       'prayer_log_summary': '{percent}٪ في وقتها خلال {days} يوماً',
+      'prayer_log_saved': 'سُجّلت صلاة {prayer}: {how}.',
+      'tasbeeh_counts_in_wird': 'تُحسب في تسبيح وردك اليومي',
+      'prayer_log_clear': 'امسح التسجيل',
+      'prayer_log_not_yet': 'لم أصلّها بعد',
+      'follow_up_reminders': 'تذكير حتى تُنجِزها',
+      'follow_up_reminders_desc':
+          'تعود حتى تسجّل أو تقرأ، ثم تتوقف وحدها.',
+      'prayer_log_reminder': 'اسألني كيف صلّيت',
+      'prayer_log_reminder_desc':
+          'بعد كل صلاة، ثم مرة أخرى ما دامت لم تُسجَّل. لا شيء بعد منتصف الليل.',
+      'prayer_log_reminder_delay': 'أول تذكير بعد الأذان بـ:',
+      'prayer_log_reminder_repeat': 'إن لم تُسجَّل بعد، أعِد التذكير كل ساعتين:',
+      'prayer_log_repeat_0': 'بلا تكرار',
+      'prayer_log_repeat_1': 'مرة',
+      'prayer_log_repeat_2': 'مرتين',
+      'prayer_log_repeat_3': '٣ مرات',
+      'kahf_reminder': 'سورة الكهف يوم الجمعة',
+      'kahf_reminder_desc':
+          'حتى خمس مرات على مدار الجمعة، وتتوقف بمجرد أن تقرأها.',
+      'friday_salawat_reminder': 'الصلاة على النبي ﷺ يوم الجمعة',
+      'friday_salawat_reminder_desc':
+          'أربع مرات على مدار الجمعة، وتتوقف حين يبلغ عدّاد الصلاة على النبي {goal} في اليوم.',
+      'salawat_friday_goal': 'تتوقف تذكيرات الجمعة حين يبلغ عدّك اليوم {goal}.',
+      'notif_kind_log': 'تسجيل الصلاة',
+      'notif_kind_friday': 'الجمعة',
+      'notif_log_title': 'كيف صلّيت {prayer}؟',
+      'notif_log_body': 'سجّلها الآن حتى لا يفوتك فرض.',
+      'notif_log_again_body': 'لم تُسجَّل صلاة {prayer} بعد. هل صلّيتها؟',
+      'notif_kahf_title': 'سورة الكهف',
+      'notif_kahf_body':
+          '«من قرأ سورة الكهف في يوم الجمعة أضاء له من النور ما بين الجمعتين» '
+          '— رواه الحاكم، وصححه الألباني.',
+      'notif_kahf_again_body': 'لم تقرأ سورة الكهف اليوم بعد، وما زال في الوقت متّسع.',
+      'notif_kahf_last_body': 'اقترب المغرب ولم تقرأ سورة الكهف بعد.',
+      'notif_kahf_read': 'اقرأ الآن',
+      'notif_kahf_done': 'قرأتها',
+      'kahf_marked_read': 'تقبّل الله منك. لا مزيد من تذكيرات الكهف اليوم.',
+      'notif_salawat_title': 'الصلاة على النبي ﷺ',
+      'notif_salawat_body':
+          '«أكثروا عليّ من الصلاة يوم الجمعة، فإن صلاتكم معروضة عليّ» '
+          '— رواه أبو داود، وصححه الألباني.',
+      'notif_salawat_again_body':
+          'اللهم صلِّ وسلّم على نبينا محمد — أكثِر منها في يوم الجمعة.',
+      'notif_salawat_open': 'صلِّ الآن',
+      'history_title': 'سجل القراءة',
+      'history_desc':
+          'كل موضع قرأت منه. اضغط أيّها لتكمل من عنده، وثبّت وردك ليبقى في الأعلى.',
+      'history_empty': 'لا شيء بعد. ابدأ القراءة وسيُحفظ موضعك هنا.',
+      'history_open': 'السجل',
+      'history_mark_title': '{surah} · الآية {verse}',
+      'history_page': 'صفحة {page}',
+      'history_pages': 'من صفحة {from} إلى {to}',
+      'history_pinned': 'وردي',
+      'history_pin': 'ثبّته كوِردي',
+      'history_unpin': 'إلغاء التثبيت',
+      'history_remove': 'احذفه من السجل',
+      'history_options': 'خيارات',
+      'yesterday': 'أمس',
       'zakat_tool_desc': 'احسب ما يجب في مالك',
       'salawat': 'الصلاة على النبي ﷺ',
       'salawat_today': 'اليوم',
@@ -1876,16 +1999,12 @@ class AppLocalizations {
       'wird_unavailable': 'تعذّر عرض الورد الآن.',
       'occasion_reminders': 'المناسبات والصيام',
       'occasion_reminders_desc':
-          'الجمعة، وأيام الصيام المستحبة، والمناسبات الهجرية.',
-      'friday_reminder': 'تذكير الجمعة',
-      'friday_reminder_desc': 'سورة الكهف بعد الفجر بساعة.',
+          'سورة تستحق القراءة، وأيام الصيام المستحبة، والمناسبات الهجرية.',
       'fasting_reminder': 'تذكير الصيام',
       'fasting_reminder_desc': 'ليلة الاثنين والخميس والأيام البيض.',
       'islamic_events': 'المناسبات الهجرية',
       'islamic_events_desc': 'عاشوراء وعرفة والعيدان ورمضان والأيام البيض.',
       'notif_kind_event': 'مناسبة',
-      'notif_friday_title': 'يوم الجمعة',
-      'notif_friday_body': 'اقرأ سورة الكهف وأكثر من الصلاة على النبي ﷺ.',
       'notif_event_body': 'افتح التقويم لتعرف مناسبة اليوم.',
       'notif_event_fasting_body': 'يوم يُستحب صيامه.',
       'notif_fasting_title': 'صيام غداً؟',
@@ -2136,11 +2255,13 @@ class AppLocalizations {
       'app_update_current':
           'عندك {installed}، وأحدث ما نُشر {latest}. لا جديد لتثبيته.',
       'app_update_downloaded': '{done} من {total}',
-      'app_update_available': 'الإصدار {version} جاهز ({size}).',
-      'app_update_available_title': 'يتوفر إصدار جديد',
-      'app_update_installed': 'المثبّت الآن: {version}',
-      'app_update_size_hint':
-          'ينزل ملف هذا الهاتف فقط، مش الـ ١٥٠ ميجا الكاملة.',
+      'app_update_available': 'الإصدار {version} جاهز · {size}',
+      'app_update_available_title': 'يتوفر تحديث جديد',
+      'app_update_version': 'الإصدار {version}',
+      'app_update_size': 'حجم التنزيل: {size}',
+      'app_update_whats_new': 'الجديد في هذا التحديث',
+      'size_mb': '{value} ميجابايت',
+      'size_kb': '{value} كيلوبايت',
       'app_update_later': 'لاحقاً',
       'app_update_skip': 'تخطَّ هذا الإصدار',
       'app_update_now': 'تنزيل وتثبيت',

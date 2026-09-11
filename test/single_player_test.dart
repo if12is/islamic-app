@@ -16,7 +16,11 @@ void main() {
         if (entity is! File || !entity.path.endsWith('.dart')) {
           continue;
         }
-        if (entity.path.endsWith('core/services/app_audio.dart')) {
+        // Separators normalised, or this fails on Windows by flagging the
+        // one file it exists to exempt.
+        if (entity.path
+            .replaceAll(r'\', '/')
+            .endsWith('core/services/app_audio.dart')) {
           continue;
         }
         final source = entity.readAsStringSync();

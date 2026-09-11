@@ -79,6 +79,9 @@ class HeroCard extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.actionLabel,
+    this.secondaryLabel,
+    this.secondaryIcon,
+    this.onSecondaryTap,
     this.ornament = HeroOrnament.mosque,
     this.height = 132,
   });
@@ -89,6 +92,13 @@ class HeroCard extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final String? actionLabel;
+
+  /// A second, quieter way on from the same card ("History"). It is its own
+  /// button; the rest of the card still does what [onTap] does.
+  final String? secondaryLabel;
+  final IconData? secondaryIcon;
+  final VoidCallback? onSecondaryTap;
+
   final HeroOrnament ornament;
   final double height;
 
@@ -171,26 +181,82 @@ class HeroCard extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (actionLabel != null) ...[
+                      if (actionLabel != null ||
+                          (secondaryLabel != null &&
+                              onSecondaryTap != null)) ...[
                         const SizedBox(height: AppSpacing.md),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.lg,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: tokens.onGold.withValues(alpha: 0.14),
-                            borderRadius: AppRadii.pillAll,
-                          ),
-                          child: Text(
-                            actionLabel!,
-                            style: TextStyle(
-                              fontFamily: AppTextStyles.bodyFamily,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: tokens.onGold,
-                            ),
-                          ),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            if (actionLabel != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.lg,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: tokens.onGold.withValues(alpha: 0.14),
+                                  borderRadius: AppRadii.pillAll,
+                                ),
+                                child: Text(
+                                  actionLabel!,
+                                  style: TextStyle(
+                                    fontFamily: AppTextStyles.bodyFamily,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: tokens.onGold,
+                                  ),
+                                ),
+                              ),
+                            if (secondaryLabel != null &&
+                                onSecondaryTap != null)
+                              Material(
+                                color: Colors.transparent,
+                                borderRadius: AppRadii.pillAll,
+                                child: InkWell(
+                                  borderRadius: AppRadii.pillAll,
+                                  onTap: onSecondaryTap,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.md,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: AppRadii.pillAll,
+                                      color: tokens.onGold.withValues(
+                                        alpha: 0.07,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (secondaryIcon != null) ...[
+                                          Icon(
+                                            secondaryIcon,
+                                            size: 15,
+                                            color: tokens.onGold,
+                                          ),
+                                          const SizedBox(width: 4),
+                                        ],
+                                        Flexible(
+                                          child: Text(
+                                            secondaryLabel!,
+                                            style: TextStyle(
+                                              fontFamily:
+                                                  AppTextStyles.bodyFamily,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: tokens.onGold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ],

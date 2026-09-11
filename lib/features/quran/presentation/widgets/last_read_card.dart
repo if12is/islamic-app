@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../data/services/quran_local_service.dart';
 import '../pages/surah_reader_page.dart';
 import '../providers/bookmarks_provider.dart';
+import '../providers/reading_history_provider.dart';
+import 'reading_history_sheet.dart';
 
 /// "Continue where you left off."
 ///
@@ -18,9 +21,11 @@ class LastReadCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lastRead = ref.watch(lastReadProvider);
+    final history = ref.watch(readingHistoryProvider);
     if (lastRead == null) {
       return const SizedBox.shrink();
     }
+    final resume = resumeForLastRead(lastRead, history);
 
     final colorScheme = Theme.of(context).colorScheme;
     final surah = QuranLocalService.surahInfo(lastRead.surahNumber);
@@ -85,13 +90,12 @@ class LastReadCard extends ConsumerWidget {
               languageCode,
               'last_read_position',
               replacements: {
-                'verse': verse.toString(),
-                'total': surah.versesCount.toString(),
-                'page':
-                    QuranLocalService.verse(
-                      lastRead.surahNumber,
-                      verse,
-                    ).page.toString(),
+                'verse': localizeDigits(context, '$verse'),
+                'total': localizeDigits(context, '${surah.versesCount}'),
+                'page': localizeDigits(
+                  context,
+                  '${QuranLocalService.verse(lastRead.surahNumber, verse).page}',
+                ),
               },
             ),
             style: AppTextStyles.caption(
@@ -114,22 +118,39 @@ class LastReadCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FilledButton.icon(
-              onPressed:
-                  () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder:
-                          (_) => SurahReaderPage(
-                            surahNumber: lastRead.surahNumber,
-                            initialVerse: verse,
-                          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed:
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder:
+                            (_) => SurahReaderPage(
+                              surahNumber: lastRead.surahNumber,
+                              initialVerse: verse,
+                              historyId: resume?.historyId,
+                            ),
+                      ),
                     ),
+                icon: const Icon(Icons.play_arrow, size: 18),
+                label: Text(context.tr('continue_reading')),
+              ),
+              // "Last read" is only ever the last place. Everywhere before it
+              // — the khatmah left for a verse looked up in a search — is one
+              // tap further, not gone.
+              if (history.length > 1)
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.onPrimaryContainer,
                   ),
-              icon: const Icon(Icons.play_arrow, size: 18),
-              label: Text(context.tr('continue_reading')),
-            ),
+                  onPressed: () => ReadingHistorySheet.show(context),
+                  icon: const Icon(Icons.history, size: 18),
+                  label: Text(context.tr('history_open')),
+                ),
+            ],
           ),
         ],
       ),

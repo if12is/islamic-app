@@ -8,6 +8,8 @@ import 'package:islamic_app/core/widgets/app_section.dart';
 import 'package:islamic_app/core/widgets/arc_gauge.dart';
 import 'package:islamic_app/core/widgets/ayah_block.dart';
 import 'package:islamic_app/core/widgets/shortcut_grid.dart';
+import 'package:islamic_app/features/quran/data/services/quran_local_service.dart';
+import 'package:islamic_app/features/quran/presentation/widgets/surah_cover_art.dart';
 
 /// The yellow-and-black stripe is a bug, not a warning.
 ///
@@ -65,6 +67,48 @@ void main() {
         ),
       );
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the hero card with a second way on', (tester) async {
+      for (final direction in TextDirection.values) {
+        await pumpTight(
+          tester,
+          host(
+            direction: direction,
+            HeroCard(
+              label: 'آخر قراءة',
+              title: 'سورة الصافات',
+              subtitle: 'الآية ١٤٢ من ١٨٢ · صفحة ٤٥٠',
+              actionLabel: 'استمر في التلاوة',
+              secondaryLabel: 'مواضع القراءة السابقة',
+              secondaryIcon: Icons.history,
+              onSecondaryTap: () {},
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull, reason: '$direction');
+      }
+    });
+
+    testWidgets('the player cover, small, with the longest names', (
+      tester,
+    ) async {
+      // The cover gives up its room first on a short screen; the name, the
+      // kind of surah and the verse count all have to fit inside the arch.
+      for (final surah in [7, 18, 26, 114]) {
+        await pumpTight(
+          tester,
+          host(
+            Center(
+              child: SurahCoverArt(
+                size: 150,
+                info: QuranLocalService.surahInfo(surah),
+              ),
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull, reason: 'surah $surah');
+      }
     });
 
     testWidgets('the progress card', (tester) async {

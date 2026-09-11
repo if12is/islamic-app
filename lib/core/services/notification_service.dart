@@ -22,6 +22,12 @@ enum NotificationKind {
   wird,
   event,
   test,
+
+  /// "How did you pray Fajr?" — after each prayer, until it is logged.
+  prayerLog,
+
+  /// Al-Kahf and salawat through Friday, until each is done.
+  friday,
 }
 
 /// A button under a notification.
@@ -159,6 +165,8 @@ class NotificationService {
   static const String channelDailyAyah = 'daily_ayah_v2';
   static const String channelWird = 'wird_v2';
   static const String channelEvents = 'islamic_events_v1';
+  static const String channelPrayerLog = 'prayer_log_v1';
+  static const String channelFriday = 'friday_v1';
   static const String channelTest = 'test_alerts_v2';
 
   static final Int64List _adhanVibration = Int64List.fromList([
@@ -308,6 +316,18 @@ class NotificationService {
         'Islamic occasions',
         description: 'Ashura, Arafah, the Eids, white days, and fasting days',
         importance: Importance.defaultImportance,
+      ),
+      const AndroidNotificationChannel(
+        channelPrayerLog,
+        'Prayer log',
+        description: 'Asks how each prayer was prayed, until it is logged',
+        importance: Importance.high,
+      ),
+      const AndroidNotificationChannel(
+        channelFriday,
+        'Friday',
+        description: 'Surah Al-Kahf and salawat through Friday, until done',
+        importance: Importance.high,
       ),
       const AndroidNotificationChannel(
         channelTest,
@@ -507,6 +527,15 @@ class NotificationService {
   static Future<void> cancelOne(int id) async {
     await initialize();
     await _plugin.cancel(id: id);
+  }
+
+  /// Drop several, scheduled or already showing — the rest of a follow-up
+  /// series once the thing it asks about has been done.
+  static Future<void> cancelMany(Iterable<int> ids) async {
+    await initialize();
+    for (final id in ids) {
+      await _plugin.cancel(id: id);
+    }
   }
 
   /// Whether the user has allowed notifications at all.
@@ -736,6 +765,10 @@ class NotificationService {
         return channelWird;
       case NotificationKind.event:
         return channelEvents;
+      case NotificationKind.prayerLog:
+        return channelPrayerLog;
+      case NotificationKind.friday:
+        return channelFriday;
       case NotificationKind.test:
         return channelTest;
     }
@@ -765,6 +798,10 @@ class NotificationService {
         return 'Daily wird';
       case channelEvents:
         return 'Islamic occasions';
+      case channelPrayerLog:
+        return 'Prayer log';
+      case channelFriday:
+        return 'Friday';
       default:
         return 'Test alerts';
     }

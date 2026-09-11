@@ -9,7 +9,6 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/models/notification_preferences.dart';
 import '../../../../core/services/backup_service.dart';
 import '../../../../core/services/notification_service.dart';
-import '../../../../core/services/update_service.dart';
 import '../../../../shared/providers/app_update_provider.dart';
 import '../widgets/app_update_dialog.dart';
 import '../widgets/profile_header.dart';
@@ -18,6 +17,8 @@ import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../broadcasts/presentation/pages/broadcasts_page.dart';
 import '../../../quran/presentation/pages/playlists_page.dart';
+import '../../../quran/presentation/providers/bookmarks_provider.dart';
+import '../../../quran/presentation/providers/reading_history_provider.dart';
 import 'storage_page.dart';
 import 'zakat_page.dart';
 import '../../../prayer_times/presentation/pages/prayer_settings_page.dart';
@@ -886,12 +887,16 @@ class SettingsPage extends ConsumerWidget {
       case AppUpdateStatus.checking:
         return context.tr('app_update_checking');
       case AppUpdateStatus.available:
+        final release = state.release;
         return AppLocalizations.translate(
           language,
           'app_update_available',
           replacements: {
-            'version': state.release?.label ?? '',
-            'size': UpdateService.formatBytes(state.release?.apkBytes ?? 0),
+            'version':
+                release == null
+                    ? ''
+                    : AppUpdateDialog.versionText(context, release),
+            'size': AppUpdateDialog.sizeText(context, release?.apkBytes ?? 0),
           },
         );
       case AppUpdateStatus.downloading:
@@ -1007,6 +1012,7 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _restoreBackup(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
     final restoredMessage = context.tr('backup_restored');
     final invalidMessage = context.tr('backup_invalid');
     final versionMessage = context.tr('backup_newer_version');
@@ -1016,6 +1022,12 @@ class SettingsPage extends ConsumerWidget {
       if (summary == null) {
         return;
       }
+      // Both hold their list in memory and write it back on the next save,
+      // which would put the pre-restore places straight back over the
+      // restored ones.
+      container
+        ..invalidate(readingHistoryProvider)
+        ..invalidate(lastReadProvider);
       messenger.showSnackBar(
         SnackBar(
           // The tasbeeh total is named because it is the number people are

@@ -164,10 +164,10 @@ class ArcGauge extends StatelessWidget {
                                           ? Text(
                                             headline,
                                             maxLines: 1,
-                                            style: AppTextStyles.display(
+                                            style: AppTextStyles.body(
                                               context,
-                                              fontSize: 38,
-                                              height: 1.2,
+                                              fontSize: _Countdown.bigSize,
+                                              height: 1.35,
                                               fontWeight: FontWeight.w700,
                                               color: tokens.ink,
                                             ),
@@ -230,10 +230,20 @@ class ArcGauge extends StatelessWidget {
 /// The words sit on the digits' baseline rather than being centred against
 /// them, which is how a clock face sets a unit beside a number and what keeps
 /// the line from looking like two sizes of the same sentence.
+///
+/// All of it is Cairo. The digits used to be the Kufic display face at 38px
+/// and the words Cairo, so "ساعة و٢١ دقيقة" read as two fonts fighting in one
+/// line — and at that size the countdown shouted over the arc it sits in.
 class _Countdown extends StatelessWidget {
   const _Countdown({required this.parts});
 
   final List<DurationPart> parts;
+
+  /// The counted things: digits, and the words that carry their own count.
+  static const double bigSize = 27;
+
+  /// The units that name them.
+  static const double smallSize = 15;
 
   @override
   Widget build(BuildContext context) {
@@ -255,10 +265,10 @@ class _Countdown extends StatelessWidget {
             Text(
               '${i > 0 ? conjunction : ''}${parts[i].value}',
               maxLines: 1,
-              style: AppTextStyles.display(
+              style: AppTextStyles.body(
                 context,
-                fontSize: 38,
-                height: 1.1,
+                fontSize: bigSize,
+                height: 1.35,
                 fontWeight: FontWeight.w700,
                 color: tokens.ink,
               ),
@@ -274,7 +284,8 @@ class _Countdown extends StatelessWidget {
               context,
               // A dual like "ساعتان" is the number as well as the word, so it
               // is set at the size a number gets.
-              fontSize: parts[i].value == null ? 24 : 15,
+              fontSize: parts[i].value == null ? bigSize : smallSize,
+              height: 1.35,
               fontWeight:
                   parts[i].value == null ? FontWeight.w700 : FontWeight.w600,
               color: parts[i].value == null ? tokens.ink : tokens.inkMuted,

@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/prayer_times/data/prayer_log_store.dart';
 import '../../features/quran/data/services/quran_local_service.dart';
 import '../constants/app_constants.dart';
 import '../localization/app_localizations.dart';
 import '../models/notification_preferences.dart';
 import '../utils/app_logger.dart';
+import 'friday_progress.dart';
 import 'hijri_service.dart';
 import 'surah_virtues.dart';
 import 'notification_service.dart';
@@ -49,6 +51,10 @@ class NotificationPlanner {
   /// via the boot receiver; the app also reschedules on every launch.
   static const int horizonDays = 7;
 
+  /// Enough for a week with every reminder switched on (a little over 200),
+  /// and well under the 500 alarms Android allows one app.
+  static const int defaultMaxItems = 300;
+
   static const int _prayerIdBase = 1000;
   static const int _preAdhanIdBase = 2000;
   static const int _iqamaIdBase = 3000;
@@ -57,10 +63,76 @@ class NotificationPlanner {
   static const int _dailyAyahIdBase = 5000;
   static const int _wirdIdBase = 6000;
   static const int _eventIdBase = 7000;
-  static const int _fridayIdBase = 7100;
   static const int _surahIdBase = 7200;
-  static const int _fastingIdBase = 7200;
+  // This was 7200 as well, so on a day with both a surah suggestion and a
+  // fasting reminder one silently replaced the other.
+  static const int _fastingIdBase = 7300;
 
+  // The follow-up series are numbered by date rather than by position in the
+  // plan, so the app can cancel "the rest of today's Fajr asks" the moment
+  // Fajr is logged, without rebuilding the week to find out which ids those
+  // were. Eight slots cover the seven-day horizon with no two days sharing.
+  static const int _prayerLogIdBase = 8000;
+  static const int _kahfIdBase = 8400;
+  static const int _fridaySalawatIdBase = 8500;
+
+  /// Room for the first ask plus every follow-up allowed.
+  static const int _prayerLogSlots =
+      NotificationPreferences.maxPrayerLogFollowUps + 1;
+  static const int _fridaySlots = 10;
+
+  /// How far apart the follow-up asks about one prayer are.
+  static const Duration prayerLogGap = Duration(hours: 2);
+
+  /// Days of the horizon that get prayer-log asks: today and the next two.
+  ///
+  /// Not the whole week. The notification plugin rewrites its entire stored
+  /// schedule on the main thread for every alarm it adds, so the cost of a
+  /// pass grows with the square of its length, and a week of asks would
+  /// nearly triple it. Every launch, and every return to the app on a new
+  /// day, plans three days on from there, so anyone answering them never
+  /// runs out; someone who has ignored the app for three days stops being
+  /// asked, and keeps every adhan.
+  static const int prayerLogHorizonDays = 3;
+
+  /// 0–7, different for every day in any run of eight.
+  static int daySlot(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay %
+      8;
+
+  /// Every id today's asks about [prayerId] can have, sent or still pending.
+  static List<int> prayerLogIds(DateTime date, String prayerId) {
+    final prayerIndex = PrayerIds.obligatory.indexOf(prayerId);
+    if (prayerIndex < 0) {
+      return const [];
+    }
+    final base = _prayerLogIdBase + daySlot(date) * 50 + prayerIndex * 10;
+    return [for (var i = 0; i < _prayerLogSlots; i++) base + i];
+  }
+
+  static List<int> kahfIds(DateTime date) {
+    final base = _kahfIdBase + daySlot(date) * 10;
+    return [for (var i = 0; i < _fridaySlots; i++) base + i];
+  }
+
+  static List<int> fridaySalawatIds(DateTime date) {
+    final base = _fridaySalawatIdBase + daySlot(date) * 10;
+    return [for (var i = 0; i < _fridaySlots; i++) base + i];
+  }
+
+  /// `log:fajr:2026-09-11` — which prayer, on which day.
+  static String prayerLogPayload(String prayerId, DateTime date) =>
+      'log:$prayerId:${_dayKey(date)}';
+
+  static String _dayKey(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  /// [isPrayerLogged], [isKahfRead] and [isSalawatDone] say what has already
+  /// been done, so a series that would only nag about it is never queued.
   static List<ScheduledNotification> build({
     required NotificationPreferences prefs,
     required List<ComputedPrayerDay> days,
@@ -68,7 +140,10 @@ class NotificationPlanner {
     required String languageCode,
     String? Function(DateTime date)? dailyAyahBody,
     String? Function(DateTime date)? dailyAyahReference,
-    int maxItems = 200,
+    bool Function(DateTime date, String prayerId)? isPrayerLogged,
+    bool Function(DateTime date)? isKahfRead,
+    bool Function(DateTime date)? isSalawatDone,
+    int maxItems = defaultMaxItems,
   }) {
     if (!prefs.masterEnabled) {
       return const [];
@@ -87,11 +162,32 @@ class NotificationPlanner {
         final prayerId = PrayerIds.obligatory[prayerIndex];
         final mode = prefs.modeFor(prayerId);
         final time = day.timeOf(prayerId);
-        if (time == null || !mode.isEnabled) {
+        if (time == null) {
           continue;
         }
 
         final prayerName = _prayerName(languageCode, prayerId);
+
+        // Asked whether or not the adhan itself is on: someone who has the
+        // adhan from the mosque down the road still wants the log kept.
+        if (prefs.prayerLogRemindersEnabled &&
+            dayIndex < prayerLogHorizonDays &&
+            !(isPrayerLogged?.call(day.date, prayerId) ?? false)) {
+          _addPrayerLogAsks(
+            items,
+            now,
+            prefs: prefs,
+            day: day,
+            prayerId: prayerId,
+            prayerName: prayerName,
+            adhan: time,
+            languageCode: languageCode,
+          );
+        }
+
+        if (!mode.isEnabled) {
+          continue;
+        }
 
         _add(
           items,
@@ -293,33 +389,22 @@ class NotificationPlanner {
         );
       }
 
-      // Friday: Surah Al-Kahf, an hour after Fajr.
-      if (prefs.fridayRemindersEnabled &&
-          day.date.weekday == DateTime.friday &&
-          fajr != null) {
-        final time = fajr.add(const Duration(hours: 1));
-        _add(
-          items,
-          now,
-          ScheduledNotification(
-            id: _fridayIdBase + dayIndex,
-            kind: NotificationKind.dailyAyah,
-            time: time,
-            mode: _quietAware(prefs, time),
-            title: AppLocalizations.translate(
-              languageCode,
-              'notif_friday_title',
-            ),
-            body: AppLocalizations.translate(languageCode, 'notif_friday_body'),
-            payload: 'quran:verse:18:1',
-            actions: [
-              NotificationActionSpec(
-                id: 'open_ayah',
-                label: AppLocalizations.translate(languageCode, 'open'),
-              ),
-            ],
-          ),
-        );
+      // Friday: Al-Kahf and salawat, through the day, until each is done.
+      if (day.date.weekday == DateTime.friday) {
+        if (prefs.kahfRemindersEnabled &&
+            !(isKahfRead?.call(day.date) ?? false)) {
+          _addKahfAsks(items, now, prefs: prefs, day: day, lang: languageCode);
+        }
+        if (prefs.fridaySalawatEnabled &&
+            !(isSalawatDone?.call(day.date) ?? false)) {
+          _addSalawatAsks(
+            items,
+            now,
+            prefs: prefs,
+            day: day,
+            lang: languageCode,
+          );
+        }
       }
 
       // A surah worth reading today, and the narration that says why.
@@ -471,6 +556,184 @@ class NotificationPlanner {
     }
   }
 
+  /// "How did you pray Fajr?" — first once there has been time to pray, then
+  /// every [prayerLogGap] while it is still not logged, never past midnight.
+  ///
+  /// Every ask about one prayer on one day shares an id family, so logging it
+  /// cancels the lot — the ones already in the shade as well as the ones not
+  /// yet sent.
+  static void _addPrayerLogAsks(
+    List<ScheduledNotification> items,
+    DateTime now, {
+    required NotificationPreferences prefs,
+    required ComputedPrayerDay day,
+    required String prayerId,
+    required String prayerName,
+    required DateTime adhan,
+    required String languageCode,
+  }) {
+    final ids = prayerLogIds(day.date, prayerId);
+    final endOfDay = DateTime(
+      day.date.year,
+      day.date.month,
+      day.date.day,
+      23,
+      59,
+    );
+    final payload = prayerLogPayload(prayerId, day.date);
+
+    var at = adhan.add(Duration(minutes: prefs.prayerLogDelayMinutes));
+    for (var ask = 0; ask <= prefs.prayerLogFollowUps; ask++) {
+      if (at.isAfter(endOfDay) || ask >= ids.length) {
+        break;
+      }
+      _add(
+        items,
+        now,
+        ScheduledNotification(
+          id: ids[ask],
+          kind: NotificationKind.prayerLog,
+          time: at,
+          mode: _quietAware(prefs, at),
+          prayerId: prayerId,
+          title: AppLocalizations.translate(
+            languageCode,
+            'notif_log_title',
+            replacements: {'prayer': prayerName},
+          ),
+          body: AppLocalizations.translate(
+            languageCode,
+            ask == 0 ? 'notif_log_body' : 'notif_log_again_body',
+            replacements: {'prayer': prayerName},
+          ),
+          payload: payload,
+          actions: [
+            for (final record in const ['mosque', 'alone', 'missed'])
+              NotificationActionSpec(
+                id: 'log_$record',
+                label: AppLocalizations.translate(
+                  languageCode,
+                  'prayer_log_$record',
+                ),
+              ),
+          ],
+        ),
+      );
+      at = at.add(prayerLogGap);
+    }
+  }
+
+  /// Al-Kahf through Friday: after Fajr, before and after Jumu'ah, after Asr,
+  /// and a last one before Maghrib. The moment it has been read the rest are
+  /// cancelled, so reading it after the first leaves the day quiet.
+  static void _addKahfAsks(
+    List<ScheduledNotification> items,
+    DateTime now, {
+    required NotificationPreferences prefs,
+    required ComputedPrayerDay day,
+    required String lang,
+  }) {
+    final times = _spaced([
+      day.timeOf(PrayerIds.fajr)?.add(const Duration(minutes: 60)),
+      day.timeOf(PrayerIds.dhuhr)?.subtract(const Duration(minutes: 90)),
+      day.timeOf(PrayerIds.dhuhr)?.add(const Duration(minutes: 75)),
+      day.timeOf(PrayerIds.asr)?.add(const Duration(minutes: 30)),
+      day.timeOf(PrayerIds.maghrib)?.subtract(const Duration(minutes: 40)),
+    ]);
+    final ids = kahfIds(day.date);
+
+    for (var ask = 0; ask < times.length && ask < ids.length; ask++) {
+      final time = times[ask];
+      final bodyKey =
+          ask == 0
+              ? 'notif_kahf_body'
+              : ask == times.length - 1
+              ? 'notif_kahf_last_body'
+              : 'notif_kahf_again_body';
+      _add(
+        items,
+        now,
+        ScheduledNotification(
+          id: ids[ask],
+          kind: NotificationKind.friday,
+          time: time,
+          mode: _quietAware(prefs, time),
+          title: AppLocalizations.translate(lang, 'notif_kahf_title'),
+          body: AppLocalizations.translate(lang, bodyKey),
+          payload: 'quran:surah:18',
+          actions: [
+            NotificationActionSpec(
+              id: 'open_kahf',
+              label: AppLocalizations.translate(lang, 'notif_kahf_read'),
+            ),
+            NotificationActionSpec(
+              id: 'kahf_done',
+              label: AppLocalizations.translate(lang, 'notif_kahf_done'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  /// Salawat upon the Prophet ﷺ through Friday, until the day's count on the
+  /// salawat counter reaches its goal.
+  static void _addSalawatAsks(
+    List<ScheduledNotification> items,
+    DateTime now, {
+    required NotificationPreferences prefs,
+    required ComputedPrayerDay day,
+    required String lang,
+  }) {
+    final times = _spaced([
+      day.timeOf(PrayerIds.fajr)?.add(const Duration(minutes: 120)),
+      day.timeOf(PrayerIds.dhuhr)?.subtract(const Duration(minutes: 40)),
+      day.timeOf(PrayerIds.asr)?.subtract(const Duration(minutes: 45)),
+      day.timeOf(PrayerIds.maghrib)?.add(const Duration(minutes: 20)),
+    ]);
+    final ids = fridaySalawatIds(day.date);
+
+    for (var ask = 0; ask < times.length && ask < ids.length; ask++) {
+      final time = times[ask];
+      _add(
+        items,
+        now,
+        ScheduledNotification(
+          id: ids[ask],
+          kind: NotificationKind.friday,
+          time: time,
+          mode: _quietAware(prefs, time),
+          title: AppLocalizations.translate(lang, 'notif_salawat_title'),
+          body: AppLocalizations.translate(
+            lang,
+            ask == 0 ? 'notif_salawat_body' : 'notif_salawat_again_body',
+          ),
+          payload: 'salawat',
+          actions: [
+            NotificationActionSpec(
+              id: 'open_salawat',
+              label: AppLocalizations.translate(lang, 'notif_salawat_open'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  /// The times in order, with any that land within twenty minutes of the one
+  /// before dropped — on a short winter day two anchors can fall together,
+  /// and two of the same reminder at once is one too many.
+  static List<DateTime> _spaced(List<DateTime?> candidates) {
+    final spaced = <DateTime>[];
+    for (final time in candidates.whereType<DateTime>()) {
+      if (spaced.isEmpty ||
+          time.difference(spaced.last) >= const Duration(minutes: 20)) {
+        spaced.add(time);
+      }
+    }
+    return spaced;
+  }
+
   /// Quiet hours mute the optional reminders; prayer alerts are never touched.
   static PrayerAlertMode _quietAware(
     NotificationPreferences prefs,
@@ -523,7 +786,7 @@ class NotificationScheduler {
   static Future<List<ScheduledNotification>> preview({
     SharedPreferences? preferences,
     NotificationPreferences? overrides,
-    int maxItems = 200,
+    int maxItems = NotificationPlanner.defaultMaxItems,
   }) async {
     final prefs = preferences ?? await SharedPreferences.getInstance();
     final settings = overrides ?? readPreferences(prefs);
@@ -547,27 +810,88 @@ class NotificationScheduler {
       languageCode: prefs.getString(AppConstants.localeKey) ?? 'ar',
       dailyAyahBody: _verseOfTheDay,
       dailyAyahReference: _verseOfTheDayReference,
+      // What is already done is not asked about again.
+      isPrayerLogged:
+          (date, prayerId) =>
+              PrayerLogStore.read(prefs, date).recordFor(prayerId).isPrayed,
+      isKahfRead: (date) => FridayProgress.isKahfRead(prefs, date),
+      isSalawatDone: (date) => FridayProgress.isSalawatDone(prefs, date),
       maxItems: maxItems,
     );
   }
 
   /// Cancel everything and schedule the next [NotificationPlanner.horizonDays].
+  ///
+  /// Each call runs after the one before it, in a chain. It used to wait on a
+  /// snapshot of the pass in flight, so two callers waiting on the same pass
+  /// both started together once it finished, and cancelled each other's work.
   static Future<ScheduleResult> refresh({
     SharedPreferences? preferences,
     NotificationPreferences? overrides,
-  }) async {
-    final pending = _inFlight;
-    if (pending != null) {
-      await pending;
-    }
-
-    final run = _refresh(preferences: preferences, overrides: overrides);
+  }) {
+    final previous = _inFlight;
+    final run = () async {
+      if (previous != null) {
+        try {
+          await previous;
+        } catch (_) {
+          // The pass before failing is no reason for this one not to run.
+        }
+      }
+      return _refresh(preferences: preferences, overrides: overrides);
+    }();
     _inFlight = run;
-    try {
-      return await run;
-    } finally {
-      if (identical(_inFlight, run)) {
-        _inFlight = null;
+    unawaited(
+      run
+          .whenComplete(() {
+            if (identical(_inFlight, run)) {
+              _inFlight = null;
+            }
+          })
+          .catchError((Object _) => ScheduleResult.empty),
+    );
+    return run;
+  }
+
+  /// The day the last pass ran, so a return to the app can tell whether the
+  /// plan it left behind has started to run short.
+  static DateTime? _lastPlannedDay;
+
+  /// Re-plan if the last pass was on an earlier day.
+  ///
+  /// An app kept alive in the background is never launched again, and a plan
+  /// made on Monday runs out of prayer-log asks by Thursday. Coming back to
+  /// the app on a new day slides the window forward.
+  static Future<void> refreshIfStale({DateTime? now}) async {
+    final today = now ?? DateTime.now();
+    final last = _lastPlannedDay;
+    if (last != null &&
+        last.year == today.year &&
+        last.month == today.month &&
+        last.day == today.day) {
+      return;
+    }
+    await refresh();
+  }
+
+  /// Completes once no scheduling pass is running or queued.
+  ///
+  /// A pass plans the week from what is stored when it starts. One already
+  /// under way when a prayer is logged will queue that prayer's asks again
+  /// after they have been cancelled, so whoever cancels waits for it first.
+  static Future<void> whenIdle() async {
+    while (true) {
+      final pending = _inFlight;
+      if (pending == null) {
+        return;
+      }
+      try {
+        await pending;
+      } catch (_) {
+        // Finished is finished, however it went.
+      }
+      if (identical(_inFlight, pending)) {
+        return;
       }
     }
   }
@@ -585,6 +909,7 @@ class NotificationScheduler {
 
       if (!settings.masterEnabled) {
         await NotificationService.cancelAllScheduled();
+        _lastPlannedDay = DateTime.now();
         return ScheduleResult.empty;
       }
 
@@ -593,6 +918,7 @@ class NotificationScheduler {
         overrides: withLearnedWirdTime(settings, prefs),
       );
       final scheduled = await NotificationService.replaceSchedule(plan);
+      _lastPlannedDay = DateTime.now();
       final exact = await NotificationService.canScheduleExactAlarms();
 
       return ScheduleResult(

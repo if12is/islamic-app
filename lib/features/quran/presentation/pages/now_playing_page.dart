@@ -14,6 +14,7 @@ import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import '../providers/surah_audio_provider.dart';
 import '../widgets/reciter_picker_sheet.dart';
+import '../widgets/surah_cover_art.dart';
 import 'downloads_page.dart';
 
 /// The full player: one recitation, and every control it needs.
@@ -109,15 +110,11 @@ class NowPlayingPage extends ConsumerWidget {
             ),
             child: Column(
               children: [
-                _Artwork(size: math.max(art, 150), tokens: tokens, info: info),
+                SurahCoverArt(size: math.max(art, 150), info: info),
+                // The name, the kind of surah and its length are all on the
+                // tile now. The line that used to sit here said "7 آية" —
+                // the singular, with a Latin digit, in an Arabic interface.
                 const SizedBox(height: AppSpacing.lg),
-                // The name is on the plate now, so this line carries only what
-                // the plate does not: how long the surah is.
-                Text(
-                  '${info.versesCount} ${context.tr('verses_short')}',
-                  style: AppTextStyles.caption(context, color: tokens.inkFaint),
-                ),
-                const SizedBox(height: AppSpacing.sm),
                 _reciterRow(context, ref, state, tokens),
                 const SizedBox(height: AppSpacing.xl),
                 _Seekbar(player: player, onSeek: controller.seek),
@@ -635,196 +632,4 @@ class _SeekbarState extends State<_Seekbar> {
     final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
     return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
-}
-
-/// The cover: the surah's own name, set large on a soft wash.
-///
-/// It was an eight-pointed star, the same one on every surah — a picture of
-/// nothing in particular, taking the largest area on the screen while the name
-/// it stood for sat in small type underneath. A recitation's cover is its name,
-/// so the name is the cover: it names what is playing at the size the screen
-/// gives it, and it is different for all hundred and fourteen.
-class _Artwork extends StatelessWidget {
-  const _Artwork({
-    required this.size,
-    required this.tokens,
-    required this.info,
-  });
-
-  final double size;
-  final AppTokens tokens;
-  final QuranSurahInfo info;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.11),
-        color: tokens.surface,
-        border: Border.all(color: tokens.line, width: 1.4),
-        boxShadow: AppShadows.lift(tokens.ink),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // A brush of colour behind the lettering, and sprigs in two corners.
-          // Ornament that frames the name rather than competing with it.
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _NamePlatePainter(
-                wash: tokens.brand.withValues(alpha: 0.07),
-                line: tokens.brand.withValues(alpha: 0.26),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: size * 0.12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FittedBox(
-                  child: Text(
-                    'سورة ${info.nameAr}',
-                    textDirection: TextDirection.rtl,
-                    maxLines: 1,
-                    style: AppTextStyles.display(
-                      context,
-                      // Sized off the plate, not fixed: the plate itself
-                      // shrinks on a short screen, and type that did not
-                      // shrink with it would run off the edge.
-                      fontSize: size * 0.17,
-                      color: tokens.ink,
-                    ),
-                  ),
-                ),
-                SizedBox(height: size * 0.05),
-                Text(
-                  info.nameEn,
-                  textDirection: TextDirection.ltr,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption(
-                    context,
-                    color: tokens.inkMuted,
-                    fontSize: size * 0.055,
-                  ),
-                ),
-                SizedBox(height: size * 0.015),
-                Text(
-                  'Quran : ${info.id}',
-                  textDirection: TextDirection.ltr,
-                  style: AppTextStyles.caption(
-                    context,
-                    color: tokens.inkFaint,
-                    fontSize: size * 0.05,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The wash and the two corner sprigs behind the name.
-class _NamePlatePainter extends CustomPainter {
-  const _NamePlatePainter({required this.wash, required this.line});
-
-  final Color wash;
-  final Color line;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // A soft brush stroke across the middle, drawn as one closed curve rather
-    // than a rectangle so its edges stay irregular the way a brush is.
-    final brush =
-        Path()
-          ..moveTo(w * 0.06, h * 0.34)
-          ..quadraticBezierTo(w * 0.30, h * 0.22, w * 0.55, h * 0.30)
-          ..quadraticBezierTo(w * 0.82, h * 0.38, w * 0.96, h * 0.30)
-          ..lineTo(w * 0.96, h * 0.70)
-          ..quadraticBezierTo(w * 0.70, h * 0.80, w * 0.44, h * 0.72)
-          ..quadraticBezierTo(w * 0.18, h * 0.64, w * 0.06, h * 0.72)
-          ..close();
-    canvas.drawPath(brush, Paint()..color = wash);
-
-    final stroke =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = math.max(1, size.shortestSide * 0.006)
-          ..strokeCap = StrokeCap.round
-          ..color = line;
-
-    _sprig(
-      canvas,
-      Offset(w * 0.11, h * 0.14),
-      size.shortestSide * 0.19,
-      1,
-      stroke,
-    );
-    _sprig(
-      canvas,
-      Offset(w * 0.89, h * 0.86),
-      size.shortestSide * 0.19,
-      -1,
-      stroke,
-    );
-  }
-
-  /// A stem with leaves, growing away from the corner it starts in.
-  void _sprig(
-    Canvas canvas,
-    Offset root,
-    double length,
-    double direction,
-    Paint paint,
-  ) {
-    final tip = root + Offset(0, length * direction);
-    canvas.drawPath(
-      Path()
-        ..moveTo(root.dx, root.dy)
-        ..quadraticBezierTo(
-          root.dx + length * 0.22 * direction,
-          root.dy + length * 0.5 * direction,
-          tip.dx,
-          tip.dy,
-        ),
-      paint,
-    );
-
-    for (final at in [0.3, 0.55, 0.8]) {
-      final centre = Offset(
-        root.dx + length * 0.13 * direction * at,
-        root.dy + length * at * direction,
-      );
-      final leaf = length * 0.19;
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: centre + Offset(leaf * 0.8 * direction, 0),
-          width: leaf * 1.7,
-          height: leaf * 0.8,
-        ),
-        paint,
-      );
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: centre - Offset(leaf * 0.8 * direction, 0),
-          width: leaf * 1.7,
-          height: leaf * 0.8,
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_NamePlatePainter old) =>
-      old.wash != wash || old.line != line;
 }

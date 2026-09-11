@@ -9,6 +9,7 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../data/prayer_log_store.dart';
+import 'prayer_log_sheet.dart';
 
 /// Today's five, tapped once each to record how they were prayed.
 ///
@@ -30,7 +31,16 @@ class _PrayerLogCardState extends State<PrayerLogCard> {
   @override
   void initState() {
     super.initState();
+    // A prayer logged from its reminder has to show here too, and this card
+    // lives on in the tab stack long after it first read the log.
+    PrayerLogStore.revision.addListener(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    PrayerLogStore.revision.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -54,8 +64,14 @@ class _PrayerLogCardState extends State<PrayerLogCard> {
 
     HapticFeedback.selectionClick();
     final next = PrayerLogStore.next(day.recordFor(prayerId));
-    await PrayerLogStore.set(prefs, DateTime.now(), prayerId, next);
-    await _load();
+    // Through the sheet's writer, so logging here also stops the reminders
+    // that would otherwise go on asking about this prayer.
+    await PrayerLogSheet.record(
+      prefs,
+      prayerId: prayerId,
+      date: DateTime.now(),
+      record: next,
+    );
   }
 
   @override
@@ -109,6 +125,9 @@ class _PrayerLogCardState extends State<PrayerLogCard> {
       label: '${context.tr(prayerId)} — ${context.tr(_labelKey(record))}',
       child: InkWell(
         onTap: () => _cycle(prayerId),
+        // Every answer at once, named, for anyone who would rather choose
+        // than step through them.
+        onLongPress: () => PrayerLogSheet.show(context, prayerId: prayerId),
         borderRadius: AppRadii.mdAll,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -195,21 +214,11 @@ class _PrayerLogCardState extends State<PrayerLogCard> {
     );
   }
 
-  static IconData _iconFor(PrayerRecord record) => switch (record) {
-    PrayerRecord.none => Icons.circle_outlined,
-    PrayerRecord.mosque => Icons.mosque,
-    PrayerRecord.congregation => Icons.groups,
-    PrayerRecord.alone => Icons.person,
-    PrayerRecord.missed => Icons.history,
-  };
+  static IconData _iconFor(PrayerRecord record) =>
+      PrayerLogSheet.iconFor(record);
 
-  static String _labelKey(PrayerRecord record) => switch (record) {
-    PrayerRecord.none => 'prayer_log_none',
-    PrayerRecord.mosque => 'prayer_log_mosque',
-    PrayerRecord.congregation => 'prayer_log_congregation',
-    PrayerRecord.alone => 'prayer_log_alone',
-    PrayerRecord.missed => 'prayer_log_missed',
-  };
+  static String _labelKey(PrayerRecord record) =>
+      PrayerLogSheet.labelKey(record);
 
   static Color _colourFor(PrayerRecord record, AppTokens tokens) =>
       switch (record) {

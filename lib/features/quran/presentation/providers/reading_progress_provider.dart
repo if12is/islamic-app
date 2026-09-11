@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/follow_up_reminders.dart';
 import '../../../../core/services/wird_habit_store.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/reading_progress_store.dart';
@@ -77,6 +78,12 @@ class ReadingProgressNotifier extends AsyncNotifier<ReadingSummary> {
     unawaited(WirdHabitStore.noteSession(appPreferences));
     await refresh();
     await ref.read(khatmahPlanProvider.notifier).completeIfFinished();
+
+    // On a Friday, the page that completes Al-Kahf ends its reminders.
+    final today = state.value?.today;
+    if (today != null) {
+      await FollowUpReminders.pageRead(appPreferences, page, today.pages);
+    }
   }
 
   /// Called when a reading session ends.

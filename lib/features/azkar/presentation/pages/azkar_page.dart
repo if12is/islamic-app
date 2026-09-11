@@ -21,6 +21,7 @@ import '../../../../shared/widgets/shell_header_buttons.dart';
 import '../../../home/presentation/providers/ayah_provider.dart';
 import '../../data/azkar_progress_store.dart';
 import '../../data/models/azkar_models.dart';
+import '../../data/tasbeeh_link.dart';
 import 'all_azkar_categories_page.dart';
 import 'azkar_details_page.dart';
 import 'divine_names_page.dart';
@@ -111,6 +112,17 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     }
   }
 
+  /// The wird's tasbeeh chapter, matched on its id alone. A name search for
+  /// "تسبيح" finds the travel chapter first ("التكبير و التسبيح في سير السفر").
+  AzkarCategory? get _wirdTasbeeh {
+    for (final category in _categories) {
+      if (category.id == TasbeehLink.wirdCategoryId) {
+        return category;
+      }
+    }
+    return null;
+  }
+
   Future<void> _refreshLastAzkar() async {
     final snapshot = await AzkarProgressStore.lastOpened(
       categories: _categories,
@@ -188,7 +200,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                     _buildNowAzkarCard(_nowAzkar!),
                     const SizedBox(height: AppSpacing.lg),
                   ],
-                  const SmartTasbeehWidget(),
+                  SmartTasbeehWidget(wirdTasbeeh: _wirdTasbeeh),
                   const SizedBox(height: AppSpacing.lg),
                   _buildDevotionShortcuts(),
                   const SizedBox(height: AppSpacing.xl),
@@ -594,10 +606,18 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
 }
 
 class SmartTasbeehWidget extends StatefulWidget {
-  const SmartTasbeehWidget({super.key, this.onRoundsChanged});
+  const SmartTasbeehWidget({
+    super.key,
+    this.onRoundsChanged,
+    this.wirdTasbeeh,
+  });
 
   /// Fired when a round moves, so the daily wird can re-read it.
   final VoidCallback? onRoundsChanged;
+
+  /// The wird's tasbeeh chapter. A phrase counted here that the wird also
+  /// asks for is counted there too — see [TasbeehLink].
+  final AzkarCategory? wirdTasbeeh;
 
   @override
   State<SmartTasbeehWidget> createState() => _SmartTasbeehWidgetState();
@@ -608,6 +628,23 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
 
   /// Kept in step with [_azkarList].
   static const int _phraseCount = 6;
+
+  @override
+  void dispose() {
+    AzkarProgressStore.revision.removeListener(_onCountsChanged);
+    super.dispose();
+  }
+
+  /// The wird counted a phrase this misbaha also holds; show the new round.
+  void _onCountsChanged() {
+    final prefs = _prefs;
+    if (prefs == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _tasbeehCount = TasbeehStore.roundCount(prefs, _currentZekrIndex);
+    });
+  }
 
   TasbeehMode _mode = TasbeehMode.rounds;
   int _tasbeehCount = 0;
@@ -625,6 +662,7 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
   @override
   void initState() {
     super.initState();
+    AzkarProgressStore.revision.addListener(_onCountsChanged);
     _load();
   }
 
@@ -692,13 +730,14 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     if (_isEndless) {
       // Written on every tap: a lifetime count lost to a force-quit is a
       // count nobody trusts again.
+      final phrase = _currentZekrIndex;
       final next =
           prefs == null
               ? _phraseTotal + 1
-              : await TasbeehStore.increment(
-                prefs,
-                phraseIndex: _currentZekrIndex,
-              );
+              : await TasbeehStore.increment(prefs, phraseIndex: phrase);
+      if (prefs != null) {
+        await TasbeehLink.onMisbahaCount(prefs, phrase, widget.wirdTasbeeh);
+      }
       if (!mounted) {
         return;
       }
@@ -714,12 +753,16 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
     }
 
     // Rounds are per phrase and per day, and they are written down — so the
-    // count is still there after stepping to the next phrase and back, and the
-    // daily wird reads the same numbers.
+    // count is still there after stepping to the next phrase and back. A
+    // phrase the wird's tasbeeh also asks for is counted there as well.
+    final phrase = _currentZekrIndex;
     final next =
         prefs == null
             ? (_tasbeehCount + 1).clamp(0, _target)
-            : await TasbeehStore.incrementRound(prefs, _currentZekrIndex);
+            : await TasbeehStore.incrementRound(prefs, phrase);
+    if (prefs != null) {
+      await TasbeehLink.onMisbahaCount(prefs, phrase, widget.wirdTasbeeh);
+    }
     if (!mounted) {
       return;
     }
@@ -854,11 +897,17 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
       ),
       child: Column(
         children: [
+          // The title has a line to itself. It used to share one row with the
+          // add-to-wird button and both mode pills, and on a phone that left
+          // it the width of a word — "المسبحة الذكية" broke over three lines
+          // and stopped reading as a title at all.
           Row(
             children: [
               Expanded(
                 child: Text(
                   context.tr('smart_tasbeeh'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.display(context, fontSize: 16),
                 ),
               ),
@@ -871,21 +920,22 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
                 target: _target,
                 compact: true,
               ),
-              PillSelector<TasbeehMode>(
-                compact: true,
-                scrollable: false,
-                value: _mode,
-                onChanged: _setMode,
-                options: [
-                  PillOption(
-                    value: TasbeehMode.rounds,
-                    label: context.tr('tasbeeh_mode_rounds'),
-                  ),
-                  PillOption(
-                    value: TasbeehMode.endless,
-                    label: context.tr('tasbeeh_mode_endless'),
-                  ),
-                ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PillSelector<TasbeehMode>(
+            compact: true,
+            scrollable: false,
+            value: _mode,
+            onChanged: _setMode,
+            options: [
+              PillOption(
+                value: TasbeehMode.rounds,
+                label: context.tr('tasbeeh_mode_rounds'),
+              ),
+              PillOption(
+                value: TasbeehMode.endless,
+                label: context.tr('tasbeeh_mode_endless'),
               ),
             ],
           ),
@@ -905,6 +955,27 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
               ),
             ),
           ),
+          // Said where it will count, so the wird ticking over on its own is
+          // not a surprise.
+          if (TasbeehLink.zekrForPhrase(_currentZekrIndex, widget.wirdTasbeeh) !=
+              null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.task_alt, size: 14, color: tokens.brand),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    context.tr('tasbeeh_counts_in_wird'),
+                    style: AppTextStyles.caption(
+                      context,
+                      color: tokens.brand,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: AppSpacing.lg),
 
           Row(

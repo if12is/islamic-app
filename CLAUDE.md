@@ -25,6 +25,7 @@ Hot reload: `r`. Hot restart: `R`. Analyze: `flutter analyze`. Tests: `flutter t
 - Push `master` → build APK and **replace** rolling release `apk-latest` (previous APK is deleted).
 - Versioned release (kept): `./scripts/release.sh 1.1.0+2` or tag `v1.1.0` or commit `[release]`.
 - Skip APK build: commit message `[skip apk]`.
+- Before pushing user-visible changes, update `whats_new.json` (short `ar` + `en` lines, no jargon) — it is the change list the in-app update dialog shows.
 - Manual: `gh workflow run android-apk.yml` with `update_latest` / `create_versioned_release`.
 
 Workflow file: `.github/workflows/android-apk.yml`

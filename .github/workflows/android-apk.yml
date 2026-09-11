@@ -181,6 +181,21 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # The in-app update dialog shows the reader a short list of what changed,
+      # in the app's own language. It comes from whats_new.json, compacted to
+      # one line and tucked into the release body inside an HTML comment:
+      # invisible on the GitHub page, which keeps its notes for developers.
+      - name: Read what's new
+        id: whatsnew
+        run: |
+          set -euo pipefail
+          if [ -f whats_new.json ] && jq -e '(.ar | type == "array") and (.en | type == "array")' whats_new.json >/dev/null 2>&1; then
+            echo "json=$(jq -c '{ar: .ar, en: .en}' whats_new.json)" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::whats_new.json is missing or malformed; the update dialog will show no change list."
+            echo "json={}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Decide GitHub Release mode
         id: mode
         run: |
@@ -220,6 +235,9 @@ jobs:
         if: steps.mode.outputs.update_latest == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          # Through the environment, not pasted into the script: the text is
+          # the reader's language and must reach the notes byte for byte.
+          WHATS_NEW: ${{ steps.whatsnew.outputs.json }}
         run: |
           set -euo pipefail
           # Delete the previous rolling release + tag so only one preview APK exists.
@@ -241,6 +259,8 @@ jobs:
           The in-app updater downloads that file only — not the old 150 MB universal package.
 
           To keep a version forever, create a versioned release (see AGENTS.md).
+
+          <!-- whats-new ${WHATS_NEW} -->
           EOF
           )" \
             --prerelease \
@@ -250,6 +270,7 @@ jobs:
         if: steps.mode.outputs.create_versioned == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          WHATS_NEW: ${{ steps.whatsnew.outputs.json }}
         run: |
           set -euo pipefail
           VERSION="${{ steps.meta.outputs.version }}"
@@ -271,6 +292,8 @@ jobs:
           Versioned release \`${VERSION}\`. This release is kept; it is not deleted by later pushes.
 
           - Commit: \`${{ github.sha }}\`
+
+          <!-- whats-new ${WHATS_NEW} -->
           EOF
           )" \
             --latest=true

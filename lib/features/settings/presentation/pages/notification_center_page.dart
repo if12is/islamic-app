@@ -6,12 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/models/adhan_sound.dart';
 import '../../../../core/models/notification_preferences.dart';
 import '../../../../core/services/adhan_preview_player.dart';
 import '../../../../core/services/adhan_sound_service.dart';
 import '../../../../core/services/delivery_check.dart';
+import '../../../../core/services/friday_progress.dart';
 import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/prayer_calculation_service.dart';
@@ -45,6 +47,7 @@ class _NotificationCenterPageState
 
   static const List<int> _minuteChoices = [0, 5, 10, 15, 20, 30];
   static const List<int> _azkarOffsets = [0, 15, 30, 45, 60];
+  static const List<int> _logDelays = [15, 30, 45, 60];
 
   @override
   void initState() {
@@ -154,6 +157,8 @@ class _NotificationCenterPageState
           _adhanSoundCard(prefs),
           const SizedBox(height: 16),
           _timingCard(prefs),
+          const SizedBox(height: 16),
+          _followUpCard(prefs),
           const SizedBox(height: 16),
           _azkarCard(prefs),
           const SizedBox(height: 16),
@@ -949,6 +954,122 @@ class _NotificationCenterPageState
     );
   }
 
+  /// The reminders that keep asking until something is done: the prayer log
+  /// after each prayer, and Al-Kahf and salawat through Friday.
+  Widget _followUpCard(NotificationPreferences prefs) {
+    final language = Localizations.localeOf(context).languageCode;
+
+    return _card(
+      title: context.tr('follow_up_reminders'),
+      icon: Icons.repeat_on_outlined,
+      subtitle: context.tr('follow_up_reminders_desc'),
+      children: [
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.prayerLogRemindersEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(
+                          prefs.copyWith(prayerLogRemindersEnabled: value),
+                        ),
+                  ),
+          title: Text(context.tr('prayer_log_reminder')),
+          subtitle: Text(context.tr('prayer_log_reminder_desc')),
+        ),
+        if (prefs.prayerLogRemindersEnabled) ...[
+          Text(
+            context.tr('prayer_log_reminder_delay'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          _minuteChips(
+            value: prefs.prayerLogDelayMinutes,
+            choices: _logDelays,
+            onSelected:
+                (value) => _apply(
+                  () => ref
+                      .read(notificationPreferencesProvider.notifier)
+                      .update(prefs.copyWith(prayerLogDelayMinutes: value)),
+                ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.tr('prayer_log_reminder_repeat'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final count in const [0, 1, 2, 3])
+                ChoiceChip(
+                  selected: prefs.prayerLogFollowUps == count,
+                  onSelected:
+                      _busy
+                          ? null
+                          : (_) => _apply(
+                            () => ref
+                                .read(notificationPreferencesProvider.notifier)
+                                .update(
+                                  prefs.copyWith(prayerLogFollowUps: count),
+                                ),
+                          ),
+                  // One key per count: Arabic says "مرة", "مرتين", "٣ مرات",
+                  // and no single template with a number in it says all three.
+                  label: Text(context.tr('prayer_log_repeat_$count')),
+                ),
+            ],
+          ),
+        ],
+        const Divider(height: 28),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.kahfRemindersEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(kahfRemindersEnabled: value)),
+                  ),
+          title: Text(context.tr('kahf_reminder')),
+          subtitle: Text(context.tr('kahf_reminder_desc')),
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.fridaySalawatEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(fridaySalawatEnabled: value)),
+                  ),
+          title: Text(context.tr('friday_salawat_reminder')),
+          subtitle: Text(
+            AppLocalizations.translate(
+              language,
+              'friday_salawat_reminder_desc',
+              replacements: {
+                'goal': localizeDigitsFor(
+                  language,
+                  '${FridayProgress.salawatGoal}',
+                ),
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _azkarCard(NotificationPreferences prefs) {
     return _card(
       title: context.tr('azkar_reminders'),
@@ -1156,20 +1277,6 @@ class _NotificationCenterPageState
               ],
             ),
           ),
-        SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          value: prefs.fridayRemindersEnabled,
-          onChanged:
-              _busy
-                  ? null
-                  : (value) => _apply(
-                    () => ref
-                        .read(notificationPreferencesProvider.notifier)
-                        .update(prefs.copyWith(fridayRemindersEnabled: value)),
-                  ),
-          title: Text(context.tr('friday_reminder')),
-          subtitle: Text(context.tr('friday_reminder_desc')),
-        ),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           value: prefs.fastingRemindersEnabled,
@@ -1430,6 +1537,10 @@ class _NotificationCenterPageState
         return Icons.menu_book;
       case NotificationKind.event:
         return Icons.event;
+      case NotificationKind.prayerLog:
+        return Icons.fact_check_outlined;
+      case NotificationKind.friday:
+        return Icons.auto_stories_outlined;
       case NotificationKind.test:
         return Icons.science;
     }
@@ -1451,6 +1562,10 @@ class _NotificationCenterPageState
         return context.tr('notif_kind_wird');
       case NotificationKind.event:
         return context.tr('notif_kind_event');
+      case NotificationKind.prayerLog:
+        return context.tr('notif_kind_log');
+      case NotificationKind.friday:
+        return context.tr('notif_kind_friday');
       case NotificationKind.test:
         return context.tr('send_test');
     }

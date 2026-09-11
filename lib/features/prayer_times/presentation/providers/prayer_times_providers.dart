@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/app_services.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/datasources/prayer_times_local_datasource.dart';
@@ -153,52 +152,3 @@ final cachedPrayerTimesProvider = FutureProvider<PrayerTimesEntity?>((
   final useCase = ref.watch(getCachedPrayerTimesUseCaseProvider);
   return await useCase();
 });
-
-class DailyPrayerCompletionNotifier extends Notifier<Set<String>> {
-  @override
-  Set<String> build() {
-    Future.microtask(_loadForToday);
-    return <String>{};
-  }
-
-  String _todayStorageKey() {
-    final now = DateTime.now();
-    final month = now.month.toString().padLeft(2, '0');
-    final day = now.day.toString().padLeft(2, '0');
-    return 'completed_prayers_${now.year}-$month-$day';
-  }
-
-  Future<void> _loadForToday() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getStringList(_todayStorageKey()) ?? <String>[];
-    state = stored.toSet();
-  }
-
-  Future<void> togglePrayer(String prayerId) async {
-    final normalized = prayerId.trim().toLowerCase();
-    if (normalized.isEmpty) {
-      return;
-    }
-
-    final updated = Set<String>.from(state);
-    if (updated.contains(normalized)) {
-      updated.remove(normalized);
-    } else {
-      updated.add(normalized);
-    }
-
-    state = updated;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_todayStorageKey(), updated.toList()..sort());
-  }
-
-  Future<void> reloadToday() async {
-    await _loadForToday();
-  }
-}
-
-final dailyPrayerCompletionProvider =
-    NotifierProvider<DailyPrayerCompletionNotifier, Set<String>>(
-      DailyPrayerCompletionNotifier.new,
-    );

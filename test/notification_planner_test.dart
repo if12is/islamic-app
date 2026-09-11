@@ -41,6 +41,9 @@ void main() {
         prefs: NotificationPreferences.defaults.copyWith(
           masterEnabled: true,
           preAdhanMinutes: 0,
+          prayerLogRemindersEnabled: false,
+          kahfRemindersEnabled: false,
+          fridaySalawatEnabled: false,
         ),
         days: daysFrom(start),
         now: now,
@@ -92,6 +95,7 @@ void main() {
       final prefs = NotificationPreferences.defaults.copyWith(
         masterEnabled: true,
         preAdhanMinutes: 0,
+        prayerLogRemindersEnabled: false,
         prayerModes: {
           PrayerIds.fajr: PrayerAlertMode.off,
           PrayerIds.dhuhr: PrayerAlertMode.adhan,
@@ -323,26 +327,79 @@ void main() {
       expect(ayah.actions.map((action) => action.id), ['open_ayah']);
     });
 
-    test('reminds about Surah Al-Kahf on Friday only', () {
+    test('asks about Surah Al-Kahf through Friday, and only on Friday', () {
       // 2026-08-21 is a Friday.
       final friday = DateTime(2026, 8, 21);
       final plan = NotificationPlanner.build(
         prefs: NotificationPreferences.defaults.copyWith(
           masterEnabled: true,
           preAdhanMinutes: 0,
+          prayerLogRemindersEnabled: false,
+          fridaySalawatEnabled: false,
           prayerModes: {
             for (final id in PrayerIds.obligatory) id: PrayerAlertMode.off,
           },
-          fridayRemindersEnabled: true,
         ),
         days: daysFrom(friday, days: 7),
         now: DateTime(2026, 8, 21, 0, 1),
         languageCode: 'ar',
       );
 
-      final kahf = plan.where((item) => item.payload == 'quran:verse:18:1');
-      expect(kahf, hasLength(1));
-      expect(kahf.single.time.weekday, DateTime.friday);
+      final kahf =
+          plan.where((item) => item.payload == 'quran:surah:18').toList();
+      expect(kahf, hasLength(5));
+      for (final item in kahf) {
+        expect(item.time.weekday, DateTime.friday);
+        expect(item.kind, NotificationKind.friday);
+        expect(
+          NotificationPlanner.kahfIds(friday),
+          contains(item.id),
+          reason: 'the app cancels the series by these ids once it is read',
+        );
+      }
+      // Before Maghrib, all of them: the last one says so.
+      final maghrib = daysFrom(friday, days: 1).first.timeOf(PrayerIds.maghrib)!;
+      expect(kahf.every((item) => item.time.isBefore(maghrib)), isTrue);
+      expect(
+        kahf.first.actions.map((action) => action.id),
+        containsAll(<String>['open_kahf', 'kahf_done']),
+      );
+    });
+
+    test('says nothing more about Al-Kahf once it has been read', () {
+      final friday = DateTime(2026, 8, 21);
+      final plan = NotificationPlanner.build(
+        prefs: NotificationPreferences.defaults.copyWith(masterEnabled: true),
+        days: daysFrom(friday, days: 1),
+        now: DateTime(2026, 8, 21, 0, 1),
+        languageCode: 'ar',
+        isKahfRead: (date) => true,
+      );
+
+      expect(plan.where((item) => item.payload == 'quran:surah:18'), isEmpty);
+    });
+
+    test('asks for salawat through Friday until the count is reached', () {
+      final friday = DateTime(2026, 8, 21);
+      List<ScheduledNotification> planFor({required bool done}) =>
+          NotificationPlanner.build(
+            prefs: NotificationPreferences.defaults.copyWith(
+              masterEnabled: true,
+            ),
+            days: daysFrom(friday, days: 1),
+            now: DateTime(2026, 8, 21, 0, 1),
+            languageCode: 'en',
+            isSalawatDone: (date) => done,
+          ).where((item) => item.payload == 'salawat').toList();
+
+      final salawat = planFor(done: false);
+      expect(salawat, hasLength(4));
+      expect(salawat.first.title, contains('Prophet'));
+      expect(
+        salawat.map((item) => item.id).toSet(),
+        everyElement(isIn(NotificationPlanner.fridaySalawatIds(friday))),
+      );
+      expect(planFor(done: true), isEmpty);
     });
 
     test('reminds the night before a fasting day', () {
@@ -395,6 +452,185 @@ void main() {
         plan.where((item) => item.kind == NotificationKind.event),
         isEmpty,
       );
+    });
+
+    group('asks how each prayer was prayed', () {
+      NotificationPreferences logOnly({int followUps = 2, int delay = 30}) =>
+          NotificationPreferences.defaults.copyWith(
+            masterEnabled: true,
+            preAdhanMinutes: 0,
+            kahfRemindersEnabled: false,
+            fridaySalawatEnabled: false,
+            prayerLogDelayMinutes: delay,
+            prayerLogFollowUps: followUps,
+          );
+
+      List<ScheduledNotification> asksAbout(
+        List<ScheduledNotification> plan,
+        String prayerId,
+      ) =>
+          plan
+              .where(
+                (item) =>
+                    item.kind == NotificationKind.prayerLog &&
+                    item.prayerId == prayerId,
+              )
+              .toList();
+
+      test('first once there has been time to pray, then every two hours', () {
+        final day = daysFrom(start, days: 1).first;
+        final plan = NotificationPlanner.build(
+          prefs: logOnly(),
+          days: [day],
+          now: now,
+          languageCode: 'ar',
+        );
+
+        final fajr = asksAbout(plan, PrayerIds.fajr);
+        final adhan = day.timeOf(PrayerIds.fajr)!;
+        expect(fajr, hasLength(3), reason: 'the first ask and two more');
+        expect(fajr[0].time, adhan.add(const Duration(minutes: 30)));
+        expect(fajr[1].time, fajr[0].time.add(NotificationPlanner.prayerLogGap));
+        expect(fajr[2].time, fajr[1].time.add(NotificationPlanner.prayerLogGap));
+        expect(fajr.first.title, contains('الفجر'));
+        expect(fajr.first.payload, 'log:fajr:2026-06-15');
+        expect(
+          fajr.first.actions.map((action) => action.id),
+          ['log_mosque', 'log_alone', 'log_missed'],
+        );
+        expect(
+          fajr.map((item) => item.id),
+          everyElement(
+            isIn(NotificationPlanner.prayerLogIds(day.date, PrayerIds.fajr)),
+          ),
+          reason: 'logging Fajr cancels exactly these',
+        );
+      });
+
+      test('asks even when the adhan itself is off', () {
+        final plan = NotificationPlanner.build(
+          prefs: logOnly().copyWith(
+            prayerModes: {
+              for (final id in PrayerIds.obligatory) id: PrayerAlertMode.off,
+            },
+          ),
+          days: daysFrom(start, days: 1),
+          now: now,
+          languageCode: 'ar',
+        );
+
+        expect(plan.where((item) => item.kind == NotificationKind.prayer), isEmpty);
+        expect(asksAbout(plan, PrayerIds.dhuhr), isNotEmpty);
+      });
+
+      test('never asks after midnight', () {
+        final plan = NotificationPlanner.build(
+          prefs: logOnly(followUps: 4),
+          days: daysFrom(start, days: 1),
+          now: now,
+          languageCode: 'ar',
+        );
+
+        final isha = asksAbout(plan, PrayerIds.isha);
+        expect(isha, isNotEmpty);
+        for (final item in isha) {
+          expect(item.time.day, start.day, reason: '${item.time}');
+        }
+        expect(isha.length, lessThan(5));
+      });
+
+      test('stops asking about a prayer already logged', () {
+        final plan = NotificationPlanner.build(
+          prefs: logOnly(),
+          days: daysFrom(start, days: 2),
+          now: now,
+          languageCode: 'ar',
+          isPrayerLogged:
+              (date, prayerId) =>
+                  date.day == start.day && prayerId == PrayerIds.fajr,
+        );
+
+        final fajr = asksAbout(plan, PrayerIds.fajr);
+        expect(
+          fajr.every((item) => item.time.day != start.day),
+          isTrue,
+          reason: "today's Fajr is logged; tomorrow's is not",
+        );
+        expect(fajr, isNotEmpty);
+      });
+
+      test('only for the next three days, not the whole week', () {
+        // Every alarm makes the plugin rewrite its whole stored schedule, so
+        // a week of asks nearly tripled each pass. The window slides forward
+        // on every launch and every return to the app on a new day.
+        final plan = NotificationPlanner.build(
+          prefs: logOnly(),
+          days: daysFrom(start),
+          now: now,
+          languageCode: 'ar',
+        );
+
+        final days =
+            plan
+                .where((item) => item.kind == NotificationKind.prayerLog)
+                .map((item) => item.time.day)
+                .toSet();
+        expect(days, {15, 16, 17});
+        expect(
+          plan.where((item) => item.kind == NotificationKind.prayer).length,
+          35,
+          reason: 'the adhan still covers the whole week',
+        );
+      });
+
+      test('can be switched off', () {
+        final plan = NotificationPlanner.build(
+          prefs: logOnly().copyWith(prayerLogRemindersEnabled: false),
+          days: daysFrom(start),
+          now: now,
+          languageCode: 'ar',
+        );
+        expect(
+          plan.where((item) => item.kind == NotificationKind.prayerLog),
+          isEmpty,
+        );
+      });
+    });
+
+    test('every day in the horizon gets its own id slot', () {
+      // Across a month end, where day-of-month arithmetic would collide.
+      final slots = {
+        for (var i = 0; i < NotificationPlanner.horizonDays + 1; i++)
+          NotificationPlanner.daySlot(DateTime(2027, 2, 25 + i)),
+      };
+      expect(slots, hasLength(NotificationPlanner.horizonDays + 1));
+    });
+
+    test('a week with everything on fits the plan and keeps ids unique', () {
+      final plan = NotificationPlanner.build(
+        prefs: NotificationPreferences.defaults.copyWith(
+          masterEnabled: true,
+          preAdhanMinutes: 10,
+          iqamaMinutes: 10,
+          morningAzkarEnabled: true,
+          eveningAzkarEnabled: true,
+          dailyAyahEnabled: true,
+          wirdEnabled: true,
+          surahRemindersEnabled: true,
+          fastingRemindersEnabled: true,
+          islamicEventsEnabled: true,
+          prayerLogFollowUps: 3,
+        ),
+        days: daysFrom(DateTime(2026, 8, 17)),
+        now: DateTime(2026, 8, 17, 0, 1),
+        languageCode: 'ar',
+      );
+
+      expect(plan.length, lessThan(NotificationPlanner.defaultMaxItems));
+      final ids = plan.map((item) => item.id).toList();
+      expect(ids.toSet(), hasLength(ids.length));
+      // The last day is still there: nothing was cut off the end.
+      expect(plan.last.time.day, 23);
     });
 
     test('formats the clock in Arabic digits for Arabic', () {
@@ -478,6 +714,37 @@ void main() {
         'adhanSound': 'rifat',
       });
       expect(restored.adhanSound.id, 'rifat');
+    });
+
+    test('the follow-up reminders are on for files written before them', () {
+      final restored = NotificationPreferences.fromJson({
+        'masterEnabled': true,
+        'fridayRemindersEnabled': false,
+      });
+      expect(restored.prayerLogRemindersEnabled, isTrue);
+      expect(restored.kahfRemindersEnabled, isTrue);
+      expect(restored.fridaySalawatEnabled, isTrue);
+      expect(restored.prayerLogDelayMinutes, 30);
+      expect(restored.prayerLogFollowUps, 2);
+    });
+
+    test('keeps the follow-up choices across a round trip', () {
+      final restored = NotificationPreferences.decode(
+        NotificationPreferences.defaults
+            .copyWith(
+              masterEnabled: true,
+              prayerLogRemindersEnabled: false,
+              prayerLogDelayMinutes: 45,
+              prayerLogFollowUps: 3,
+              kahfRemindersEnabled: false,
+            )
+            .encode(),
+      );
+      expect(restored.prayerLogRemindersEnabled, isFalse);
+      expect(restored.prayerLogDelayMinutes, 45);
+      expect(restored.prayerLogFollowUps, 3);
+      expect(restored.kahfRemindersEnabled, isFalse);
+      expect(restored.fridaySalawatEnabled, isTrue);
     });
 
     test('quiet hours wrap past midnight', () {

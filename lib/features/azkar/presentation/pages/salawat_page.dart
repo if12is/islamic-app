@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/services/follow_up_reminders.dart';
+import '../../../../core/services/friday_progress.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/arabic_numerals.dart';
@@ -57,6 +59,11 @@ class _SalawatPageState extends State<SalawatPage> {
     final prefs = _prefs;
     final next =
         prefs == null ? _total + 1 : await SalawatStore.increment(prefs);
+
+    if (prefs != null) {
+      // On a Friday, reaching the day's count ends the day's reminders.
+      await FollowUpReminders.salawatCounted(prefs);
+    }
 
     if (!mounted) {
       return;
@@ -155,6 +162,24 @@ class _SalawatPageState extends State<SalawatPage> {
               context,
               fontSize: 11,
               color: tokens.brand,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          // The Friday reminders need a point at which to stop; this says
+          // where it is, so the count is not a mystery that silences them.
+          Text(
+            AppLocalizations.translate(
+              Localizations.localeOf(context).languageCode,
+              'salawat_friday_goal',
+              replacements: {
+                'goal': _digits(context, FridayProgress.salawatGoal),
+              },
+            ),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption(
+              context,
+              fontSize: 11,
+              color: tokens.inkMuted,
             ),
           ),
         ],

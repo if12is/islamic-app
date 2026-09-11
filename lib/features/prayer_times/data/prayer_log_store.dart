@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// How a prayer was performed.
@@ -102,6 +103,10 @@ class PrayerLogStore {
 
   static const String prefix = 'prayer_log_';
 
+  /// Moves on every write, so a card already on screen shows a prayer logged
+  /// from a notification rather than what it read when it was built.
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
   /// The five, in order.
   static const List<String> prayerIds = [
     'fajr',
@@ -143,6 +148,7 @@ class PrayerLogStore {
     } else {
       await prefs.setString(key, encode(records));
     }
+    revision.value++;
   }
 
   /// Step a prayer through the options, so one tap is enough to log it.
