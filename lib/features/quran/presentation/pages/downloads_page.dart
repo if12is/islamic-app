@@ -13,7 +13,7 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/audio_download_service.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/reciter_catalogue.dart';
-import '../../data/services/warsh_mushaf_service.dart';
+import '../../data/services/mushaf_service.dart';
 import '../../domain/entities/riwaya.dart';
 import '../widgets/recitation_picker_sheet.dart';
 import '../providers/downloads_provider.dart';
@@ -80,7 +80,8 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
       ),
       body: Column(
         children: [
-          const _WarshMushafSection(),
+          for (final edition in MushafService.fetchable)
+            _MushafTextSection(edition: edition),
           Expanded(
             child: downloads.when(
               loading:
@@ -419,15 +420,21 @@ String _mushafOnDeviceLine(BuildContext context, int done) {
   );
 }
 
-/// Offline text of the Warsh mushaf, next to the audio library.
-class _WarshMushafSection extends StatefulWidget {
-  const _WarshMushafSection();
+/// Offline text of a fetched mushaf, next to the audio library.
+///
+/// One card per reading the app can fetch, rather than one card that says
+/// Warsh: a reader of Qalun downloading "the mushaf" and getting someone
+/// else's is the same substitution this whole feature is about.
+class _MushafTextSection extends StatefulWidget {
+  const _MushafTextSection({required this.edition});
+
+  final MushafEdition edition;
 
   @override
-  State<_WarshMushafSection> createState() => _WarshMushafSectionState();
+  State<_MushafTextSection> createState() => _MushafTextSectionState();
 }
 
-class _WarshMushafSectionState extends State<_WarshMushafSection> {
+class _MushafTextSectionState extends State<_MushafTextSection> {
   static const int _surahTotal = 114;
 
   int _cached = 0;
@@ -452,7 +459,7 @@ class _WarshMushafSectionState extends State<_WarshMushafSection> {
 
   Future<void> _refreshCount() async {
     try {
-      final count = await WarshMushafService.cachedCount(MushafEdition.warsh);
+      final count = await MushafService.cachedCount(widget.edition);
       if (mounted) {
         setState(() => _cached = count);
       }
@@ -475,15 +482,9 @@ class _WarshMushafSectionState extends State<_WarshMushafSection> {
         return;
       }
 
-      final already = await WarshMushafService.isCached(
-        MushafEdition.warsh,
-        surah,
-      );
+      final already = await MushafService.isCached(widget.edition, surah);
       if (!already) {
-        final verses = await WarshMushafService.surah(
-          MushafEdition.warsh,
-          surah,
-        );
+        final verses = await MushafService.surah(widget.edition, surah);
         if (verses.isEmpty) {
           failed.add(surah);
         }
@@ -506,7 +507,7 @@ class _WarshMushafSectionState extends State<_WarshMushafSection> {
     }
 
     try {
-      final count = await WarshMushafService.cachedCount(MushafEdition.warsh);
+      final count = await MushafService.cachedCount(widget.edition);
       if (!mounted || run != _runId) {
         return;
       }
@@ -534,7 +535,7 @@ class _WarshMushafSectionState extends State<_WarshMushafSection> {
 
   Future<void> _delete() async {
     try {
-      await WarshMushafService.clear(MushafEdition.warsh);
+      await MushafService.clear(widget.edition);
       if (mounted) {
         setState(() {
           _cached = 0;
@@ -566,7 +567,7 @@ class _WarshMushafSectionState extends State<_WarshMushafSection> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              MushafEdition.warsh.nameAr,
+              widget.edition.nameAr,
               textDirection: TextDirection.rtl,
               style: AppTextStyles.body(
                 context,

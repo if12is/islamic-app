@@ -1,29 +1,29 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/features/quran/data/services/quran_local_service.dart';
 import 'package:islamic_app/features/quran/data/services/verse_reciters.dart';
-import 'package:islamic_app/features/quran/presentation/providers/quran_audio_provider.dart';
 
 void main() {
   group('Telling the two catalogues apart', () {
-    test('a whole-surah id is never used for verse audio', () {
-      // A whole-surah recording is one file with no seam at the ayah, so
-      // asking it for a single verse would 404 every time.
-      expect(QuranReciter.hasVerseAudio('mp3quran:92:92'), isFalse);
-      expect(
-        QuranReciter.verseAudioCode('mp3quran:92:92'),
-        VerseReciters.defaultId,
-      );
+    test('a whole-surah id has no per-ayah files, and says so', () {
+      // A whole-surah recording is one file with no seam at the ayah. It can
+      // still be played a verse at a time, but only through the provider's
+      // marks — never by asking this host for a file that does not exist.
+      expect(VerseReciters.has('mp3quran:92:92'), isFalse);
+      expect(VerseReciters.find('mp3quran:92:92'), isNull);
     });
 
     test('a voice that is recorded per ayah is accepted', () {
-      expect(QuranReciter.hasVerseAudio('alafasy'), isTrue);
-      expect(QuranReciter.hasVerseAudio('sudais'), isTrue);
-      expect(QuranReciter.verseAudioCode('husary'), 'husary');
+      expect(VerseReciters.has('alafasy'), isTrue);
+      expect(VerseReciters.has('sudais'), isTrue);
+      expect(VerseReciters.find('husary')?.id, 'husary');
     });
 
-    test('something that is neither falls back rather than failing', () {
-      expect(QuranReciter.hasVerseAudio('nonsense'), isFalse);
-      expect(QuranReciter.verseAudioCode('nonsense'), VerseReciters.defaultId);
+    test('something that is neither is refused rather than substituted', () {
+      // There used to be a `resolve` here that answered an unknown id with
+      // al-Afasy. That is how a reader came to pick one sheikh and hear
+      // another, and on a Warsh page it meant hearing a different reading.
+      expect(VerseReciters.has('nonsense'), isFalse);
+      expect(VerseReciters.find('nonsense'), isNull);
     });
   });
 
@@ -31,13 +31,13 @@ void main() {
     test('the seven old ids each land on the same voice', () {
       // These were saved in preferences and in people's backups, so they have
       // to keep resolving after the source moved.
-      expect(VerseReciters.resolve('ar.alafasy'), 'alafasy');
-      expect(VerseReciters.resolve('ar.husary'), 'husary');
-      expect(VerseReciters.resolve('ar.minshawi'), 'minshawi');
-      expect(VerseReciters.resolve('ar.mahermuaiqly'), 'maher');
-      expect(VerseReciters.resolve('ar.shaatree'), 'shaatree');
-      expect(VerseReciters.resolve('ar.ahmedajamy'), 'ajamy');
-      expect(VerseReciters.resolve('ar.abdurrahmaansudais'), 'sudais');
+      expect(VerseReciters.find('ar.alafasy')?.id, 'alafasy');
+      expect(VerseReciters.find('ar.husary')?.id, 'husary');
+      expect(VerseReciters.find('ar.minshawi')?.id, 'minshawi');
+      expect(VerseReciters.find('ar.mahermuaiqly')?.id, 'maher');
+      expect(VerseReciters.find('ar.shaatree')?.id, 'shaatree');
+      expect(VerseReciters.find('ar.ahmedajamy')?.id, 'ajamy');
+      expect(VerseReciters.find('ar.abdurrahmaansudais')?.id, 'sudais');
     });
 
     test('every legacy id points at a voice that exists', () {

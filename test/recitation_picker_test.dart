@@ -103,17 +103,25 @@ void main() {
 
   group('Verse voices follow the mushaf', () {
     test('Warsh verse audio is only the Warsh recordings', () {
-      final listed = RecitationOptions.verseVoices(MushafEdition.warsh);
+      final listed = RecitationOptions.verseVoices(
+        voices: const [],
+        edition: MushafEdition.warsh,
+        surahNumber: 1,
+      );
 
       expect(listed, isNotEmpty);
-      expect(listed.every((r) => r.isWarsh), isTrue);
+      expect(listed.every((r) => Riwaya.isWarsh(r.riwayaId)), isTrue);
       expect(listed.map((r) => r.id), isNot(contains(VerseReciters.defaultId)));
     });
 
     test('Hafs verse audio never includes Warsh', () {
-      final listed = RecitationOptions.verseVoices(MushafEdition.hafs);
+      final listed = RecitationOptions.verseVoices(
+        voices: const [],
+        edition: MushafEdition.hafs,
+        surahNumber: 1,
+      );
 
-      expect(listed.every((r) => !r.isWarsh), isTrue);
+      expect(listed.every((r) => !Riwaya.isWarsh(r.riwayaId)), isTrue);
       expect(listed, isNotEmpty);
     });
 

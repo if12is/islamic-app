@@ -18,6 +18,7 @@ class QuranVerse {
     required this.surahNameEn,
     required this.isSajdah,
     this.hafsNumberInSurah,
+    this.hafsNumbersInSurah,
   });
 
   final int surahNumber;
@@ -50,8 +51,33 @@ class QuranVerse {
   /// The number to ask a Hafs-numbered recording for.
   int get hafsVerseNumber => hafsNumberInSurah ?? numberInSurah;
 
-  /// `2:255` — the canonical way to address a verse.
+  /// Every Hafs verse this one carries, where it carries more than one.
+  ///
+  /// Warsh and Qalun open al-Fatiha with a single verse that is Hafs 1 **and**
+  /// 2. [hafsVerseNumber] is only the first of them, which is the right thing
+  /// to store and the wrong thing to search by: a bookmark on Hafs 2 or a
+  /// notification pointing at it would match nothing.
+  final List<int>? hafsNumbersInSurah;
+
+  /// Whether this verse carries any part of Hafs verse [hafsNumber].
+  bool coversHafs(int hafsNumber) =>
+      hafsNumbersInSurah?.contains(hafsNumber) ??
+      (hafsVerseNumber == hafsNumber);
+
+  /// `2:255` — how this verse is addressed **on the page in front of the
+  /// reader**, in whichever reading they chose.
   String get key => '$surahNumber:$numberInSurah';
+
+  /// `2:255` in the Hafs counting, whatever reading this verse came from.
+  ///
+  /// What anything stored on the device is keyed by: a bookmark, a note, the
+  /// last-read position, a memorisation passage, a wird. The readings disagree
+  /// about where verses end — al-Baqarah is 286 verses in Hafs and 285 in
+  /// Warsh and Qalun — so a record keyed by [key] means a different ayah after
+  /// the reader switches reading, and every bookmark they had silently moves.
+  /// Keyed this way it means the same ayah in all three, and is simply shown
+  /// with a different number in each.
+  String get hafsKey => '$surahNumber:$hafsVerseNumber';
 
   /// 1-60.
   int get hizb => ((hizbQuarter - 1) ~/ 4) + 1;

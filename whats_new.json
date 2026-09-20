@@ -1,22 +1,18 @@
 {
   "ar": [
-    "قراءة ثانية: ورش عن نافع، والقرّاء كلهم في قائمة واحدة.",
-    "تذكير بعد كل صلاة لتسجّل كيف صلّيتها، ويتكرر حتى تسجّلها.",
-    "يوم الجمعة: تذكير بسورة الكهف والصلاة على النبي ﷺ، ويتوقف بعد أن تُنجزها.",
-    "سجل القراءة: ارجع إلى أي موضع كنت تقرأ منه، وثبّت وردك ليبقى في الأعلى.",
-    "التسبيح في المسبحة يُحسب في الورد اليومي، وعدد التسابيح في الورد صار صحيحاً.",
-    "العدّ التنازلي للصلاة بخط أصغر وأوضح.",
-    "إشعار التلاوة يعرض اسم القارئ بالعربية وشعار الفجر بدل النجمة القديمة.",
-    "رسالة التحديث بلغة التطبيق، وتعرض الجديد باختصار."
+    "قراءة ثالثة: قالون عن نافع، بجانب ورش وحفص.",
+    "اختر الرواية من صفحة القرآن أو الإعدادات، والنص والقرّاء والتلاوة كلها تتبعها.",
+    "الأجزاء والأحزاب والصفحات صارت تُعرض بالرواية التي اخترتها، لا السور وحدها.",
+    "قائمة القرّاء صارت كاملة كما ينشرها المصدر، بعد أن كانت تقف عند سبعة.",
+    "استماع للآية في ورش وقالون من تسجيلات كاملة مقسَّمة على الآيات.",
+    "علاماتك وآخر موضع قراءة تبقى على آيتها نفسها إذا بدّلت الرواية."
   ],
   "en": [
-    "A second reading is here (Warsh), and every reciter sits in one list.",
-    "A reminder after each prayer to log how you prayed — it asks again until you do.",
-    "Fridays: reminders for Surah Al-Kahf and salawat that stop once you've done them.",
-    "Reading history: go back to any place you were reading, and pin your wird to the top.",
-    "Counting on the misbaha now counts in the daily wird, and the tasbeeh total is right.",
-    "The prayer countdown is smaller and easier to read.",
-    "The lock-screen player shows the reciter's Arabic name and the Fajr mark, not the old star.",
-    "Update messages come in the app's language, with a short list of what's new."
+    "A third reading: Qalun from Nafi, beside Warsh and Hafs.",
+    "Choose the reading on the Quran page or in Settings — text, reciters and audio all follow it.",
+    "Juz, hizb and page now show the reading you chose, not only whole surahs.",
+    "The reciter list is now the full one the provider publishes, instead of stopping at seven.",
+    "Listen to a single ayah in Warsh and Qalun, cut from complete recordings.",
+    "Your bookmarks and last-read place stay on the same ayah when you switch reading."
   ]
 }

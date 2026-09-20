@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/services/data_saver.dart';
+import '../../../../core/services/secure_http_client.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../domain/entities/riwaya.dart';
 import 'quran_local_service.dart';
@@ -42,6 +42,19 @@ class ReciterVoice {
   final int riwayaId;
 
   bool get isWarsh => Riwaya.isWarsh(riwayaId);
+
+  /// The provider's id for this recording, pulled back out of [id].
+  ///
+  /// What the ayah-timing endpoint calls `read`, and therefore what decides
+  /// whether this recording can be cut at the verse. Null for the seven
+  /// bundled voices, whose ids come from a different catalogue entirely.
+  int? get moshafId {
+    if (!id.startsWith('mp3quran:')) {
+      return null;
+    }
+    final parts = id.split(':');
+    return parts.length < 3 ? null : int.tryParse(parts[2]);
+  }
 
   /// Directory the numbered files sit in, with a trailing slash.
   final String server;
@@ -101,11 +114,18 @@ class ReciterVoice {
 class ReciterCatalogue {
   ReciterCatalogue._();
 
-  static const String _endpoint =
-      'https://mp3quran.net/api/v3/reciters?language=ar';
+  /// The `www` is load-bearing.
+  ///
+  /// The bare domain answers 301, and [SecureHttpClient] does not follow
+  /// redirects and does not allowlist it — so every fetch through it was
+  /// rejected before it left the device and the catalogue fell back to the
+  /// seven bundled voices. A picker built to show two hundred and forty
+  /// recordings showed seven, which is the complaint it was written to answer.
+  static const String endpoint =
+      'https://www.mp3quran.net/api/v3/reciters?language=ar';
 
-  static const String _riwayatEndpoint =
-      'https://mp3quran.net/api/v3/riwayat?language=ar';
+  static const String riwayatEndpoint =
+      'https://www.mp3quran.net/api/v3/riwayat?language=ar';
 
   /// v2 because the stored shape gained the riwayah. A v1 cache has no reading
   /// on any entry, and defaulting those to Hafs would file every Warsh
@@ -273,12 +293,8 @@ class ReciterCatalogue {
 
   static Future<List<Riwaya>> _fetchRiwayat() async {
     try {
-      final response = await Dio().get<dynamic>(
-        _riwayatEndpoint,
-        options: Options(
-          receiveTimeout: const Duration(seconds: 20),
-          followRedirects: true,
-        ),
+      final response = await SecureHttpClient.create().get<dynamic>(
+        riwayatEndpoint,
       );
       final body = response.data;
       final json =
@@ -347,13 +363,11 @@ class ReciterCatalogue {
 
   static Future<List<ReciterVoice>> _fetch() async {
     try {
-      final response = await Dio().get<dynamic>(
-        _endpoint,
-        options: Options(
-          receiveTimeout: const Duration(seconds: 20),
-          followRedirects: true,
-        ),
-      );
+      // Through the guarded client, not a bare Dio with redirects switched on.
+      // The old call worked by following the 301 from the bare domain, which
+      // meant the catalogue — the largest list of URLs the app builds — was
+      // the one request that skipped the host allowlist entirely.
+      final response = await SecureHttpClient.create().get<dynamic>(endpoint);
       final body = response.data;
       final json =
           body is String

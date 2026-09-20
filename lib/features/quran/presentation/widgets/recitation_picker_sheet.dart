@@ -6,7 +6,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../data/services/reciter_catalogue.dart';
-import '../../data/services/verse_reciters.dart';
+import '../../data/services/verse_voices.dart';
 import '../../domain/entities/riwaya.dart';
 
 /// Whole-surah recordings versus voices that can be cut at the ayah.
@@ -33,8 +33,26 @@ class RecitationOptions {
         if (surahNumber == null || voice.surahs.contains(surahNumber)) voice,
   ];
 
-  static List<VerseReciter> verseVoices(MushafEdition edition) =>
-      VerseReciters.forEdition(edition);
+  /// Everything that can play one ayah in [edition].
+  ///
+  /// Two kinds, shown as one list because the reader asked for one list: the
+  /// per-ayah corpus, and whole-surah recordings cut at the provider's verse
+  /// marks. The second is what gives Qalun any ayah playback at all — the
+  /// per-ayah host has no Qalun folder, so without it that half of the reader
+  /// would simply be missing for anyone who chose it.
+  static List<PlayableVerseVoice> verseVoices({
+    required List<ReciterVoice> voices,
+    required MushafEdition edition,
+    int? surahNumber,
+    bool filesOnly = false,
+  }) =>
+      filesOnly
+          ? VerseVoices.files(edition)
+          : VerseVoices.all(
+            voices: voices,
+            edition: edition,
+            surahNumber: surahNumber,
+          );
 
   /// Riwayat that actually have a recording in [riwayaIds], Hafs then Warsh
   /// then the provider's remaining order.
@@ -63,8 +81,12 @@ class RecitationOptions {
       );
     }
 
-    addIfPresent(Riwaya.hafsId);
-    addIfPresent(Riwaya.warshId);
+    // The readings the app can also *show* come first, in the order they are
+    // offered everywhere else, so the tabs and the reading selector read the
+    // same way round. The provider's own order follows for the rest.
+    for (final edition in MushafEdition.values) {
+      addIfPresent(edition.riwayaId);
+    }
     for (final riwaya in source) {
       addIfPresent(riwaya.id);
     }
@@ -100,15 +122,19 @@ class RecitationPickerSheet extends StatefulWidget {
     required this.selectedId,
     required this.edition,
     this.surahNumber,
+    this.filesOnly = false,
   });
 
   final RecitationPickerMode mode;
   final String selectedId;
   final MushafEdition edition;
 
-  /// When set in [RecitationPickerMode.surah], voices that do not contain
-  /// this surah are hidden — mp3quran publishes partial recordings that 404.
+  /// Voices that do not contain this surah are hidden — mp3quran publishes
+  /// partial recordings that 404.
   final int? surahNumber;
+
+  /// Per-ayah files only, for a caller that cannot use a clip.
+  final bool filesOnly;
 
   static Future<ReciterVoice?> showSurah(
     BuildContext context, {
@@ -130,12 +156,20 @@ class RecitationPickerSheet extends StatefulWidget {
     );
   }
 
-  static Future<VerseReciter?> showVerse(
+  /// Voices that can play one ayah.
+  ///
+  /// [filesOnly] is for the video exporter, which downloads a file per ayah
+  /// and has nothing to do with a clip inside a longer recording. Everywhere
+  /// else both kinds are offered together, because to the reader they are the
+  /// same thing: a sheikh who recites this verse.
+  static Future<PlayableVerseVoice?> showVerse(
     BuildContext context, {
     required String selectedId,
     required MushafEdition edition,
+    int? surahNumber,
+    bool filesOnly = false,
   }) {
-    return showModalBottomSheet<VerseReciter>(
+    return showModalBottomSheet<PlayableVerseVoice>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -144,6 +178,8 @@ class RecitationPickerSheet extends StatefulWidget {
             mode: RecitationPickerMode.verse,
             selectedId: selectedId,
             edition: edition,
+            surahNumber: surahNumber,
+            filesOnly: filesOnly,
           ),
     );
   }
@@ -164,9 +200,9 @@ class _RecitationPickerSheetState extends State<RecitationPickerSheet> {
   @override
   void initState() {
     super.initState();
-    // Verse voices are a bundled list; only whole-surah recordings wait on
-    // the catalogue. Showing a spinner over forty known names looks broken.
-    _loading = _isSurah;
+    // The per-ayah files are a bundled list and appear at once; everything
+    // else waits on the catalogue.
+    _loading = _isSurah || VerseVoices.files(widget.edition).isEmpty;
     _load();
   }
 
@@ -177,21 +213,35 @@ class _RecitationPickerSheetState extends State<RecitationPickerSheet> {
   }
 
   Future<void> _load({bool refresh = false}) async {
-    if (_isSurah) {
+    // A spinner only when there is nothing to show yet. Covering forty known
+    // names while the catalogue is fetched makes a working list look broken;
+    // an empty sheet with no spinner looks broken too. Which one applies
+    // depends on the reading — Hafs has its per-ayah list already, Qalun has
+    // nothing until the catalogue lands.
+    if (mounted && _playable.isEmpty) {
       setState(() => _loading = true);
     }
+    // The catalogue is wanted in both modes now: whole-surah recordings are
+    // the rows in one, and in the other they are the voices that can be cut
+    // at the ayah. The picker showing fewer names than the provider carries
+    // was the complaint that started all of this.
     final voices =
-        _isSurah
-            ? await ReciterCatalogue.load(refresh: refresh)
-            : const <ReciterVoice>[];
+        widget.filesOnly
+            ? const <ReciterVoice>[]
+            : await ReciterCatalogue.load(refresh: refresh);
     await ReciterCatalogue.loadRiwayat(refresh: refresh);
+    if (!_isSurah && !widget.filesOnly) {
+      await VerseVoices.warmClips(
+        voices: voices,
+        edition: widget.edition,
+        surahNumber: widget.surahNumber,
+      );
+    }
     if (!mounted) {
       return;
     }
     setState(() {
-      if (_isSurah) {
-        _voices = voices;
-      }
+      _voices = voices;
       _loading = false;
       final ids = _playable.map((row) => row.riwayaId);
       final tabs = RecitationOptions.tabsFor(riwayaIds: ids);
@@ -214,8 +264,13 @@ class _RecitationPickerSheetState extends State<RecitationPickerSheet> {
       ];
     }
     return [
-      for (final reciter in RecitationOptions.verseVoices(widget.edition))
-        _PickerRow.verse(reciter),
+      for (final voice in RecitationOptions.verseVoices(
+        voices: _voices,
+        edition: widget.edition,
+        surahNumber: widget.surahNumber,
+        filesOnly: widget.filesOnly,
+      ))
+        _PickerRow.verse(voice),
     ];
   }
 
@@ -260,12 +315,8 @@ class _RecitationPickerSheetState extends State<RecitationPickerSheet> {
       final playable = _playable.any((row) => row.id == match.id);
       return playable ? match.id : null;
     }
-    final match = VerseReciters.find(widget.selectedId);
-    if (match == null) {
-      return null;
-    }
-    final playable = _playable.any((row) => row.id == match.id);
-    return playable ? match.id : null;
+    final playable = _playable.any((row) => row.id == widget.selectedId);
+    return playable ? widget.selectedId : null;
   }
 
   @override
@@ -432,13 +483,13 @@ class _PickerRow {
     );
   }
 
-  factory _PickerRow.verse(VerseReciter reciter) => _PickerRow(
-    id: reciter.id,
-    nameAr: reciter.nameAr,
-    styleAr: reciter.styleAr,
-    riwayaId: reciter.riwayaId,
-    meta: reciter.styleAr.isEmpty ? null : reciter.styleAr,
-    payload: reciter,
+  factory _PickerRow.verse(PlayableVerseVoice voice) => _PickerRow(
+    id: voice.id,
+    nameAr: voice.nameAr,
+    styleAr: voice.styleAr,
+    riwayaId: voice.riwayaId,
+    meta: voice.styleAr.isEmpty ? null : voice.styleAr,
+    payload: voice,
   );
 
   final String id;

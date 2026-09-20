@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../data/services/mushaf_reader.dart';
+import '../../data/services/reciter_catalogue.dart';
 import '../../data/services/verse_reciters.dart';
 import '../../domain/entities/riwaya.dart';
 
@@ -287,34 +289,22 @@ class ReaderSettings {
 /// default typography before the user's own settings land.
 class ReaderSettingsNotifier extends Notifier<ReaderSettings> {
   @override
-  ReaderSettings build() {
-    final raw = appPreferences.getString(AppConstants.readerSettingsKey);
-    if (raw == null || raw.isEmpty) {
-      return _migrateLegacyFontSize();
-    }
+  ReaderSettings build() => _publish(readStoredReaderSettings());
 
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        return ReaderSettings.fromJson(decoded);
-      }
-    } catch (_) {
-      // Fall through to defaults.
-    }
-    return const ReaderSettings();
-  }
-
-  /// The old reader stored only `quran_font_size`; keep it.
-  ReaderSettings _migrateLegacyFontSize() {
-    final legacy = appPreferences.getDouble('quran_font_size');
-    if (legacy == null) {
-      return const ReaderSettings();
-    }
-    return const ReaderSettings().copyWith(fontSize: legacy);
+  /// Mirror the chosen reading where code with no `Ref` can see it.
+  ///
+  /// The reading is one setting, but it decides what the whole app shows: an
+  /// ayah of the day, a share card, a memorisation prompt, a notification. Not
+  /// one of those has a `Ref`, and threading a provider through all of them
+  /// would mean every new screen has to remember. This is the one place the
+  /// mirror is written, on every change, so forgetting is not possible.
+  ReaderSettings _publish(ReaderSettings settings) {
+    MushafReader.current = settings.edition;
+    return settings;
   }
 
   Future<void> update(ReaderSettings next) async {
-    state = next;
+    state = _publish(next);
     await appPreferences.setString(
       AppConstants.readerSettingsKey,
       jsonEncode(next.toJson()),
@@ -366,23 +356,38 @@ class ReaderSettingsNotifier extends Notifier<ReaderSettings> {
   /// The voice moves with it. A reader who switches to Warsh and keeps a Hafs
   /// reciter would be shown one text and recited another — which is the exact
   /// complaint this whole change answers — so a voice that does not belong to
-  /// the new reading is replaced by one that does, and the reader is asked
-  /// again rather than left with a silent substitution.
+  /// the new reading is dropped, and the reader is asked again rather than
+  /// left with a silent substitution.
+  ///
+  /// Dropped, not replaced. Substituting a default here is how a reader of
+  /// Qalun — for whom the per-ayah corpus has nothing, so the "default" is a
+  /// Hafs voice — would end up with al-Afasy's name on the screen above a
+  /// Qalun page. Clearing the flag sends them back to the picker, which only
+  /// ever lists what can actually play.
   Future<void> setEdition(MushafEdition value) async {
     if (state.edition == value) {
       return;
     }
 
-    final voice = VerseReciters.find(state.reciterCode);
-    final keeps = voice != null && value.accepts(voice.riwayaId);
-
     await update(
       state.copyWith(
         edition: value,
-        reciterCode: keeps ? null : VerseReciters.defaultFor(value),
-        reciterChosen: keeps ? null : false,
+        reciterChosen: _voiceSuits(state.reciterCode, value) ? null : false,
       ),
     );
+  }
+
+  /// Whether a saved id belongs to [edition], whichever list it came from.
+  ///
+  /// Both are asked, because one id can name a per-ayah voice or a whole-surah
+  /// recording and the reader does not distinguish them.
+  bool _voiceSuits(String code, MushafEdition edition) {
+    final file = VerseReciters.find(code);
+    if (file != null) {
+      return edition.accepts(file.riwayaId);
+    }
+    final catalogued = ReciterCatalogue.byId(code, ReciterCatalogue.known);
+    return catalogued != null && edition.accepts(catalogued.riwayaId);
   }
 
   Future<void> setViewMode(ReaderViewMode mode) =>
@@ -398,3 +403,35 @@ final readerSettingsProvider =
     NotifierProvider<ReaderSettingsNotifier, ReaderSettings>(
       ReaderSettingsNotifier.new,
     );
+
+/// The reader's stored settings, without building a provider.
+ReaderSettings readStoredReaderSettings() {
+  final raw = appPreferences.getString(AppConstants.readerSettingsKey);
+  if (raw == null || raw.isEmpty) {
+    // The old reader stored only `quran_font_size`; keep it.
+    final legacy = appPreferences.getDouble('quran_font_size');
+    return legacy == null
+        ? const ReaderSettings()
+        : const ReaderSettings().copyWith(fontSize: legacy);
+  }
+
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is Map) {
+      return ReaderSettings.fromJson(decoded);
+    }
+  } catch (_) {
+    // Fall through to defaults.
+  }
+  return const ReaderSettings();
+}
+
+/// Publish the stored reading before anything that runs at startup reads it.
+///
+/// `main` schedules notifications — including the ayah of the day, which is
+/// rendered into the notification text — before any widget has built the
+/// reader settings provider. Without this, every cold start would write that
+/// ayah in Hafs for someone who reads Warsh or Qalun.
+void publishStoredEdition() {
+  MushafReader.current = readStoredReaderSettings().edition;
+}

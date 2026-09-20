@@ -383,7 +383,7 @@ class VerseReciters {
       styleAr: 'رواية ورش',
       riwayaId: Riwaya.warshId,
       // Lacks 2:286, has 9:130 — the only one filed the way its mushaf reads.
-      counting: VerseCounting.warsh,
+      counting: VerseCounting.madaniAkhir,
     ),
   ];
 
@@ -405,18 +405,6 @@ class VerseReciters {
     final resolved = legacyIds[id] ?? id;
     return all.any((reciter) => reciter.id == resolved);
   }
-
-  /// The id to actually use — the saved one when it has verse audio, and the
-  /// default when it does not. A whole-surah catalogue id such as
-  /// `mp3quran:92:92` has no per-ayah files and would 404 every verse.
-  ///
-  /// Prefer [find] anywhere a list is being *shown*. Substituting a voice is
-  /// the right thing to do at the moment of playing something the reader has
-  /// already asked for; it is the wrong thing to do while offering a choice,
-  /// and doing both from one method is how the picker came to list forty
-  /// voices of which most quietly played a different one.
-  static String resolve(String id) =>
-      has(id) ? (legacyIds[id] ?? id) : defaultId;
 
   /// The reciter for [id], or null when nothing here can play it.
   ///
@@ -440,15 +428,6 @@ class VerseReciters {
     for (final reciter in all)
       if (edition.accepts(reciter.riwayaId)) reciter,
   ];
-
-  /// The default voice for [edition] — never a Hafs one for a Warsh reader.
-  static String defaultFor(MushafEdition edition) {
-    if (edition == MushafEdition.hafs) {
-      return defaultId;
-    }
-    final voices = forEdition(edition);
-    return voices.isEmpty ? defaultId : voices.first.id;
-  }
 
   /// Name search that ignores diacritics and alif shapes.
   static List<VerseReciter> search(String query) {

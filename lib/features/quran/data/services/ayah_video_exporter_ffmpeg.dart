@@ -9,7 +9,6 @@ import 'package:path_provider/path_provider.dart';
 import '../../../../core/services/secure_http_client.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../domain/ayah_video_spec.dart';
-import 'quran_local_service.dart';
 import 'video_encode_plan.dart';
 import 'video_export_result.dart';
 
@@ -36,8 +35,17 @@ class AyahVideoExporter {
   /// [renderFrame] paints one PNG for a verse; the studio supplies it because
   /// painting needs a widget tree. [verseTexts] is only used to name what is
   /// missing when a verse has no audio.
+  ///
+  /// [verseNumbers] and [audioUrls] are the caller's, not derived from [spec].
+  /// A passage is a range of Hafs verses, but the reader may be on Warsh or
+  /// Qalun, where that range is a different set of verses with different
+  /// numbers — and the recording of it may be filed under either scheme
+  /// again. Only the studio knows all three, so it says which verses to draw
+  /// and where each one's recitation lives.
   static Future<VideoExportResult> export({
     required AyahVideoSpec spec,
+    required List<int> verseNumbers,
+    required Map<int, String> audioUrls,
     required Map<int, String> verseTexts,
     required FrameRenderer renderFrame,
     required String fileStem,
@@ -46,7 +54,10 @@ class AyahVideoExporter {
     if (!isSupported) {
       return const VideoExportResult.failure('video_export_unsupported');
     }
-    if (spec.isTooLong) {
+    // Against the frames that will be drawn. A reading that splits a verse
+    // renders more of them than the Hafs range counts, so the spec's own
+    // check can let a passage through that is over the limit.
+    if (spec.isTooLong || verseNumbers.length > AyahVideoSpec.maxVerses) {
       return const VideoExportResult.failure('video_export_too_long');
     }
 
@@ -60,7 +71,10 @@ class AyahVideoExporter {
       report(VideoExportStage.preparing);
       work = await _freshWorkDirectory();
 
-      final verses = spec.verseNumbers;
+      final verses = verseNumbers;
+      if (verses.isEmpty) {
+        return const VideoExportResult.failure('video_export_no_audio');
+      }
 
       // 1. The recitation, one file per ayah.
       report(VideoExportStage.fetchingAudio, 0);
@@ -72,11 +86,12 @@ class AyahVideoExporter {
         }
         final verse = verses[i];
         final path = '${work.path}/a${i.toString().padLeft(3, '0')}.mp3';
-        final url = QuranLocalService.audioUrlForVerse(
-          spec.surahNumber,
-          verse,
-          reciterCode: spec.reciterCode,
-        );
+        final url = audioUrls[verse];
+        if (url == null) {
+          AppLogger.warning('Verse $verse has no recitation to fetch');
+          report(VideoExportStage.fetchingAudio, (i + 1) / verses.length);
+          continue;
+        }
         try {
           await dio.download(url, path);
           audioPaths[verse] = path;

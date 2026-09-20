@@ -16,8 +16,10 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../prayer_times/presentation/pages/hijri_calendar_page.dart';
 import '../../../broadcasts/presentation/pages/broadcasts_page.dart';
+import '../../../quran/domain/entities/riwaya.dart';
 import '../../../quran/presentation/pages/playlists_page.dart';
 import '../../../quran/presentation/providers/bookmarks_provider.dart';
+import '../../../quran/presentation/providers/reader_settings_provider.dart';
 import '../../../quran/presentation/providers/reading_history_provider.dart';
 import 'storage_page.dart';
 import 'zakat_page.dart';
@@ -56,6 +58,9 @@ class SettingsPage extends ConsumerWidget {
     final notificationPrefs = ref.watch(notificationPreferencesProvider);
     final seasonalIntroEnabled = ref.watch(seasonalIntroEnabledProvider);
     final seasonalOverride = ref.watch(seasonalOverrideProvider);
+    final edition = ref.watch(
+      readerSettingsProvider.select((settings) => settings.edition),
+    );
 
     final isDark = themeMode == ThemeMode.dark;
 
@@ -427,6 +432,56 @@ class SettingsPage extends ConsumerWidget {
                 AppCard(
                   child: Column(
                     children: [
+                      GestureDetector(
+                        onTap: () => _openRiwayaSheet(context),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 48),
+                          child: Row(
+                            children: [
+                              const AppIconTile(
+                                Icons.menu_book_outlined,
+                                role: AppIconRole.row,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      context.tr('riwaya'),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      edition.nameAr,
+                                      style: TextStyle(
+                                        color: subtitleColor,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                context.isAppRtl
+                                    ? Icons.keyboard_arrow_left
+                                    : Icons.keyboard_arrow_right,
+                                color: subtitleColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(
+                          color: colorScheme.outlineVariant,
+                          thickness: 1,
+                        ),
+                      ),
                       GestureDetector(
                         onTap: () {
                           final newLang =
@@ -959,6 +1014,14 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  Future<void> _openRiwayaSheet(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => const _RiwayaPickerSheet(),
+    );
+  }
+
   /// Export everything to a file, or restore from one.
   Future<void> _openBackupSheet(BuildContext context) async {
     await showModalBottomSheet<void>(
@@ -1236,6 +1299,134 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The three readings, reachable from Settings so the choice does not wait
+/// on opening a surah.
+class _RiwayaPickerSheet extends ConsumerWidget {
+  const _RiwayaPickerSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(
+      readerSettingsProvider.select((settings) => settings.edition),
+    );
+    final tokens = context.tokens;
+
+    return Directionality(
+      textDirection: context.appTextDirection,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            0,
+            AppSpacing.page,
+            AppSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.tr('riwaya'),
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              for (final edition in MushafEdition.values) ...[
+                _RiwayaChoiceCard(
+                  edition: edition,
+                  selected: selected == edition,
+                  onTap: () {
+                    ref
+                        .read(readerSettingsProvider.notifier)
+                        .setEdition(edition);
+                    Navigator.of(context).pop();
+                  },
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Text(
+                  context.tr('riwaya_applies_everywhere'),
+                  style: AppTextStyles.caption(context, color: tokens.inkMuted),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RiwayaChoiceCard extends StatelessWidget {
+  const _RiwayaChoiceCard({
+    required this.edition,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final MushafEdition edition;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final note = context.tr('riwaya_${edition.id}_note');
+
+    return Semantics(
+      selected: selected,
+      child: AppCard(
+        raised: selected,
+        accent: selected ? tokens.brandSoft : null,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 28,
+                color: selected ? tokens.brand : tokens.inkFaint,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      edition.nameAr,
+                      textDirection: TextDirection.rtl,
+                      style: AppTextStyles.body(
+                        context,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: tokens.ink,
+                      ),
+                    ),
+                    Text(
+                      note,
+                      style: AppTextStyles.caption(
+                        context,
+                        fontSize: 14,
+                        color: tokens.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

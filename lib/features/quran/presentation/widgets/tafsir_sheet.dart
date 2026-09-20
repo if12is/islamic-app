@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../data/services/mushaf_reader.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/tafsir_service.dart';
 import '../providers/reader_settings_provider.dart';
@@ -34,7 +35,11 @@ class TafsirSheet extends ConsumerWidget {
         TafsirRequest(
           editionId: editionId,
           surahNumber: verse.surahNumber,
-          verseNumber: verse.numberInSurah,
+          // The tafsir corpus is indexed in Hafs, like every other corpus the
+          // app talks to. Asked for the number printed on a Warsh or Qalun
+          // page, it returns the commentary on a neighbouring ayah — which
+          // reads as a correct answer to the wrong question.
+          verseNumber: verse.hafsVerseNumber,
         ),
       ),
     );
@@ -52,8 +57,11 @@ class TafsirSheet extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
             children: [
               Text(
+                // The reading's own number, which for a verse it splits in two
+                // is a range: the commentary covers both halves.
                 '${context.tr('tafsir')} · ${context.tr('surah_word')} '
-                '${verse.surahNameAr} ${verse.numberInSurah}',
+                '${verse.surahNameAr} '
+                '${MushafReader.numberLabelOf(verse.surahNumber, verse.hafsVerseNumber)}',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),

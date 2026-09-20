@@ -260,6 +260,27 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
     return _load(surahNumber, voice);
   }
 
+  /// Whether [voice] recites the reading in force and carries this surah.
+  ///
+  /// The seven bundled ids are Hafs and are not in the catalogue, so an
+  /// unknown id counts as Hafs — which is what it has always been.
+  ///
+  /// The catalogue is loaded rather than read from memory. `main` only kicks
+  /// the load off, so for the first seconds after launch `known` is the seven
+  /// bundled Hafs voices — and a reader of Warsh resuming a playlist in that
+  /// window would have their own saved reciter read as Hafs and refused.
+  Future<bool> _suits(String voice, int surahNumber) async {
+    final edition = ref.read(readerSettingsProvider).edition;
+    final catalogued = ReciterCatalogue.byId(
+      voice,
+      await ReciterCatalogue.load(),
+    );
+    if (catalogued == null) {
+      return edition.accepts(Riwaya.hafsId);
+    }
+    return edition.accepts(catalogued.riwayaId) && catalogued.has(surahNumber);
+  }
+
   Future<bool> _load(int surahNumber, String voice) async {
     state = state.copyWith(
       surahNumber: surahNumber,
@@ -271,6 +292,23 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
     try {
       AppAudio.claim(AudioOwner.surah);
       final name = QuranLocalService.surahInfo(surahNumber).nameAr;
+
+      // A voice chosen under another reading is not a voice for this one.
+      //
+      // The index asks for a reciter before playing anything whenever the
+      // saved choice has been invalidated, which changing the reading does.
+      // A playlist does not ask, so it lands here: better to say there is no
+      // reciter for this reading than to recite the wrong text.
+      if (!await _suits(voice, surahNumber)) {
+        AppLogger.info('$voice does not belong to the reading in force');
+        state = state.copyWith(
+          clearSurah: true,
+          loading: false,
+          playing: false,
+          errorKey: 'no_reciters_for_surah',
+        );
+        return false;
+      }
 
       // Prefer any voice already on the disk over the network.
       //

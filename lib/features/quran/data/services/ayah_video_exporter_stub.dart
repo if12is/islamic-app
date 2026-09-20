@@ -10,6 +10,8 @@ class AyahVideoExporter {
 
   static Future<VideoExportResult> export({
     required AyahVideoSpec spec,
+    required List<int> verseNumbers,
+    required Map<int, String> audioUrls,
     required Map<int, String> verseTexts,
     required FrameRenderer renderFrame,
     required String fileStem,

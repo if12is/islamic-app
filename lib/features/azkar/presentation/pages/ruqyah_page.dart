@@ -7,6 +7,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
+import '../../../quran/data/services/mushaf_reader.dart';
 import '../../../quran/presentation/providers/quran_audio_provider.dart';
 import '../../../quran/presentation/providers/reader_settings_provider.dart';
 import '../../domain/ruqyah_passages.dart';
@@ -42,6 +43,27 @@ class _RuqyahPageState extends ConsumerState<RuqyahPage> {
   String? _lastFollowed;
 
   @override
+  void initState() {
+    super.initState();
+    _warm();
+  }
+
+  /// Fetch the passages in the chosen reading before they are recited.
+  ///
+  /// The ruqyah is read aloud from this screen while the recitation plays, so
+  /// Hafs on the page with a Warsh voice in the ear is worse here than
+  /// anywhere else — and its passages include al-Baqarah 285-286, exactly
+  /// where the two readings stop counting alike.
+  Future<void> _warm() async {
+    await MushafReader.warmAll({
+      for (final passage in RuqyahPassages.all) passage.surahNumber,
+    });
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
   void dispose() {
     _scroll.dispose();
     super.dispose();
@@ -52,9 +74,7 @@ class _RuqyahPageState extends ConsumerState<RuqyahPage> {
 
   Future<void> _start() async {
     final verses = RuqyahPassages.versesOf(_passages);
-    final code = QuranReciter.verseAudioCode(
-      ref.read(readerSettingsProvider).reciterCode,
-    );
+    final code = ref.read(readerSettingsProvider).reciterCode;
 
     await ref
         .read(quranAudioProvider.notifier)

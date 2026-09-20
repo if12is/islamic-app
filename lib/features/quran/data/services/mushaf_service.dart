@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/services/secure_http_client.dart';
@@ -44,6 +45,12 @@ class MushafVerse {
   /// The single Hafs verse to treat this one as, when only one will do.
   int get primaryHafsNumber => hafsNumbers.isEmpty ? number : hafsNumbers.first;
 
+  /// Whether this verse carries any part of Hafs verse [hafsNumber].
+  bool coversHafs(int hafsNumber) =>
+      hafsNumbers.isEmpty
+          ? number == hafsNumber
+          : hafsNumbers.contains(hafsNumber);
+
   Map<String, dynamic> toJson() => {
     'n': number,
     'p': page,
@@ -75,22 +82,29 @@ class MushafVerse {
 /// The text of a mushaf the `quran` package does not carry.
 ///
 /// That package bundles Hafs and only Hafs, which is the right default and the
-/// wrong ceiling: a reader of Warsh opening this app has been reading someone
-/// else's text. Quranpedia publishes the Warsh mushaf — rasm, pagination,
-/// verse markers — together with the one field that makes it usable next to
-/// everything already built on Hafs: which Hafs verse each Warsh verse is.
+/// wrong ceiling: a reader of Warsh or Qalun opening this app has been reading
+/// someone else's text. Quranpedia publishes both mushafs — rasm, pagination,
+/// verse markers — together with the one field that makes them usable next to
+/// everything already built on Hafs: which Hafs verse each verse is.
 ///
 /// Fetched a surah at a time and kept on disk, the way the reciter catalogue
 /// is. A surah read once is readable offline afterwards; the alternative,
-/// bundling the whole mushaf, would add to a package the reader has already
+/// bundling the mushafs, would add to a package the reader has already
 /// complained is slow to download.
-class WarshMushafService {
-  WarshMushafService._();
+class MushafService {
+  MushafService._();
 
   static const String _host = 'https://api.quranpedia.net';
 
   /// Quranpedia's mushaf ids. Hafs is 1 and is never fetched — the app has it.
-  static const Map<MushafEdition, int> _mushafIds = {MushafEdition.warsh: 4};
+  ///
+  /// Read from `/v1/mushafs`, where each entry names its rawi and its verse
+  /// count tradition. Both of these say `المدني الأخير`, which is why one
+  /// [VerseCounting] covers the pair.
+  static const Map<MushafEdition, int> _mushafIds = {
+    MushafEdition.warsh: 4,
+    MushafEdition.qaloon: 7,
+  };
 
   static const String _folder = 'mushaf';
 
@@ -99,6 +113,20 @@ class WarshMushafService {
 
   static bool supports(MushafEdition edition) =>
       _mushafIds.containsKey(edition);
+
+  /// Editions with a text of their own, for a settings list.
+  static List<MushafEdition> get fetchable => _mushafIds.keys.toList();
+
+  static String _keyFor(MushafEdition edition, int surahNumber) =>
+      '${edition.id}:$surahNumber';
+
+  /// The surah if it is already in memory, without waiting.
+  ///
+  /// For the places that draw a single ayah inside a build — a share card, a
+  /// note, the ayah of the day — where an await is not available and showing
+  /// Hafs for one frame is better than showing nothing.
+  static List<MushafVerse>? inMemory(MushafEdition edition, int surahNumber) =>
+      _memory[_keyFor(edition, surahNumber)];
 
   /// The surah's verses in [edition]'s own text and counting.
   ///
@@ -115,11 +143,38 @@ class WarshMushafService {
       return const [];
     }
 
-    final key = '${edition.id}:$surahNumber';
+    final key = _keyFor(edition, surahNumber);
     final remembered = _memory[key];
     if (remembered != null) {
       return remembered;
     }
+
+    // One flight per surah. The reader, the audio queue and a warm-up can all
+    // ask for the same surah in the same frame; without this they each open a
+    // request and the provider's 120-per-minute budget goes on duplicates.
+    final running = _inFlight[key];
+    if (running != null) {
+      return running;
+    }
+
+    final future = _resolve(edition, surahNumber, mushafId, client);
+    _inFlight[key] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlight.remove(key);
+    }
+  }
+
+  static final Map<String, Future<List<MushafVerse>>> _inFlight = {};
+
+  static Future<List<MushafVerse>> _resolve(
+    MushafEdition edition,
+    int surahNumber,
+    int mushafId,
+    Dio? client,
+  ) async {
+    final key = _keyFor(edition, surahNumber);
 
     final cached = await _readCache(edition, surahNumber);
     if (cached.isNotEmpty) {
@@ -137,7 +192,7 @@ class WarshMushafService {
 
   /// Whether this surah is already on the device.
   static Future<bool> isCached(MushafEdition edition, int surahNumber) async {
-    if (_memory.containsKey('${edition.id}:$surahNumber')) {
+    if (_memory.containsKey(_keyFor(edition, surahNumber))) {
       return true;
     }
     final file = await _fileFor(edition, surahNumber);
@@ -161,6 +216,27 @@ class WarshMushafService {
     if (await directory.exists()) {
       await directory.delete(recursive: true);
     }
+  }
+
+  /// Put a surah in memory without a network or a disk.
+  ///
+  /// The sync readers — the page-turning view, the ayah of the day, a share
+  /// card — only answer once a surah is in memory, so a test that cannot get
+  /// one there can only ever exercise the Hafs fallback, which is the half
+  /// that was already working.
+  @visibleForTesting
+  static void seedForTest(
+    MushafEdition edition,
+    int surahNumber,
+    List<MushafVerse> verses,
+  ) {
+    _memory[_keyFor(edition, surahNumber)] = verses;
+  }
+
+  @visibleForTesting
+  static void resetForTest() {
+    _memory.clear();
+    _inFlight.clear();
   }
 
   static Future<Directory> _directoryFor(MushafEdition edition) async {
@@ -284,6 +360,22 @@ class WarshMushafService {
           },
         ),
       );
+    }
+
+    // The mapping is the feature. Without it a verse falls back to its own
+    // number, which is the identity mapping — correct in the surahs where the
+    // counts happen to agree and quietly wrong in the ones where they do not,
+    // with nothing on screen to show which. The provider has never omitted it;
+    // if that ever changes, the reader should say the mushaf is unavailable
+    // rather than show it mis-aligned.
+    for (final verse in verses) {
+      if (verse.hafsNumbers.isEmpty) {
+        AppLogger.warning(
+          'Verse ${verse.number} arrived with no Hafs mapping; '
+          'treating the surah as unavailable',
+        );
+        return const [];
+      }
     }
 
     verses.sort((a, b) => a.number.compareTo(b.number));

@@ -16,6 +16,7 @@ import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/widgets/shortcut_grid.dart';
 import '../../../../shared/widgets/shell_header_buttons.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../domain/entities/riwaya.dart';
 import '../providers/downloads_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import '../providers/surah_audio_provider.dart';
@@ -429,6 +430,8 @@ class _QuranPageState extends ConsumerState<QuranPage> {
               padding: AppScaffold.scrollPadding,
               children: [
                 _buildSearchBar(),
+                const SizedBox(height: AppSpacing.md),
+                _buildRiwayaStrip(),
                 const SizedBox(height: AppSpacing.lg),
                 const LastReadCard(),
                 const SizedBox(height: AppSpacing.md),
@@ -453,6 +456,48 @@ class _QuranPageState extends ConsumerState<QuranPage> {
           // it — two bars for one recitation, each with its own play button,
           // stacked a thumb apart. The shared strip is the survivor: it is the
           // one that exists everywhere else, so it is the one people learn.
+        ],
+      ),
+    );
+  }
+
+  /// The reading, one tap from the index and never more than that.
+  ///
+  /// It used to live inside the reader's settings sheet, which is three taps
+  /// down and only reachable with a surah already open — so choosing a reading
+  /// meant first opening somebody else's. It belongs here, next to the search
+  /// box, because it is not a typography preference: it decides which text the
+  /// whole app shows and which reciters it will offer.
+  Widget _buildRiwayaStrip() {
+    final edition = ref.watch(readerSettingsProvider).edition;
+    final tokens = context.tokens;
+
+    return Semantics(
+      label: context.tr('riwaya'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PillSelector<MushafEdition>(
+            value: edition,
+            onChanged: (value) async {
+              if (value == edition) {
+                return;
+              }
+              // Anything already playing recites the reading being left.
+              await _playback.stop();
+              await ref.read(readerSettingsProvider.notifier).setEdition(value);
+            },
+            options: [
+              for (final value in MushafEdition.values)
+                PillOption(value: value, label: value.shortAr),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            context.tr('riwaya_applies_everywhere'),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption(context, color: tokens.inkMuted),
+          ),
         ],
       ),
     );

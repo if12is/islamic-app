@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../data/services/reciter_catalogue.dart';
 import '../../data/services/verse_reciters.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
@@ -64,7 +65,16 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
     final audio = ref.watch(quranAudioProvider);
     final controller = ref.read(quranAudioProvider.notifier);
     final settings = ref.watch(readerSettingsProvider);
+    // A per-ayah voice names itself; a clipped whole-surah recording is named
+    // by the catalogue. Either way the subtitle shows the reader's own choice
+    // rather than whoever the fallback would have been.
     final reciter = VerseReciters.find(settings.reciterCode);
+    final reciterLabel =
+        reciter?.label ??
+        (ReciterCatalogue.byId(
+          settings.reciterCode,
+          ReciterCatalogue.known,
+        )?.label);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Directionality(
@@ -318,13 +328,17 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(context.tr('reciter')),
-                subtitle: reciter == null ? null : Text(reciter.label),
+                subtitle: reciterLabel == null ? null : Text(reciterLabel),
                 trailing: const Icon(Icons.expand_more),
                 onTap: () async {
                   final chosen = await RecitationPickerSheet.showVerse(
                     context,
                     selectedId: settings.reciterCode,
                     edition: settings.edition,
+                    surahNumber:
+                        widget.verses.isEmpty
+                            ? null
+                            : widget.verses.first.surahNumber,
                   );
                   if (chosen == null) {
                     return;

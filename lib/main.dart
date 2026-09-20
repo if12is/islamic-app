@@ -17,6 +17,7 @@ import 'core/widgets/seasonal_decor.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/app_logger.dart';
 import 'features/quran/data/services/reciter_catalogue.dart';
+import 'features/quran/presentation/providers/reader_settings_provider.dart';
 import 'features/onboarding/presentation/pages/splash_screen.dart';
 import 'shared/providers/app_providers.dart';
 import 'shared/providers/app_text_scale_provider.dart';
@@ -61,6 +62,11 @@ Future<void> _bootstrap() async {
   } catch (e, stack) {
     AppLogger.error('Preferences init failed', e, stack);
   }
+
+  // Before the scheduler, which writes the ayah of the day into a
+  // notification and would otherwise write it in Hafs for a reader of Warsh
+  // or Qalun on every cold start.
+  publishStoredEdition();
 
   unawaited(runStartupSync());
   unawaited(NotificationScheduler.refresh());

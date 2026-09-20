@@ -1,3 +1,4 @@
+import '../../quran/data/services/mushaf_reader.dart';
 import '../../quran/data/services/quran_local_service.dart';
 
 /// Whether a passage is one the Sunnah names for ruqyah, or one scholars read.
@@ -42,10 +43,14 @@ class RuqyahPassage {
     return 'سورة $name — $fromVerse‑$toVerse';
   }
 
-  List<QuranVerse> get verses => [
-    for (var number = fromVerse; number <= toVerse; number++)
-      QuranLocalService.verse(surahNumber, number),
-  ];
+  /// The passage in the reading the app is set to.
+  ///
+  /// The ruqyah is recited aloud, following the words on the screen, so
+  /// showing one reading while the recitation plays another is the one thing
+  /// it must not do. The verse range stays Hafs, which is how the passages are
+  /// written down here and in every book that lists them.
+  List<QuranVerse> get verses =>
+      MushafReader.rangeOf(surahNumber, fromVerse, toVerse);
 }
 
 /// The ruqyah, in reading order.

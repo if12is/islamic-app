@@ -7,7 +7,7 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/app_cards.dart';
-import '../../data/services/warsh_mushaf_service.dart';
+import '../../data/services/mushaf_service.dart';
 import '../../domain/entities/riwaya.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
@@ -393,14 +393,14 @@ class _RiwayaSectionState extends ConsumerState<_RiwayaSection> {
 
   Future<void> _refreshCount() async {
     final edition = ref.read(readerSettingsProvider).edition;
-    if (!WarshMushafService.supports(edition)) {
+    if (!MushafService.supports(edition)) {
       if (mounted) {
         setState(() => _cached = null);
       }
       return;
     }
     try {
-      final count = await WarshMushafService.cachedCount(edition);
+      final count = await MushafService.cachedCount(edition);
       if (mounted) {
         setState(() => _cached = count);
       }
@@ -438,7 +438,7 @@ class _RiwayaSectionState extends ConsumerState<_RiwayaSection> {
           ),
           const SizedBox(height: AppSpacing.sm),
         ],
-        if (WarshMushafService.supports(settings.edition) && _cached != null)
+        if (MushafService.supports(settings.edition) && _cached != null)
           Padding(
             padding: const EdgeInsets.only(top: AppSpacing.xs),
             child: Text(
@@ -465,10 +465,10 @@ class _RiwayaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final note =
-        edition == MushafEdition.hafs
-            ? context.tr('riwaya_hafs_note')
-            : context.tr('riwaya_warsh_note');
+    // Keyed off the edition's own id so adding a reading is one enum value and
+    // one string, not another branch in a conditional that quietly shows the
+    // wrong note for anything it has not been taught.
+    final note = context.tr('riwaya_${edition.id}_note');
 
     return Semantics(
       selected: selected,

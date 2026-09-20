@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/prayer_times/data/prayer_log_store.dart';
+import '../../features/quran/data/services/mushaf_reader.dart';
 import '../../features/quran/data/services/quran_local_service.dart';
 import '../constants/app_constants.dart';
 import '../localization/app_localizations.dart';
@@ -803,6 +804,12 @@ class NotificationScheduler {
       settings: PrayerSettingsStore.read(prefs),
     );
 
+    // The ayah of the day is written into the notification text, and the
+    // mushaf it is written from is read synchronously from memory. Fetching
+    // the week's surahs first is what makes a reader of Warsh or Qalun get
+    // their own reading there instead of Hafs.
+    await _warmAyahOfTheDay();
+
     return NotificationPlanner.build(
       prefs: settings,
       days: days,
@@ -995,9 +1002,38 @@ class NotificationScheduler {
     }
   }
 
+  /// Fetch the mushaf for every ayah of the day this pass will write.
+  ///
+  /// One surah per day, usually the same one twice, and all of them cached
+  /// after the first pass — so this is a disk read on every run but the first.
+  static Future<void> _warmAyahOfTheDay() async {
+    final today = DateTime.now();
+    final surahs = <int>{};
+    for (var day = 0; day < NotificationPlanner.horizonDays; day++) {
+      try {
+        surahs.add(
+          QuranLocalService.verseOfTheDay(
+            today.add(Duration(days: day)),
+          ).surahNumber,
+        );
+      } catch (_) {
+        // A date the chooser cannot answer for is simply not warmed.
+      }
+    }
+    await MushafReader.warmAll(surahs);
+  }
+
   static String? _verseOfTheDay(DateTime date) {
     try {
-      final verse = QuranLocalService.verseOfTheDay(date);
+      // Which verse is chosen stays a fact about the date, the same for
+      // everyone; how it is written follows the reading the app is set to. A
+      // notification is often the only ayah someone reads that day, so it is
+      // the last place that should quietly show a different text.
+      final chosen = QuranLocalService.verseOfTheDay(date);
+      final verse = MushafReader.verseOf(
+        chosen.surahNumber,
+        chosen.numberInSurah,
+      );
       return '${verse.text}\n﴿${verse.surahNameAr} — ${verse.numberInSurah}﴾';
     } catch (_) {
       return null;

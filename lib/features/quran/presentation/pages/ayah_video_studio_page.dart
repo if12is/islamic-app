@@ -12,10 +12,11 @@ import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/ayah_video_exporter.dart';
+import '../../data/services/mushaf_reader.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/video_export_result.dart';
+import '../../domain/entities/riwaya.dart';
 import '../../domain/ayah_video_spec.dart';
-import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import '../../data/services/verse_reciters.dart';
 import '../widgets/ayah_video_frame.dart';
@@ -88,9 +89,14 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
       fromVerse: from,
       // Never open on a passage the studio would immediately refuse.
       toVerse: to.clamp(from, from + AyahVideoSpec.maxVerses - 1),
-      // Only the verse-by-verse editions can be cut at the ayah; a whole-surah
-      // recording has no seam, so the studio stays on the seven that do.
-      reciterCode: QuranReciter.verseAudioCode(settings.reciterCode),
+      // A per-ayah recording of the reading in force, or none.
+      //
+      // The export downloads one file per ayah, so a whole-surah recording
+      // cut at the marks is no use to it. The old line collapsed anything
+      // else to al-Afasy, which for a reader of Qalun — who has no per-ayah
+      // corpus at all — meant a Qalun page exported with a Hafs recitation,
+      // in the one artefact here that leaves the phone.
+      reciterCode: _defaultVoiceFor(settings),
       fontFamily: settings.font.family,
     );
     _spec = _spec.copyWith(
@@ -99,6 +105,27 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
         aspect: _spec.aspect,
       ),
     );
+    _warm();
+  }
+
+  /// Fetch the passage in the chosen reading, then redraw and re-fit the type.
+  ///
+  /// The size is measured from the text, and the readings do not write the
+  /// same number of letters, so it has to be measured again once the right
+  /// text is in.
+  Future<void> _warm() async {
+    await MushafReader.warm(widget.surahNumber);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _spec = _spec.copyWith(
+        fontSize: AyahVideoSpec.suggestedFontSize(
+          _verses.map((verse) => verse.text),
+          aspect: _spec.aspect,
+        ),
+      );
+    });
   }
 
   @override
@@ -107,10 +134,51 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
     super.dispose();
   }
 
-  List<QuranVerse> get _verses => [
-    for (final number in _spec.verseNumbers)
-      QuranLocalService.verse(_spec.surahNumber, number),
-  ];
+  /// The passage in the reading the app is set to.
+  ///
+  /// A video is the one thing here that leaves the phone. Exporting a Warsh
+  /// reader's ayah in Hafs script puts a text they did not choose under their
+  /// own name, in something they are about to send to someone else.
+  ///
+  /// Through [MushafReader.rangeOf] rather than a verse at a time, so a verse
+  /// this reading merges is not rendered as two identical frames and one it
+  /// splits does not lose half its words.
+  List<QuranVerse> get _verses =>
+      MushafReader.rangeOf(_spec.surahNumber, _spec.fromVerse, _spec.toVerse);
+
+  /// The voice to open on: the saved one when it fits this reading, else the
+  /// first that does, else none at all.
+  static String _defaultVoiceFor(ReaderSettings settings) {
+    final saved = VerseReciters.find(settings.reciterCode);
+    if (saved != null && settings.edition.accepts(saved.riwayaId)) {
+      return saved.id;
+    }
+    final voices = VerseReciters.forEdition(settings.edition);
+    return voices.isEmpty ? '' : voices.first.id;
+  }
+
+  /// Where each rendered verse's recitation lives, keyed as the frames are.
+  ///
+  /// Two conversions meet here and neither is optional. The verses on screen
+  /// are numbered in the reading the app is set to; the recording is numbered
+  /// however it happens to be filed, which for two of the three Warsh
+  /// per-ayah voices is Hafs. Asking the wrong way round does not fail — it
+  /// downloads the neighbouring ayah and lays it under the right words.
+  Map<int, String> _audioUrls(List<QuranVerse> verses) {
+    final voice = VerseReciters.find(_spec.reciterCode);
+    if (voice == null) {
+      return const {};
+    }
+    return {
+      for (final verse in verses)
+        verse.numberInSurah: voice.urlFor(
+          _spec.surahNumber,
+          voice.counting == VerseCounting.hafs
+              ? verse.hafsVerseNumber
+              : verse.numberInSurah,
+        ),
+    };
+  }
 
   int get _surahVerseCount =>
       QuranLocalService.surahInfo(_spec.surahNumber).versesCount;
@@ -140,7 +208,11 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
         return;
       }
       setState(() {
-        _previewIndex = (_previewIndex + 1) % _spec.verseCount;
+        // Over the frames that will actually be rendered, not over the Hafs
+        // range: a reading that merges two of those verses draws one frame
+        // fewer, and the preview would sit on a frame that does not exist.
+        final frames = _verses.length;
+        _previewIndex = frames == 0 ? 0 : (_previewIndex + 1) % frames;
       });
     });
   }
@@ -178,11 +250,12 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
       _slug(QuranLocalService.surahInfo(_spec.surahNumber).nameEn),
     );
 
+    final verses = _verses;
     final result = await AyahVideoExporter.export(
       spec: _spec,
-      verseTexts: {
-        for (final verse in _verses) verse.numberInSurah: verse.text,
-      },
+      verseNumbers: [for (final verse in verses) verse.numberInSurah],
+      audioUrls: _audioUrls(verses),
+      verseTexts: {for (final verse in verses) verse.numberInSurah: verse.text},
       renderFrame: _renderFrame,
       fileStem: stem,
       onProgress: (progress) {
@@ -428,7 +501,12 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
                 _chip(
                   tokens,
                   icon: Icons.record_voice_over_outlined,
-                  label: VerseReciters.byId(_spec.reciterCode).nameAr,
+                  // The saved choice's own name, or the prompt to make one.
+                  // `byId` answers an unknown id with al-Afasy, so the chip
+                  // used to name a sheikh the export would not have used.
+                  label:
+                      VerseReciters.find(_spec.reciterCode)?.nameAr ??
+                      context.tr('reciter'),
                   onTap: _pickReciter,
                 ),
               ],
@@ -439,12 +517,23 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
             _progressRow(tokens, progress),
             const SizedBox(height: AppSpacing.md),
           ],
+          // A video is its recitation; without one there is nothing to cut to.
+          // Saying so beats a disabled button with no reason, and beats an
+          // export in a reading the reader did not choose.
+          if (_spec.reciterCode.isEmpty) ...[
+            Text(
+              context.tr('no_reciters_for_surah'),
+              style: AppTextStyles.caption(context, color: tokens.inkMuted),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           Row(
             children: [
               Expanded(
                 flex: 2,
                 child: FilledButton.icon(
-                  onPressed: _busy ? null : _exportVideo,
+                  onPressed:
+                      _busy || _spec.reciterCode.isEmpty ? null : _exportVideo,
                   icon: const Icon(Icons.videocam_rounded, size: 18),
                   label: Text(context.tr('video_create')),
                 ),
@@ -620,10 +709,14 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
   }
 
   Future<void> _pickReciter() async {
+    // Files only. The exporter downloads one recording per ayah and stitches
+    // them; a verse clipped out of a longer file has no URL of its own to
+    // fetch, so offering one here would list a voice the export cannot use.
     final chosen = await RecitationPickerSheet.showVerse(
       context,
       selectedId: _spec.reciterCode,
       edition: ref.read(readerSettingsProvider).edition,
+      filesOnly: true,
     );
     if (chosen != null) {
       _update(_spec.copyWith(reciterCode: chosen.id));

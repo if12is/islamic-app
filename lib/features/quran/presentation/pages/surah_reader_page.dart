@@ -209,16 +209,21 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
         _ => const <QuranVerse>[],
       };
 
-      // A whole surah is the only opening this app has a second mushaf for.
-      // A juz, a hizb or a page crosses surah boundaries, and the other
-      // readings are fetched and paginated one surah at a time — so those
-      // stay on Hafs rather than showing a mixture, which would be worse than
-      // showing the reading the reader did not pick.
-      if (edition != MushafEdition.hafs && widget.surahNumber != null) {
-        final other = await MushafReader.versesOfSurah(
-          edition,
-          widget.surahNumber!,
-        );
+      // Every opening obeys the reading, not just a whole surah.
+      //
+      // A juz, a hizb and a page cross surah boundaries, and the other
+      // mushafs are published one surah at a time — so the selection is made
+      // in Hafs, where the divisions are defined, and then each surah in it is
+      // re-read in the chosen mushaf. The boundary stays where the Qur'an's
+      // own index puts it; the words on the page are the ones the reader
+      // picked. A page that came back part Warsh and part Hafs would be worse
+      // than one that admits it could not fetch the reading, so it is all or
+      // nothing and the notice says which.
+      if (edition != MushafEdition.hafs && verses.isNotEmpty) {
+        final other =
+            widget.surahNumber != null
+                ? await MushafReader.versesOfSurah(edition, widget.surahNumber!)
+                : await MushafReader.versesLike(edition, verses);
         if (other.isNotEmpty) {
           verses = other;
         } else if (mounted) {
@@ -259,11 +264,15 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       _restorePosition();
 
       if (widget.autoPlay && verses.isNotEmpty) {
+        // The requested verse is a Hafs address, like every stored place —
+        // and it may be the second Hafs verse of one this reading merges, so
+        // it is matched against everything the verse carries rather than
+        // against its first number alone.
         final index =
             widget.initialVerse == null
                 ? 0
                 : verses.indexWhere(
-                  (verse) => verse.numberInSurah == widget.initialVerse,
+                  (verse) => verse.coversHafs(widget.initialVerse!),
                 );
         await _playFrom(verses[index < 0 ? 0 : index]);
       }
@@ -303,7 +312,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
   String? _resolveResumeVerse() {
     if (widget.initialVerse != null && widget.surahNumber != null) {
-      return '${widget.surahNumber}:${widget.initialVerse}';
+      return _keyForHafs(widget.surahNumber!, widget.initialVerse!);
     }
 
     final lastRead = ref.read(lastReadProvider);
@@ -313,7 +322,33 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     if (lastRead.surahNumber != widget.surahNumber) {
       return null;
     }
-    return '${lastRead.surahNumber}:${lastRead.verseNumber}';
+    return _keyForHafs(lastRead.surahNumber, lastRead.verseNumber);
+  }
+
+  /// The key of the loaded verse that holds a stored Hafs address.
+  ///
+  /// Saved places are Hafs; the page may be Warsh or Qalun, where the same
+  /// words carry a different number. Matching on the number alone would land
+  /// a reader a verse or two from where they stopped — further and further as
+  /// the surah goes on, since the readings drift rather than offset.
+  String _keyForHafs(int surahNumber, int hafsVerse) {
+    QuranVerse? nearest;
+    for (final verse in _verses) {
+      if (verse.surahNumber != surahNumber) {
+        continue;
+      }
+      if (verse.coversHafs(hafsVerse)) {
+        return verse.key;
+      }
+      // A merged verse covers more than one Hafs number but reports the first;
+      // the one to land on is the last that starts at or before the target.
+      if (verse.hafsVerseNumber < hafsVerse &&
+          (nearest == null ||
+              verse.hafsVerseNumber > nearest.hafsVerseNumber)) {
+        nearest = verse;
+      }
+    }
+    return nearest?.key ?? '$surahNumber:$hafsVerse';
   }
 
   Future<void> _applyScreenSettings() async {
@@ -412,11 +447,16 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   }
 
   void _persistPosition(QuranVerse verse) {
+    // Saved in Hafs numbering, like every other stored place.
+    //
+    // A reader who stops at Warsh 2:285 and later opens the app in Hafs is
+    // brought back to the same words, not to whichever ayah happens to carry
+    // that number in the other reading.
     ref
         .read(lastReadProvider.notifier)
         .update(
           surahNumber: verse.surahNumber,
-          verseNumber: verse.numberInSurah,
+          verseNumber: verse.hafsVerseNumber,
           scrollOffset:
               _scrollController.hasClients ? _scrollController.offset : 0,
         );
@@ -428,7 +468,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
         .record(
           sessionId: _historyId,
           surah: verse.surahNumber,
-          verse: verse.numberInSurah,
+          verse: verse.hafsVerseNumber,
           page: verse.page,
         );
 
@@ -540,12 +580,34 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     }
 
     final settings = ref.read(readerSettingsProvider);
+
+    // The page is Hafs because the chosen mushaf could not be fetched, but
+    // playback resolves its voice against the chosen reading — so it would
+    // recite Warsh over a Hafs page, addressed by the wrong numbers, in the
+    // one path that has already admitted something went wrong. Saying so is
+    // the only honest answer until the mushaf is on the device.
+    if (_editionUnavailable && settings.edition != MushafEdition.hafs) {
+      final message = AppLocalizations.translate(
+        Localizations.localeOf(context).languageCode,
+        'mushaf_unavailable',
+        replacements: {'riwaya': settings.edition.nameAr},
+      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
     await ref
         .read(quranAudioProvider.notifier)
         .playVerses(
           _verses,
           startIndex: index,
-          reciterCode: QuranReciter.verseAudioCode(settings.reciterCode),
+          // The saved choice as it stands, not a per-ayah id squeezed out of
+          // it. Playback resolves against the reading; collapsing the id here
+          // first threw away a whole-surah recording that can be cut at the
+          // ayah and handed back al-Afasy, who recites Hafs.
+          reciterCode: settings.reciterCode,
         );
   }
 
@@ -572,8 +634,41 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       }
     });
 
+    // Change the reading and the page changes under you.
+    //
+    // The verses are read once, in `_load`, so without this the reader could
+    // pick Warsh from the settings sheet two taps away and go on looking at
+    // Hafs until they left the surah and came back — which reads as the
+    // setting not working.
+    ref.listen<MushafEdition>(
+      readerSettingsProvider.select((value) => value.edition),
+      (previous, next) {
+        if (previous == next) {
+          return;
+        }
+        // Whatever is reciting is reciting the reading that was just left.
+        // Letting it run is the exact thing this feature exists to prevent:
+        // one text on the page and another in the ear, unannounced.
+        unawaited(ref.read(quranAudioProvider.notifier).stop());
+        _warmedPages.clear();
+        setState(() {
+          _loading = true;
+          _editionUnavailable = false;
+        });
+        unawaited(_load());
+      },
+    );
+
     final bookmarks = ref.watch(bookmarksProvider).value ?? const [];
-    final bookmarkedKeys = bookmarks.map((item) => item.key).toSet();
+    // Which Hafs verses are bookmarked, per surah. Matched against everything
+    // a verse carries rather than by key, because a verse this reading merges
+    // answers to two Hafs numbers and a bookmark may be on either.
+    final bookmarkedVerses = <int, Set<int>>{};
+    for (final item in bookmarks) {
+      bookmarkedVerses
+          .putIfAbsent(item.surahNumber, () => <int>{})
+          .add(item.verseNumber);
+    }
 
     return Directionality(
       textDirection: context.appTextDirection,
@@ -606,11 +701,11 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
                 onChanged: _onZoom,
                 child:
                     settings.viewMode == ReaderViewMode.pages
-                        ? _pagesView(settings, palette, bookmarkedKeys, audio)
+                        ? _pagesView(settings, palette, bookmarkedVerses, audio)
                         : _readingView(
                           settings,
                           palette,
-                          bookmarkedKeys,
+                          bookmarkedVerses,
                           audio,
                         ),
               ),
@@ -743,6 +838,58 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   List<int> _pageRangeFor(List<QuranVerse> verses) =>
       List<int>.generate(QuranLocalService.pageCount, (index) => index + 1);
 
+  /// One leaf, in the reading the reader chose.
+  ///
+  /// The page-turning view walks the whole Mushaf, not only the surah that was
+  /// opened, so the verses it needs cannot all be loaded up front. It draws
+  /// what is in memory; when a leaf's surahs are not there yet it draws Hafs
+  /// for that one frame and fetches them, which is the only place in the app
+  /// where another reading appears without being asked for — and it lasts
+  /// until the fetch returns rather than for the length of a surah.
+  List<QuranVerse> _versesOnPage(int page) {
+    final hafs = QuranLocalService.versesOfPage(page);
+    final edition = ref.read(readerSettingsProvider).edition;
+    if (edition == MushafEdition.hafs || hafs.isEmpty) {
+      return hafs;
+    }
+
+    final ready = MushafReader.versesLikeSync(edition, hafs);
+    if (ready != null) {
+      return ready;
+    }
+
+    final surahs = {for (final verse in hafs) verse.surahNumber};
+    if (_warmedPages.add(page)) {
+      unawaited(
+        MushafReader.warmAll(surahs, edition: edition).then((_) {
+          if (!mounted) {
+            return;
+          }
+          if (MushafReader.versesLikeSync(edition, hafs) != null) {
+            setState(() {});
+            return;
+          }
+          // It did not arrive. Let the leaf be tried again later — left in
+          // the set for good, one dropped connection would pin it to Hafs
+          // for the session — but not now, and without a rebuild. Redrawing
+          // on a failure re-enters this method, which re-arms the fetch,
+          // which fails, which redraws: offline, that is a request to the
+          // provider as fast as the connection can refuse one.
+          Future<void>.delayed(_editionRetryDelay, () {
+            _warmedPages.remove(page);
+          });
+        }),
+      );
+    }
+    return hafs;
+  }
+
+  /// How long a leaf that failed to fetch waits before it may be tried again.
+  static const Duration _editionRetryDelay = Duration(seconds: 20);
+
+  /// Leaves already asked for, so a rebuild does not re-request them.
+  final Set<int> _warmedPages = <int>{};
+
   TapGestureRecognizer _recognizerFor(QuranVerse verse) {
     return _tapRecognizers.putIfAbsent(verse.key, () {
       return TapGestureRecognizer()
@@ -766,7 +913,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     List<QuranVerse> verses,
     ReaderSettings settings,
     ReaderPalette palette,
-    Set<String> bookmarkedKeys,
+    Map<int, Set<int>> bookmarkedVerses,
     QuranAudioState audio, {
     bool showBanners = true,
   }) {
@@ -818,7 +965,14 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
       final isSelected = _selectedKey == verse.key;
       final isPlaying = audio.currentKey == verse.key;
-      final isBookmarked = bookmarkedKeys.contains(verse.key);
+      // Bookmarks are stored in Hafs numbering so they survive a change of
+      // reading; matched by the page's own number, a Warsh reader's saved
+      // verses would all appear on the wrong ayat.
+      // Bookmarks are stored in Hafs numbering so they survive a change of
+      // reading; matched by the page's own number, a Warsh reader's saved
+      // verses would all appear on the wrong ayat.
+      final isBookmarked =
+          bookmarkedVerses[verse.surahNumber]?.any(verse.coversHafs) ?? false;
       final recognizer = _recognizerFor(verse);
 
       spans.add(
@@ -891,14 +1045,14 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   Widget _readingView(
     ReaderSettings settings,
     ReaderPalette palette,
-    Set<String> bookmarkedKeys,
+    Map<int, Set<int>> bookmarkedVerses,
     QuranAudioState audio,
   ) {
     final blocks = _verseBlocks(
       _verses,
       settings,
       palette,
-      bookmarkedKeys,
+      bookmarkedVerses,
       audio,
     );
 
@@ -935,7 +1089,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   Widget _pagesView(
     ReaderSettings settings,
     ReaderPalette palette,
-    Set<String> bookmarkedKeys,
+    Map<int, Set<int>> bookmarkedVerses,
     QuranAudioState audio,
   ) {
     if (_pages.isEmpty) {
@@ -954,12 +1108,12 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       onPageChanged: _onPageChanged,
       itemBuilder: (context, index) {
         final page = _pages[index];
-        final verses = QuranLocalService.versesOfPage(page);
+        final verses = _versesOnPage(page);
         final blocks = _verseBlocks(
           verses,
           settings,
           palette,
-          bookmarkedKeys,
+          bookmarkedVerses,
           audio,
         );
 
@@ -1003,7 +1157,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   /// Page mode has no scroll listener, so the header and the log update here.
   void _onPageChanged(int index) {
     final page = _pages[index];
-    final verses = QuranLocalService.versesOfPage(page);
+    final verses = _versesOnPage(page);
     if (verses.isEmpty) {
       return;
     }

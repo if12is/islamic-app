@@ -6,6 +6,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/bookmark_store.dart';
+import '../../data/services/mushaf_reader.dart';
 import '../../data/services/quran_local_service.dart';
 import '../providers/bookmarks_provider.dart';
 import 'surah_reader_page.dart';
@@ -78,9 +79,17 @@ class _NotesPageState extends ConsumerState<NotesPage> {
           ..writeln();
 
     for (final note in notes) {
-      final verse = QuranLocalService.verse(note.surahNumber, note.verseNumber);
+      // Bookmarks are stored in Hafs numbering whatever the reader reads, so
+      // the export quotes the verse as the reading in force writes it while
+      // still finding it by the number it was saved under.
+      await MushafReader.warm(note.surahNumber);
+      final verse = MushafReader.verseOf(note.surahNumber, note.verseNumber);
+      final number = MushafReader.numberLabelOf(
+        note.surahNumber,
+        note.verseNumber,
+      );
       buffer
-        ..writeln('## ${note.surahName} — ${note.verseNumber}')
+        ..writeln('## ${note.surahName} — $number')
         ..writeln()
         ..writeln('> ${verse.text}')
         ..writeln()
@@ -122,7 +131,8 @@ class _NotesPageState extends ConsumerState<NotesPage> {
     );
 
     if (saved == true) {
-      final verse = QuranLocalService.verse(
+      await MushafReader.warm(bookmark.surahNumber);
+      final verse = MushafReader.verseOf(
         bookmark.surahNumber,
         bookmark.verseNumber,
       );

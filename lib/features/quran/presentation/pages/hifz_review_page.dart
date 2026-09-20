@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/app_scaffold.dart';
+import '../../data/services/mushaf_reader.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../domain/entities/hifz_item.dart';
 import '../providers/hifz_provider.dart';
@@ -33,10 +34,28 @@ class _HifzReviewPageState extends ConsumerState<HifzReviewPage> {
 
   bool get _isLast => _index >= widget.items.length - 1;
 
-  List<QuranVerse> get _verses => [
-    for (var ayah = _current.fromAyah; ayah <= _current.toAyah; ayah++)
-      QuranLocalService.verse(_current.surahNumber, ayah),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _warm();
+  }
+
+  /// Fetch the passage in the chosen reading, then redraw.
+  ///
+  /// Memorising is the one place where reciting from the wrong text is worst:
+  /// it is not a moment's confusion but something learnt by heart wrong.
+  Future<void> _warm() async {
+    await MushafReader.warm(_current.surahNumber);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  List<QuranVerse> get _verses => MushafReader.rangeOf(
+    _current.surahNumber,
+    _current.fromAyah,
+    _current.toAyah,
+  );
 
   Future<void> _grade(HifzGrade grade) async {
     await ref.read(hifzProvider.notifier).grade(_current, grade);
@@ -52,6 +71,8 @@ class _HifzReviewPageState extends ConsumerState<HifzReviewPage> {
       _index++;
       _mask = HifzMask.firstLetters;
     });
+    // The next passage can be in a different surah, which may not be fetched.
+    await _warm();
   }
 
   Future<void> _listen() async {
@@ -63,7 +84,7 @@ class _HifzReviewPageState extends ConsumerState<HifzReviewPage> {
           fromIndex: 0,
           toIndex: _verses.length - 1,
           repeatCount: 3,
-          reciterCode: QuranReciter.verseAudioCode(settings.reciterCode),
+          reciterCode: settings.reciterCode,
         );
   }
 

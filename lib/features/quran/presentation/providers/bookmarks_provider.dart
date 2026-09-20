@@ -36,10 +36,19 @@ class BookmarksNotifier extends AsyncNotifier<List<QuranBookmark>> {
     BookmarkTag tag = BookmarkTag.favorite,
     String note = '',
   }) async {
-    final existing = await _store.find(verse.surahNumber, verse.numberInSurah);
+    // Keyed in Hafs, shown in whatever reading is open.
+    //
+    // A bookmark saved while reading Warsh and keyed by the Warsh number would
+    // point at a different ayah the moment the reader switched to Hafs — and
+    // at every ayah after it too, since the readings drift apart within a
+    // surah rather than by a constant.
+    final existing = await _store.find(
+      verse.surahNumber,
+      verse.hafsVerseNumber,
+    );
     final bookmark = QuranBookmark(
       surahNumber: verse.surahNumber,
-      verseNumber: verse.numberInSurah,
+      verseNumber: verse.hafsVerseNumber,
       surahName: verse.surahNameAr,
       createdAt: existing?.createdAt ?? DateTime.now(),
       tag: tag,
@@ -57,16 +66,24 @@ class BookmarksNotifier extends AsyncNotifier<List<QuranBookmark>> {
   }
 
   /// Toggle a plain bookmark on a verse.
+  ///
+  /// By its Hafs address, like [save]. Addressed by the number on the page, a
+  /// toggle in Warsh would fail to find the bookmark it had just written and
+  /// save a second one beside it.
   Future<bool> toggle(QuranVerse verse) async {
-    final existing = await _store.find(verse.surahNumber, verse.numberInSurah);
+    final existing = await _store.find(
+      verse.surahNumber,
+      verse.hafsVerseNumber,
+    );
     if (existing != null) {
-      await remove(verse.surahNumber, verse.numberInSurah);
+      await remove(verse.surahNumber, verse.hafsVerseNumber);
       return false;
     }
     await save(verse: verse);
     return true;
   }
 
+  /// Whether a **Hafs**-addressed verse is bookmarked.
   bool contains(int surahNumber, int verseNumber) {
     final items = state.value;
     if (items == null) {

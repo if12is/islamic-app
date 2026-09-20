@@ -59,7 +59,7 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
     final store = ref.read(bookmarkStoreProvider);
     final found = await store.find(
       widget.verse.surahNumber,
-      widget.verse.numberInSurah,
+      widget.verse.hafsVerseNumber,
     );
     if (!mounted) {
       return;
@@ -75,7 +75,8 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
     if (_bookmark != null) {
       await notifier.remove(
         widget.verse.surahNumber,
-        widget.verse.numberInSurah,
+        // Stored in Hafs, so removed by the same address it was saved under.
+        widget.verse.hafsVerseNumber,
       );
       if (mounted) {
         setState(() => _bookmark = null);
@@ -291,10 +292,14 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder:
+                              // Hafs, like everything handed to another
+                              // screen: the number on this page is the
+                              // reading's own, and every screen that takes a
+                              // verse reference reads it as Hafs.
                               (_) => RecitationPage(
                                 surahNumber: verse.surahNumber,
-                                fromAyah: verse.numberInSurah,
-                                toAyah: verse.numberInSurah,
+                                fromAyah: verse.hafsVerseNumber,
+                                toAyah: verse.hafsVerseNumber,
                               ),
                         ),
                       );
@@ -309,8 +314,11 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
                           .read(hifzProvider.notifier)
                           .add(
                             surahNumber: verse.surahNumber,
-                            fromAyah: verse.numberInSurah,
-                            toAyah: verse.numberInSurah,
+                            // Stored in Hafs, and read back in Hafs by the
+                            // review screen. Saving the Warsh number here
+                            // would come back a verse or two out.
+                            fromAyah: verse.hafsVerseNumber,
+                            toAyah: verse.hafsVerseNumber,
                           );
                       if (!mounted) {
                         return;
@@ -354,7 +362,7 @@ class _AyahActionsSheetState extends ConsumerState<AyahActionsSheet> {
                       AyahVideoStudioPage.open(
                         context,
                         surahNumber: verse.surahNumber,
-                        fromVerse: verse.numberInSurah,
+                        fromVerse: verse.hafsVerseNumber,
                       );
                     },
                   ),
