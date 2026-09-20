@@ -85,9 +85,8 @@ class ReadingMark {
         page > 604) {
       return null;
     }
-    DateTime time(Object? value) => DateTime.fromMillisecondsSinceEpoch(
-      (value as num?)?.toInt() ?? 0,
-    );
+    DateTime time(Object? value) =>
+        DateTime.fromMillisecondsSinceEpoch((value as num?)?.toInt() ?? 0);
     return ReadingMark(
       id: id,
       surah: surah,
@@ -139,13 +138,11 @@ class ReadingHistoryStore {
     }
   }
 
-  static Future<void> write(
-    SharedPreferences prefs,
-    List<ReadingMark> marks,
-  ) => prefs.setString(
-    key,
-    jsonEncode([for (final mark in marks) mark.toJson()]),
-  );
+  static Future<void> write(SharedPreferences prefs, List<ReadingMark> marks) =>
+      prefs.setString(
+        key,
+        jsonEncode([for (final mark in marks) mark.toJson()]),
+      );
 
   /// Move a reading session's mark to where it now is.
   ///

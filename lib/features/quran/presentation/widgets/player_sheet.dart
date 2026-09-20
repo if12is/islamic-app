@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../data/services/verse_reciters.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
+import 'recitation_picker_sheet.dart';
 
 /// Full playback controls: reciter, speed, repetition, and sleep timer.
 ///
@@ -62,6 +64,7 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
     final audio = ref.watch(quranAudioProvider);
     final controller = ref.read(quranAudioProvider.notifier);
     final settings = ref.watch(readerSettingsProvider);
+    final reciter = VerseReciters.find(settings.reciterCode);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Directionality(
@@ -312,25 +315,24 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet> {
                 ),
 
               const Divider(height: 32),
-              DropdownButtonFormField<String>(
-                initialValue: QuranReciter.verseAudioCode(settings.reciterCode),
-                isExpanded: true,
-                decoration: InputDecoration(labelText: context.tr('reciter')),
-                items: [
-                  for (final reciter in QuranReciter.all)
-                    DropdownMenuItem(
-                      value: reciter.code,
-                      child: Text(
-                        context.isAppRtl ? reciter.nameAr : reciter.nameEn,
-                      ),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value == null) {
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(context.tr('reciter')),
+                subtitle: reciter == null ? null : Text(reciter.label),
+                trailing: const Icon(Icons.expand_more),
+                onTap: () async {
+                  final chosen = await RecitationPickerSheet.showVerse(
+                    context,
+                    selectedId: settings.reciterCode,
+                    edition: settings.edition,
+                  );
+                  if (chosen == null) {
                     return;
                   }
-                  ref.read(readerSettingsProvider.notifier).setReciter(value);
-                  controller.setReciter(value);
+                  ref
+                      .read(readerSettingsProvider.notifier)
+                      .setReciter(chosen.id);
+                  controller.setReciter(chosen.id);
                 },
               ),
             ],

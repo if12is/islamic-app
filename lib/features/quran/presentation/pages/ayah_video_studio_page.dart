@@ -19,7 +19,7 @@ import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import '../../data/services/verse_reciters.dart';
 import '../widgets/ayah_video_frame.dart';
-import '../widgets/verse_reciter_sheet.dart';
+import '../widgets/recitation_picker_sheet.dart';
 
 /// Compose a passage into a video or a card, then share it.
 ///
@@ -620,7 +620,11 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
   }
 
   Future<void> _pickReciter() async {
-    final chosen = await VerseReciterSheet.show(context, _spec.reciterCode);
+    final chosen = await RecitationPickerSheet.showVerse(
+      context,
+      selectedId: _spec.reciterCode,
+      edition: ref.read(readerSettingsProvider).edition,
+    );
     if (chosen != null) {
       _update(_spec.copyWith(reciterCode: chosen.id));
       ref.read(readerSettingsProvider.notifier).setReciter(chosen.id);

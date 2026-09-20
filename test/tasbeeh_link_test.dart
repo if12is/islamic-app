@@ -39,9 +39,18 @@ void main() {
   group('The misbaha and the wird count as one', () {
     test('the phrases both hold are matched on their words', () {
       // Vowelled in the Hisn, bare on the beads: still the same dhikr.
-      expect(TasbeehLink.zekrForPhrase(0, category)?.textAr, 'سُبْحَانَ اللَّهِ');
-      expect(TasbeehLink.zekrForPhrase(1, category)?.textAr, 'الْحَمْدُ لِلَّهِ');
-      expect(TasbeehLink.zekrForPhrase(3, category)?.textAr, 'اللَّهُ أَكْبَرُ');
+      expect(
+        TasbeehLink.zekrForPhrase(0, category)?.textAr,
+        'سُبْحَانَ اللَّهِ',
+      );
+      expect(
+        TasbeehLink.zekrForPhrase(1, category)?.textAr,
+        'الْحَمْدُ لِلَّهِ',
+      );
+      expect(
+        TasbeehLink.zekrForPhrase(3, category)?.textAr,
+        'اللَّهُ أَكْبَرُ',
+      );
     });
 
     test('a longer dhikr is not mistaken for a shorter one', () {

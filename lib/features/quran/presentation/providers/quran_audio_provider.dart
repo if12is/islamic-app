@@ -9,65 +9,16 @@ import '../../../../core/services/quran_media.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/verse_reciters.dart';
+import '../../domain/entities/riwaya.dart';
+import 'reader_settings_provider.dart';
 
-/// Reciters available for verse-by-verse playback (islamic.network CDN).
+/// Whether a saved reciter id can be cut at the ayah, or only played as a surah.
+///
+/// The voices themselves live in [ReciterCatalogue] and [VerseReciters]. This
+/// type is only the questions playback asks before building a URL, so a
+/// whole-surah id is never requested as a verse.
 class QuranReciter {
-  const QuranReciter({
-    required this.code,
-    required this.nameAr,
-    required this.nameEn,
-  });
-
-  final String code;
-  final String nameAr;
-  final String nameEn;
-
-  static const List<QuranReciter> all = [
-    QuranReciter(
-      code: 'ar.alafasy',
-      nameAr: 'مشاري العفاسي',
-      nameEn: 'Mishary Alafasy',
-    ),
-    QuranReciter(
-      code: 'ar.mahermuaiqly',
-      nameAr: 'ماهر المعيقلي',
-      nameEn: 'Maher Al Muaiqly',
-    ),
-    QuranReciter(
-      code: 'ar.husary',
-      nameAr: 'محمود الحصري',
-      nameEn: 'Mahmoud Al-Husary',
-    ),
-    QuranReciter(
-      code: 'ar.minshawi',
-      nameAr: 'محمد المنشاوي',
-      nameEn: 'Al-Minshawi',
-    ),
-    QuranReciter(
-      code: 'ar.abdurrahmaansudais',
-      nameAr: 'عبدالرحمن السديس',
-      nameEn: 'Abdurrahman As-Sudais',
-    ),
-    QuranReciter(
-      code: 'ar.shaatree',
-      nameAr: 'أبو بكر الشاطري',
-      nameEn: 'Abu Bakr Ash-Shaatree',
-    ),
-    QuranReciter(
-      code: 'ar.ahmedajamy',
-      nameAr: 'أحمد العجمي',
-      nameEn: 'Ahmed Al-Ajamy',
-    ),
-  ];
-
-  static QuranReciter byCode(String code) {
-    for (final reciter in all) {
-      if (reciter.code == code) {
-        return reciter;
-      }
-    }
-    return QuranReciter(code: code, nameAr: code, nameEn: code);
-  }
+  QuranReciter._();
 
   /// Whether this id names a voice recorded ayah by ayah.
   ///
@@ -348,15 +299,40 @@ class QuranAudioController extends Notifier<QuranAudioState> {
       AppAudio.claim(AudioOwner.verses);
       await QuranMedia.prepareSession();
       final art = await QuranMedia.coverUri();
-      final verseCode = QuranReciter.verseAudioCode(reciterCode);
-      final reciterName = VerseReciters.byId(verseCode).nameAr;
+      // Resolve the voice against the reading, not just against the list.
+      //
+      // The plain fallback answers "no per-ayah audio" with al-Afasy, who
+      // recites Hafs. For a reader on the Warsh mushaf that is the original
+      // complaint in its last hiding place: a saved whole-surah id, nothing to
+      // play it with, and Hafs over a Warsh page without a word said.
+      final edition = ref.read(readerSettingsProvider).edition;
+      final saved = VerseReciters.find(reciterCode);
+      final verseCode =
+          saved != null && edition.accepts(saved.riwayaId)
+              ? saved.id
+              : VerseReciters.defaultFor(edition);
+      final voice = VerseReciters.byId(verseCode);
+      final reciterName = voice.nameAr;
+
+      // Which number this particular recording answers to.
+      //
+      // A reading and a recording of it do not have to agree on where the
+      // verses end, and two of the three Warsh recitations on this host are
+      // filed under Hafs numbers. Asking one of those for a Warsh verse number
+      // does not fail — it returns the ayah next door, and goes on doing it —
+      // so the file to fetch is chosen by the recording's own counting.
+      int fileNumber(QuranVerse verse) =>
+          voice.counting == VerseCounting.hafs
+              ? verse.hafsVerseNumber
+              : verse.numberInSurah;
+
       final sources = [
         for (final verse in verses)
           AudioSource.uri(
             Uri.parse(
               QuranLocalService.audioUrlForVerse(
                 verse.surahNumber,
-                verse.numberInSurah,
+                fileNumber(verse),
                 reciterCode: verseCode,
               ),
             ),

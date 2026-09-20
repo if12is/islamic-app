@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/arabic_numerals.dart';
+import '../../../../core/widgets/app_cards.dart';
+import '../../data/services/warsh_mushaf_service.dart';
+import '../../domain/entities/riwaya.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
-import 'reciter_picker_sheet.dart';
+import 'recitation_picker_sheet.dart';
 import 'tajweed_text.dart';
 
 /// The reading control panel: typography, surface, motion, and reciter.
@@ -46,6 +53,8 @@ class ReaderSettingsSheet extends ConsumerWidget {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
+              const _RiwayaSection(),
+              const SizedBox(height: 24),
               _preview(context, settings, palette),
               const SizedBox(height: 24),
 
@@ -204,6 +213,7 @@ class ReaderSettingsSheet extends ConsumerWidget {
               const SizedBox(height: 8),
               ReciterChooser(
                 selectedId: settings.reciterCode,
+                edition: settings.edition,
                 onSelected: (voice) {
                   notifier.setReciter(voice.id);
                   ref.read(quranAudioProvider.notifier).setReciter(voice.id);
@@ -345,6 +355,168 @@ class ReaderSettingsSheet extends ConsumerWidget {
               ).textTheme.labelSmall?.copyWith(color: palette.text),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// How many of a fetched mushaf's 114 surahs are already on this device.
+String _mushafOnDeviceLine(BuildContext context, int done) {
+  return AppLocalizations.translate(
+    Localizations.localeOf(context).languageCode,
+    'mushaf_on_device',
+    replacements: {
+      'done': localizeDigits(context, '$done'),
+      'total': localizeDigits(context, '114'),
+    },
+  );
+}
+
+/// The reading switch. It sits above font and spacing because it changes
+/// the words on the page, not only how they look.
+class _RiwayaSection extends ConsumerStatefulWidget {
+  const _RiwayaSection();
+
+  @override
+  ConsumerState<_RiwayaSection> createState() => _RiwayaSectionState();
+}
+
+class _RiwayaSectionState extends ConsumerState<_RiwayaSection> {
+  int? _cached;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshCount());
+  }
+
+  Future<void> _refreshCount() async {
+    final edition = ref.read(readerSettingsProvider).edition;
+    if (!WarshMushafService.supports(edition)) {
+      if (mounted) {
+        setState(() => _cached = null);
+      }
+      return;
+    }
+    try {
+      final count = await WarshMushafService.cachedCount(edition);
+      if (mounted) {
+        setState(() => _cached = count);
+      }
+    } catch (e) {
+      AppLogger.warning('Could not count cached mushaf surahs: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(readerSettingsProvider);
+    final notifier = ref.read(readerSettingsProvider.notifier);
+    final tokens = context.tokens;
+
+    ref.listen<MushafEdition>(
+      readerSettingsProvider.select((value) => value.edition),
+      (previous, next) => _refreshCount(),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            context.tr('riwaya'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        for (final edition in MushafEdition.values) ...[
+          _RiwayaCard(
+            edition: edition,
+            selected: settings.edition == edition,
+            onTap: () => notifier.setEdition(edition),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+        if (WarshMushafService.supports(settings.edition) && _cached != null)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: Text(
+              _mushafOnDeviceLine(context, _cached!),
+              style: AppTextStyles.caption(context, color: tokens.inkMuted),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RiwayaCard extends StatelessWidget {
+  const _RiwayaCard({
+    required this.edition,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final MushafEdition edition;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final note =
+        edition == MushafEdition.hafs
+            ? context.tr('riwaya_hafs_note')
+            : context.tr('riwaya_warsh_note');
+
+    return Semantics(
+      selected: selected,
+      child: AppCard(
+        raised: selected,
+        accent: selected ? tokens.brandSoft : null,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                size: 28,
+                color: selected ? tokens.brand : tokens.inkFaint,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      edition.nameAr,
+                      textDirection: TextDirection.rtl,
+                      style: AppTextStyles.body(
+                        context,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: tokens.ink,
+                      ),
+                    ),
+                    Text(
+                      note,
+                      style: AppTextStyles.caption(
+                        context,
+                        fontSize: 14,
+                        color: tokens.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

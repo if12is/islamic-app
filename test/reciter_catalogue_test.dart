@@ -165,9 +165,10 @@ void main() {
         'محمود خليل الحصري',
       );
       expect(
-        ReciterCatalogue.displayName('mp3quran:30:41', voices).contains(
-          'mp3quran',
-        ),
+        ReciterCatalogue.displayName(
+          'mp3quran:30:41',
+          voices,
+        ).contains('mp3quran'),
         isFalse,
       );
     });

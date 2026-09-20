@@ -222,10 +222,25 @@ class AppLocalizations {
       'reciter_search_hint': 'Search by name…',
       'verse_reciter_count': '{count} voices recorded verse by verse',
       'reciter_refresh': 'Refresh the list',
+      'riwaya': 'Reading',
+      'riwaya_hafs_note': 'The reading most of the world reads',
+      'riwaya_warsh_note': 'Read across North and West Africa',
+      'mushaf_on_device': '{done} of {total} surahs on this device',
+      'download_mushaf': 'Download the mushaf',
+      'delete_mushaf': 'Delete the mushaf',
+      'mushaf_downloading': 'Downloading the mushaf…',
+      'mushaf_download_failed':
+          'The mushaf could not be downloaded. Try again.',
+      'all_riwayat': 'All',
+      'no_reciters_for_surah':
+          'No reciter has recorded this surah in this reading.',
       'divine_names': 'The ninety-nine names',
       'divine_names_search_hint': 'Search a name or its meaning…',
       // Tajweed colouring.
       'reader_paper': 'Page colour',
+      'mushaf_unavailable':
+          'The {riwaya} mushaf is not on this device yet, so Hafs is shown. '
+          'Connect once to download it.',
       // The reading page's walkthrough.
       'tour_never_again': 'I know these',
       'tour_next': 'Next',
@@ -1532,10 +1547,23 @@ class AppLocalizations {
       'reciter_search_hint': 'ابحث بالاسم…',
       'verse_reciter_count': '{count} صوتاً مسجَّلاً آيةً آية',
       'reciter_refresh': 'حدّث القائمة',
+      'riwaya': 'الرواية',
+      'riwaya_hafs_note': 'القراءة التي يقرأ بها أكثر العالم',
+      'riwaya_warsh_note': 'تُقرأ في شمال أفريقيا وغربها',
+      'mushaf_on_device': '{done} من {total} سورة على الجهاز',
+      'download_mushaf': 'تنزيل المصحف',
+      'delete_mushaf': 'حذف المصحف',
+      'mushaf_downloading': 'جارٍ تنزيل المصحف…',
+      'mushaf_download_failed': 'لم يكتمل تنزيل المصحف. حاول مرة أخرى.',
+      'all_riwayat': 'الكل',
+      'no_reciters_for_surah': 'لا يوجد قارئ سجّل هذه السورة بهذه الرواية.',
       'divine_names': 'أسماء الله الحسنى',
       'divine_names_search_hint': 'ابحث عن اسم أو معناه…',
       // تلوين التجويد.
       'reader_paper': 'لون الصفحة',
+      'mushaf_unavailable':
+          'مصحف {riwaya} غير منزَّل على الجهاز، والمعروض الآن حفص. اتصل '
+          'بالإنترنت مرة واحدة لتنزيله.',
       // جولة صفحة القراءة.
       'tour_never_again': 'أعرفها، لا تُظهرها',
       // «القادمة» مؤنّثة، وهي الصواب في «السورة القادمة» لا في زر ينتقل
@@ -1778,13 +1806,13 @@ class AppLocalizations {
       'prayer_log_clear': 'امسح التسجيل',
       'prayer_log_not_yet': 'لم أصلّها بعد',
       'follow_up_reminders': 'تذكير حتى تُنجِزها',
-      'follow_up_reminders_desc':
-          'تعود حتى تسجّل أو تقرأ، ثم تتوقف وحدها.',
+      'follow_up_reminders_desc': 'تعود حتى تسجّل أو تقرأ، ثم تتوقف وحدها.',
       'prayer_log_reminder': 'اسألني كيف صلّيت',
       'prayer_log_reminder_desc':
           'بعد كل صلاة، ثم مرة أخرى ما دامت لم تُسجَّل. لا شيء بعد منتصف الليل.',
       'prayer_log_reminder_delay': 'أول تذكير بعد الأذان بـ:',
-      'prayer_log_reminder_repeat': 'إن لم تُسجَّل بعد، أعِد التذكير كل ساعتين:',
+      'prayer_log_reminder_repeat':
+          'إن لم تُسجَّل بعد، أعِد التذكير كل ساعتين:',
       'prayer_log_repeat_0': 'بلا تكرار',
       'prayer_log_repeat_1': 'مرة',
       'prayer_log_repeat_2': 'مرتين',
@@ -1805,7 +1833,8 @@ class AppLocalizations {
       'notif_kahf_body':
           '«من قرأ سورة الكهف في يوم الجمعة أضاء له من النور ما بين الجمعتين» '
           '— رواه الحاكم، وصححه الألباني.',
-      'notif_kahf_again_body': 'لم تقرأ سورة الكهف اليوم بعد، وما زال في الوقت متّسع.',
+      'notif_kahf_again_body':
+          'لم تقرأ سورة الكهف اليوم بعد، وما زال في الوقت متّسع.',
       'notif_kahf_last_body': 'اقترب المغرب ولم تقرأ سورة الكهف بعد.',
       'notif_kahf_read': 'اقرأ الآن',
       'notif_kahf_done': 'قرأتها',

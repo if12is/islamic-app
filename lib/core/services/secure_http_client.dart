@@ -17,6 +17,10 @@ class SecureHttpClient {
     // this client, so leaving it out breaks every export.
     'everyayah.com',
     'api.github.com',
+    // The Warsh mushaf, and every other riwayah whose text the reader can be
+    // shown. Answers 200 directly with no redirect, so it needs no exception
+    // to the rule below.
+    'api.quranpedia.net',
     // The `www` matters: the bare domain answers 301, and this client does not
     // follow redirects, so mp3quran.net would be rejected as a bad response.
     'www.mp3quran.net',

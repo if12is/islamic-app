@@ -358,7 +358,8 @@ void main() {
         );
       }
       // Before Maghrib, all of them: the last one says so.
-      final maghrib = daysFrom(friday, days: 1).first.timeOf(PrayerIds.maghrib)!;
+      final maghrib =
+          daysFrom(friday, days: 1).first.timeOf(PrayerIds.maghrib)!;
       expect(kahf.every((item) => item.time.isBefore(maghrib)), isTrue);
       expect(
         kahf.first.actions.map((action) => action.id),
@@ -490,14 +491,21 @@ void main() {
         final adhan = day.timeOf(PrayerIds.fajr)!;
         expect(fajr, hasLength(3), reason: 'the first ask and two more');
         expect(fajr[0].time, adhan.add(const Duration(minutes: 30)));
-        expect(fajr[1].time, fajr[0].time.add(NotificationPlanner.prayerLogGap));
-        expect(fajr[2].time, fajr[1].time.add(NotificationPlanner.prayerLogGap));
+        expect(
+          fajr[1].time,
+          fajr[0].time.add(NotificationPlanner.prayerLogGap),
+        );
+        expect(
+          fajr[2].time,
+          fajr[1].time.add(NotificationPlanner.prayerLogGap),
+        );
         expect(fajr.first.title, contains('الفجر'));
         expect(fajr.first.payload, 'log:fajr:2026-06-15');
-        expect(
-          fajr.first.actions.map((action) => action.id),
-          ['log_mosque', 'log_alone', 'log_missed'],
-        );
+        expect(fajr.first.actions.map((action) => action.id), [
+          'log_mosque',
+          'log_alone',
+          'log_missed',
+        ]);
         expect(
           fajr.map((item) => item.id),
           everyElement(
@@ -519,7 +527,10 @@ void main() {
           languageCode: 'ar',
         );
 
-        expect(plan.where((item) => item.kind == NotificationKind.prayer), isEmpty);
+        expect(
+          plan.where((item) => item.kind == NotificationKind.prayer),
+          isEmpty,
+        );
         expect(asksAbout(plan, PrayerIds.dhuhr), isNotEmpty);
       });
 

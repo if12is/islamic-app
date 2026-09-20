@@ -14,7 +14,10 @@ import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../data/bookmark_store.dart';
+import '../../../../core/theme/design_tokens.dart';
+import '../../data/services/mushaf_reader.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../domain/entities/riwaya.dart';
 import '../../domain/tajweed_palette.dart';
 import '../providers/bookmarks_provider.dart';
 import '../providers/quran_audio_provider.dart';
@@ -87,6 +90,12 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   List<QuranVerse> _verses = const [];
   String? _selectedKey;
   bool _loading = true;
+
+  /// The chosen reading could not be loaded, so what is on screen is Hafs.
+  ///
+  /// Shown rather than swallowed. A reader who asked for Warsh and is quietly
+  /// given Hafs has no way to tell, and would recite from it.
+  bool _editionUnavailable = false;
   String _errorKey = '';
 
   int _headerJuz = 1;
@@ -185,7 +194,9 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
 
   Future<void> _load() async {
     try {
-      final verses = switch (widget) {
+      final edition = ref.read(readerSettingsProvider).edition;
+
+      var verses = switch (widget) {
         SurahReaderPage(surahNumber: final surah?) =>
           QuranLocalService.versesOfSurah(surah),
         SurahReaderPage(juzNumber: final juz?) => QuranLocalService.versesOfJuz(
@@ -197,6 +208,26 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
           QuranLocalService.versesOfPage(page),
         _ => const <QuranVerse>[],
       };
+
+      // A whole surah is the only opening this app has a second mushaf for.
+      // A juz, a hizb or a page crosses surah boundaries, and the other
+      // readings are fetched and paginated one surah at a time — so those
+      // stay on Hafs rather than showing a mixture, which would be worse than
+      // showing the reading the reader did not pick.
+      if (edition != MushafEdition.hafs && widget.surahNumber != null) {
+        final other = await MushafReader.versesOfSurah(
+          edition,
+          widget.surahNumber!,
+        );
+        if (other.isNotEmpty) {
+          verses = other;
+        } else if (mounted) {
+          // Offline and not yet downloaded. Saying so is the point: Hafs under
+          // a Warsh heading is the silent substitution this change exists to
+          // end.
+          _editionUnavailable = true;
+        }
+      }
 
       _verseKeys.clear();
       for (final verse in verses) {
@@ -600,6 +631,18 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
                     fontSize: settings.fontSize,
                     visible: _zoomBadgeUntil != null,
                   ),
+                ),
+              ),
+            // Said out loud, because the alternative is a reader reciting Hafs
+            // from a page they asked to be Warsh.
+            if (_editionUnavailable && !_loading)
+              Positioned(
+                left: AppSpacing.md,
+                right: AppSpacing.md,
+                top: 12,
+                child: _EditionNotice(
+                  palette: palette,
+                  edition: settings.edition,
                 ),
               ),
           ],
@@ -1328,6 +1371,54 @@ class _SurahHeaderPainter extends CustomPainter {
 /// rest of the app uses for a selected state, in the reader's own palette
 /// rather than the app's, because this bar sits on paper or on night.
 /// One control on the reader's bar: a glyph with its name under it.
+/// "This surah of the Warsh mushaf is not on the device yet."
+///
+/// The reading the reader chose could not be loaded, so Hafs is on screen.
+/// That has to be stated. A page of one reading under the heading of another
+/// is the failure this whole change is about, and it is invisible to anyone
+/// who does not already know the text by heart.
+class _EditionNotice extends StatelessWidget {
+  const _EditionNotice({required this.palette, required this.edition});
+
+  final ReaderPalette palette;
+  final MushafEdition edition;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: AppRadii.mdAll,
+        border: Border.all(color: palette.accent.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_rounded, size: 18, color: palette.accent),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              AppLocalizations.translate(
+                Localizations.localeOf(context).languageCode,
+                'mushaf_unavailable',
+                replacements: {'riwaya': edition.nameAr},
+              ),
+              style: TextStyle(
+                fontFamily: AppTheme.fontFamily,
+                fontSize: 12.5,
+                color: palette.text,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ReaderQuickButton extends StatelessWidget {
   const _ReaderQuickButton({
     required this.palette,

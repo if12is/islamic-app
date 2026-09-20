@@ -165,9 +165,9 @@ class NotificationRouter {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(context.tr('kahf_marked_read'))),
-    );
+    ScaffoldMessenger.maybeOf(
+      context,
+    )?.showSnackBar(SnackBar(content: Text(context.tr('kahf_marked_read'))));
   }
 
   static Widget? _pageFor(String payload, NavigatorState navigator) {

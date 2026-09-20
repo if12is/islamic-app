@@ -50,4 +50,18 @@ void main() {
           '${missing.entries.map((e) => '${e.key}: ${e.value.join(', ')}').join('\n')}',
     );
   });
+
+  test('the mushaf count line fills its placeholders', () {
+    for (final language in ['en', 'ar']) {
+      final line = AppLocalizations.translate(
+        language,
+        'mushaf_on_device',
+        replacements: {'done': '3', 'total': '114'},
+      );
+      expect(line, isNot(contains('{done}')), reason: language);
+      expect(line, isNot(contains('{total}')), reason: language);
+      expect(line, contains('3'), reason: language);
+      expect(line, contains('114'), reason: language);
+    }
+  });
 }

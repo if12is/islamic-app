@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/features/quran/data/services/quran_local_service.dart';
+import 'package:islamic_app/features/quran/data/services/reciter_catalogue.dart';
 import 'package:islamic_app/features/quran/presentation/providers/quran_audio_provider.dart';
 
 void main() {
@@ -9,27 +10,27 @@ void main() {
   // PlayerException. Verified against the live hosts before this was written.
   group('Whole-surah audio', () {
     test('every reciter offered in the app has a host', () {
-      for (final reciter in QuranReciter.all) {
+      for (final voice in ReciterCatalogue.bundled) {
         expect(
-          QuranReciter.hasSurahAudio(reciter.code),
+          QuranReciter.hasSurahAudio(voice.id),
           isTrue,
           reason:
-              '${reciter.code} is offered in the picker but has no surah host, '
+              '${voice.id} is offered in the picker but has no surah host, '
               'so choosing it would fail on every surah',
         );
       }
     });
 
     test('no reciter is left pointing at the CDN that refuses them', () {
-      for (final reciter in QuranReciter.all) {
+      for (final voice in ReciterCatalogue.bundled) {
         final url = QuranLocalService.audioUrlForSurah(
           1,
-          reciterCode: reciter.code,
+          reciterCode: voice.id,
         );
         expect(
           url,
           isNot(contains('audio-surah')),
-          reason: '${reciter.code} still uses the 403 path',
+          reason: '${voice.id} still uses the 403 path',
         );
       }
     });

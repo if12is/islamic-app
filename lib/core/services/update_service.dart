@@ -287,9 +287,7 @@ class UpdateService {
   ///
   /// Anything malformed yields nothing rather than a half-read list.
   static Map<String, List<String>> parseWhatsNew(String body) {
-    final match = RegExp(
-      r'<!--\s*whats-new\s*([\s\S]*?)-->',
-    ).firstMatch(body);
+    final match = RegExp(r'<!--\s*whats-new\s*([\s\S]*?)-->').firstMatch(body);
     if (match == null) {
       return const {};
     }
@@ -304,13 +302,14 @@ class UpdateService {
         if (raw is! List) {
           continue;
         }
-        final lines = [
-          for (final line in raw)
-            if (line is String && line.trim().isNotEmpty)
-              line.trim().length > whatsNewLineLimit
-                  ? '${line.trim().substring(0, whatsNewLineLimit)}…'
-                  : line.trim(),
-        ].take(whatsNewMaxLines).toList();
+        final lines =
+            [
+              for (final line in raw)
+                if (line is String && line.trim().isNotEmpty)
+                  line.trim().length > whatsNewLineLimit
+                      ? '${line.trim().substring(0, whatsNewLineLimit)}…'
+                      : line.trim(),
+            ].take(whatsNewMaxLines).toList();
         if (lines.isNotEmpty) {
           result[language] = lines;
         }

@@ -26,7 +26,7 @@ import 'notes_page.dart';
 import 'reading_stats_page.dart';
 import '../widgets/khatmah_card.dart';
 import '../widgets/last_read_card.dart';
-import '../widgets/reciter_picker_sheet.dart';
+import '../widgets/recitation_picker_sheet.dart';
 import 'recitation_page.dart';
 import 'surah_reader_page.dart';
 
@@ -339,9 +339,11 @@ class _QuranPageState extends ConsumerState<QuranPage> {
     // Only when nothing is loaded: pausing what is already playing must not
     // open a sheet.
     if (!settings.reciterChosen && playing.surahNumber != surahId) {
-      final chosen = await ReciterPickerSheet.show(
+      final chosen = await RecitationPickerSheet.showSurah(
         context,
-        settings.reciterCode,
+        selectedId: settings.reciterCode,
+        edition: settings.edition,
+        surahNumber: surahId,
       );
       if (chosen == null || !mounted) {
         return;

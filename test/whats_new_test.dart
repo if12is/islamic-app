@@ -16,18 +16,19 @@ Rolling development APK. This release is replaced on every push to `master`.
 ''';
 
     test('the list is read out of the release body', () {
-      final release = UpdateService.parseRelease({
-        'tag_name': 'apk-latest',
-        'name': 'Latest development APK (1.4.0+3518719)',
-        'body': body,
-        'assets': [
-          {
-            'name': 'islamic-app-1.4.0-build3518719-arm64-v8a.apk',
-            'browser_download_url': 'https://example.invalid/app.apk',
-            'size': 86800000,
-          },
-        ],
-      })!;
+      final release =
+          UpdateService.parseRelease({
+            'tag_name': 'apk-latest',
+            'name': 'Latest development APK (1.4.0+3518719)',
+            'body': body,
+            'assets': [
+              {
+                'name': 'islamic-app-1.4.0-build3518719-arm64-v8a.apk',
+                'browser_download_url': 'https://example.invalid/app.apk',
+                'size': 86800000,
+              },
+            ],
+          })!;
 
       expect(release.whatsNewIn('ar'), ['سجل القراءة', 'تذكير بعد كل صلاة']);
       expect(release.whatsNewIn('en').first, 'Reading history');

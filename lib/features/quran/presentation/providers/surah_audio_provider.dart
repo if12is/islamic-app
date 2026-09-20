@@ -9,7 +9,9 @@ import '../../../../core/utils/app_logger.dart';
 import '../../data/services/audio_download_service.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/reciter_catalogue.dart';
+import '../../domain/entities/riwaya.dart';
 import 'quran_audio_provider.dart';
+import 'reader_settings_provider.dart';
 
 /// What is playing, when a whole surah is playing.
 ///
@@ -277,9 +279,20 @@ class SurahAudioController extends Notifier<SurahPlaybackState> {
       // needs a connection nobody may have — which is the case this got wrong:
       // a surah downloaded under one reciter, the app set to another, no
       // signal, and "try again" on top of a perfectly playable file.
+      final edition = ref.read(readerSettingsProvider).edition;
       final playable = await _downloads.playableReciterFor(
         surahNumber,
         preferred: voice,
+        // Only a recording of the reading being read. Substituting across
+        // readings would recite a text the reader does not have open.
+        accepts:
+            (candidate) => edition.accepts(
+              ReciterCatalogue.byId(
+                    candidate,
+                    ReciterCatalogue.known,
+                  )?.riwayaId ??
+                  Riwaya.hafsId,
+            ),
       );
       final effective = playable ?? voice;
       if (effective != voice) {

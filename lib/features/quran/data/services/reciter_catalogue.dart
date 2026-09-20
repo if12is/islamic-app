@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/services/data_saver.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../domain/entities/riwaya.dart';
 import 'quran_local_service.dart';
 import 'verse_reciters.dart';
 
@@ -20,6 +21,7 @@ class ReciterVoice {
     required this.styleAr,
     required this.server,
     required this.surahs,
+    this.riwayaId = Riwaya.hafsId,
   });
 
   /// `mp3quran:1:1` — reciter id and moshaf id, so a saved choice survives the
@@ -30,6 +32,16 @@ class ReciterVoice {
 
   /// "حفص عن عاصم - مرتل".
   final String styleAr;
+
+  /// Which reading this recording is of.
+  ///
+  /// The provider has always sent this as `rewaya_id` and the parser has
+  /// always dropped it, which is why the app had no way to separate Warsh from
+  /// Hafs — or to stop a Hafs recording being offered to someone reading
+  /// Warsh. It is the whole basis of the grouping now.
+  final int riwayaId;
+
+  bool get isWarsh => Riwaya.isWarsh(riwayaId);
 
   /// Directory the numbered files sit in, with a trailing slash.
   final String server;
@@ -56,6 +68,7 @@ class ReciterVoice {
     'name': nameAr,
     'style': styleAr,
     'server': server,
+    'riwaya': riwayaId,
     'surahs': surahs.toList()..sort(),
   };
 
@@ -64,11 +77,13 @@ class ReciterVoice {
     if (server.isEmpty) {
       return null;
     }
+    final riwaya = json['riwaya'];
     return ReciterVoice(
       id: json['id'] as String? ?? '',
       nameAr: json['name'] as String? ?? '',
       styleAr: json['style'] as String? ?? '',
       server: server,
+      riwayaId: riwaya is num ? riwaya.toInt() : Riwaya.hafsId,
       surahs: {
         for (final value in (json['surahs'] as List? ?? const []))
           if (value is num) value.toInt(),
@@ -89,8 +104,16 @@ class ReciterCatalogue {
   static const String _endpoint =
       'https://mp3quran.net/api/v3/reciters?language=ar';
 
-  static const String cacheKey = 'reciter_catalogue_v1';
-  static const String cachedAtKey = 'reciter_catalogue_fetched_at';
+  static const String _riwayatEndpoint =
+      'https://mp3quran.net/api/v3/riwayat?language=ar';
+
+  /// v2 because the stored shape gained the riwayah. A v1 cache has no reading
+  /// on any entry, and defaulting those to Hafs would file every Warsh
+  /// recording under the wrong heading — which is the bug, not a migration of
+  /// it. One refetch is cheap, and the bundled list covers anyone offline.
+  static const String cacheKey = 'reciter_catalogue_v2';
+  static const String cachedAtKey = 'reciter_catalogue_fetched_at_v2';
+  static const String riwayatCacheKey = 'riwayat_catalogue_v1';
 
   /// Re-fetch at most this often; new reciters are not urgent news.
   static const Duration refreshAfter = Duration(days: 14);
@@ -197,6 +220,93 @@ class ReciterCatalogue {
     return id;
   }
 
+  static List<Riwaya>? _riwayat;
+
+  /// The readings the provider carries, for grouping the list.
+  ///
+  /// Fetched rather than written down, so the app offers whatever mp3quran
+  /// publishes — Qalun, al-Duri, al-Bazzi and the rest — instead of a subset
+  /// someone picked once and never revisited. The bundled names stand in until
+  /// the first fetch lands.
+  static List<Riwaya> get riwayat => _riwayat ?? Riwaya.bundled;
+
+  static Future<List<Riwaya>> loadRiwayat({bool refresh = false}) async {
+    if (_riwayat != null && !refresh) {
+      return _riwayat!;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final cached = _readRiwayatCache(prefs);
+    if (cached.isNotEmpty && !refresh) {
+      return _riwayat = cached;
+    }
+
+    final fetched = await _fetchRiwayat();
+    if (fetched.isNotEmpty) {
+      await prefs.setString(
+        riwayatCacheKey,
+        jsonEncode([for (final riwaya in fetched) riwaya.toJson()]),
+      );
+      return _riwayat = fetched;
+    }
+
+    return _riwayat = cached.isNotEmpty ? cached : Riwaya.bundled;
+  }
+
+  static List<Riwaya> _readRiwayatCache(SharedPreferences prefs) {
+    final raw = prefs.getString(riwayatCacheKey);
+    if (raw == null || raw.isEmpty) {
+      return const [];
+    }
+    try {
+      final list = jsonDecode(raw) as List;
+      return [
+        for (final entry in list)
+          if (entry is Map<String, dynamic>)
+            if (Riwaya.fromJson(entry) case final riwaya?) riwaya,
+      ];
+    } catch (e) {
+      AppLogger.warning('Riwayat cache unreadable: $e');
+      return const [];
+    }
+  }
+
+  static Future<List<Riwaya>> _fetchRiwayat() async {
+    try {
+      final response = await Dio().get<dynamic>(
+        _riwayatEndpoint,
+        options: Options(
+          receiveTimeout: const Duration(seconds: 20),
+          followRedirects: true,
+        ),
+      );
+      final body = response.data;
+      final json =
+          body is String
+              ? jsonDecode(body) as Map<String, dynamic>
+              : Map<String, dynamic>.from(body as Map);
+      return parseRiwayat(json);
+    } catch (e) {
+      AppLogger.warning('Could not fetch the riwayat list: $e');
+      return const [];
+    }
+  }
+
+  /// Read the riwayat payload. Separate so it can be tested without a network.
+  static List<Riwaya> parseRiwayat(Map<String, dynamic> json) {
+    final raw = json['riwayat'];
+    if (raw is! List) {
+      return const [];
+    }
+    return [
+      for (final entry in raw)
+        if (entry is Map)
+          if (Riwaya.fromJson(Map<String, dynamic>.from(entry))
+              case final riwaya?)
+            riwaya,
+    ];
+  }
+
   static bool _isStale(SharedPreferences prefs) {
     final at = prefs.getInt(cachedAtKey);
     if (at == null) {
@@ -299,12 +409,17 @@ class ReciterCatalogue {
           continue;
         }
 
+        final rewaya = moshaf['rewaya_id'];
+
         voices.add(
           ReciterVoice(
             id: id,
             nameAr: name,
             styleAr: (moshaf['name'] as String? ?? '').trim(),
             server: server,
+            // Dropped by every earlier version of this parser, which is why
+            // nothing downstream could tell a Warsh recording from a Hafs one.
+            riwayaId: rewaya is num ? rewaya.toInt() : Riwaya.hafsId,
             surahs: surahs,
           ),
         );

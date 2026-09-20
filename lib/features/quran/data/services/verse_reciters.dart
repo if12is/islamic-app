@@ -12,6 +12,8 @@
 /// loop had been silently broken on it.
 library;
 
+import '../../domain/entities/riwaya.dart';
+
 /// One voice, recorded ayah by ayah.
 class VerseReciter {
   const VerseReciter({
@@ -20,6 +22,8 @@ class VerseReciter {
     required this.folder,
     this.styleAr = '',
     this.lowFolder,
+    this.riwayaId = Riwaya.hafsId,
+    this.counting = VerseCounting.hafs,
   });
 
   /// Stable id kept in preferences and backups.
@@ -40,11 +44,33 @@ class VerseReciter {
   /// bytes means choosing a different folder, not editing a number in the URL.
   final String? lowFolder;
 
+  /// Which reading this recording is of.
+  final int riwayaId;
+
+  /// How this recording's files are numbered.
+  ///
+  /// Not the same question as the riwayah, and getting them confused is the
+  /// one mistake here that never announces itself. Of the three Warsh
+  /// recordings this host carries, two are filed under **Hafs** numbering and
+  /// one under Warsh. Asking for al-Baqarah 286 and al-Tawbah 130 settles it:
+  /// each exists in exactly one of the two schemes, and both were measured
+  /// against the host rather than assumed.
+  ///
+  /// A URL built from the wrong scheme does not 404 in the middle of a surah.
+  /// It returns the neighbouring ayah, and keeps doing so.
+  final VerseCounting counting;
+
   bool get hasLowQuality => lowFolder != null;
+
+  bool get isWarsh => Riwaya.isWarsh(riwayaId);
 
   String get label => styleAr.isEmpty ? nameAr : '$nameAr — $styleAr';
 
   /// `.../data/<folder>/001001.mp3`
+  ///
+  /// [verseNumber] must already be expressed in this recording's [counting].
+  /// Callers reading a different mushaf convert first; there is no way for
+  /// this method to tell a Warsh 2:285 from a Hafs 2:285.
   String urlFor(int surahNumber, int verseNumber, {bool small = false}) {
     final s = surahNumber.toString().padLeft(3, '0');
     final v = verseNumber.toString().padLeft(3, '0');
@@ -327,23 +353,37 @@ class VerseReciters {
     // The Warsh recordings are a different reading, not a different voice, so
     // they are labelled by riwayah — someone who wants Hafs must not land on
     // one of these by accident.
+    //
+    // Their numbering was measured, one file at a time, against the host:
+    // al-Baqarah ends at 286 under Hafs and 285 under Warsh, al-Tawbah at 129
+    // and 130. Two of these three answer to the Hafs numbers and one to the
+    // Warsh ones, which is not something any name or folder says out loud.
     VerseReciter(
       id: 'warsh-dosary',
       nameAr: 'إبراهيم الدوسري',
       folder: 'warsh/warsh_ibrahim_aldosary_128kbps',
       styleAr: 'رواية ورش',
+      riwayaId: Riwaya.warshId,
+      // Has 2:286, lacks 9:130.
+      counting: VerseCounting.hafs,
     ),
     VerseReciter(
       id: 'warsh-jazaery',
       nameAr: 'ياسين الجزائري',
       folder: 'warsh/warsh_yassin_al_jazaery_64kbps',
       styleAr: 'رواية ورش',
+      riwayaId: Riwaya.warshId,
+      // Has 2:286, lacks 9:130.
+      counting: VerseCounting.hafs,
     ),
     VerseReciter(
       id: 'warsh-abdulbasit',
       nameAr: 'عبد الباسط عبد الصمد',
       folder: 'warsh/warsh_Abdul_Basit_128kbps',
       styleAr: 'رواية ورش',
+      riwayaId: Riwaya.warshId,
+      // Lacks 2:286, has 9:130 — the only one filed the way its mushaf reads.
+      counting: VerseCounting.warsh,
     ),
   ];
 
@@ -369,8 +409,46 @@ class VerseReciters {
   /// The id to actually use — the saved one when it has verse audio, and the
   /// default when it does not. A whole-surah catalogue id such as
   /// `mp3quran:92:92` has no per-ayah files and would 404 every verse.
+  ///
+  /// Prefer [find] anywhere a list is being *shown*. Substituting a voice is
+  /// the right thing to do at the moment of playing something the reader has
+  /// already asked for; it is the wrong thing to do while offering a choice,
+  /// and doing both from one method is how the picker came to list forty
+  /// voices of which most quietly played a different one.
   static String resolve(String id) =>
       has(id) ? (legacyIds[id] ?? id) : defaultId;
+
+  /// The reciter for [id], or null when nothing here can play it.
+  ///
+  /// The honest answer, for callers that need to hide a row rather than
+  /// silently swap it.
+  static VerseReciter? find(String id) {
+    final resolved = legacyIds[id] ?? id;
+    for (final reciter in all) {
+      if (reciter.id == resolved) {
+        return reciter;
+      }
+    }
+    return null;
+  }
+
+  /// The voices that belong to [edition]'s reading.
+  ///
+  /// What a reader of Warsh should be offered is Warsh. Anything else recites
+  /// a text that is not the one on their page.
+  static List<VerseReciter> forEdition(MushafEdition edition) => [
+    for (final reciter in all)
+      if (edition.accepts(reciter.riwayaId)) reciter,
+  ];
+
+  /// The default voice for [edition] — never a Hafs one for a Warsh reader.
+  static String defaultFor(MushafEdition edition) {
+    if (edition == MushafEdition.hafs) {
+      return defaultId;
+    }
+    final voices = forEdition(edition);
+    return voices.isEmpty ? defaultId : voices.first.id;
+  }
 
   /// Name search that ignores diacritics and alif shapes.
   static List<VerseReciter> search(String query) {

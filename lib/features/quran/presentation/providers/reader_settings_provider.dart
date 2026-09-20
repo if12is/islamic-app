@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../data/services/verse_reciters.dart';
+import '../../domain/entities/riwaya.dart';
 
 /// Text faces available to the reader. All three are bundled with the app, so
 /// switching fonts never needs a network round-trip.
@@ -67,6 +69,7 @@ class ReaderSettings {
     this.reciterChosen = false,
     this.viewMode = ReaderViewMode.continuous,
     this.showTajweed = false,
+    this.edition = MushafEdition.hafs,
   });
 
   final ReaderFont font;
@@ -111,6 +114,13 @@ class ReaderSettings {
   /// Colour the tajweed rules on the page.
   final bool showTajweed;
 
+  /// Which reading the reader is reading.
+  ///
+  /// Not a display preference. It changes the text on the page, how the verses
+  /// are numbered, and which recordings may be offered — a Hafs recitation
+  /// over a Warsh page recites words that are not there.
+  final MushafEdition edition;
+
   ReaderSettings copyWith({
     ReaderFont? font,
     double? fontSize,
@@ -126,6 +136,7 @@ class ReaderSettings {
     bool? reciterChosen,
     ReaderViewMode? viewMode,
     bool? showTajweed,
+    MushafEdition? edition,
   }) {
     return ReaderSettings(
       font: font ?? this.font,
@@ -146,6 +157,7 @@ class ReaderSettings {
       reciterChosen: reciterChosen ?? this.reciterChosen,
       viewMode: viewMode ?? this.viewMode,
       showTajweed: showTajweed ?? this.showTajweed,
+      edition: edition ?? this.edition,
     );
   }
 
@@ -163,6 +175,7 @@ class ReaderSettings {
     'reciterChosen': reciterChosen,
     'viewMode': viewMode.name,
     'showTajweed': showTajweed,
+    'edition': edition.id,
   };
 
   factory ReaderSettings.fromJson(Map<dynamic, dynamic> json) {
@@ -205,6 +218,7 @@ class ReaderSettings {
         orElse: () => ReaderViewMode.continuous,
       ),
       showTajweed: json['showTajweed'] == true,
+      edition: MushafEdition.fromId(json['edition'] as String?),
     );
   }
 
@@ -346,6 +360,30 @@ class ReaderSettingsNotifier extends Notifier<ReaderSettings> {
   /// would be forgotten at one of them.
   Future<void> setReciter(String code) =>
       update(state.copyWith(reciterCode: code, reciterChosen: true));
+
+  /// Change which reading the reader reads.
+  ///
+  /// The voice moves with it. A reader who switches to Warsh and keeps a Hafs
+  /// reciter would be shown one text and recited another — which is the exact
+  /// complaint this whole change answers — so a voice that does not belong to
+  /// the new reading is replaced by one that does, and the reader is asked
+  /// again rather than left with a silent substitution.
+  Future<void> setEdition(MushafEdition value) async {
+    if (state.edition == value) {
+      return;
+    }
+
+    final voice = VerseReciters.find(state.reciterCode);
+    final keeps = voice != null && value.accepts(voice.riwayaId);
+
+    await update(
+      state.copyWith(
+        edition: value,
+        reciterCode: keeps ? null : VerseReciters.defaultFor(value),
+        reciterChosen: keeps ? null : false,
+      ),
+    );
+  }
 
   Future<void> setViewMode(ReaderViewMode mode) =>
       update(state.copyWith(viewMode: mode));

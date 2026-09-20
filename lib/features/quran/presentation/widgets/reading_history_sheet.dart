@@ -87,9 +87,7 @@ class ReadingHistorySheet extends ConsumerWidget {
                 Flexible(
                   child: ListView(
                     shrinkWrap: true,
-                    children: [
-                      for (final mark in marks) _MarkRow(mark: mark),
-                    ],
+                    children: [for (final mark in marks) _MarkRow(mark: mark)],
                   ),
                 ),
             ],
@@ -170,7 +168,10 @@ class _MarkRow extends ConsumerWidget {
               tooltip: context.tr('history_options'),
               icon: const Icon(Icons.more_vert),
               onPressed:
-                  () => controller.isOpen ? controller.close() : controller.open(),
+                  () =>
+                      controller.isOpen
+                          ? controller.close()
+                          : controller.open(),
             ),
         menuChildren: [
           MenuItemButton(

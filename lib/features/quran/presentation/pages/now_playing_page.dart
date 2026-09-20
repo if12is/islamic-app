@@ -13,7 +13,7 @@ import '../../data/services/reciter_catalogue.dart';
 import '../providers/quran_audio_provider.dart';
 import '../providers/reader_settings_provider.dart';
 import '../providers/surah_audio_provider.dart';
-import '../widgets/reciter_picker_sheet.dart';
+import '../widgets/recitation_picker_sheet.dart';
 import '../widgets/surah_cover_art.dart';
 import 'downloads_page.dart';
 
@@ -150,9 +150,15 @@ class NowPlayingPage extends ConsumerWidget {
           child: InkWell(
             borderRadius: AppRadii.pillAll,
             onTap: () async {
-              final chosen = await ReciterPickerSheet.show(
+              final surahNumber = state.surahNumber;
+              if (surahNumber == null) {
+                return;
+              }
+              final chosen = await RecitationPickerSheet.showSurah(
                 context,
-                state.reciterId,
+                selectedId: state.reciterId,
+                edition: ref.read(readerSettingsProvider).edition,
+                surahNumber: surahNumber,
               );
               if (chosen == null) {
                 return;

@@ -17,6 +17,7 @@ class QuranVerse {
     required this.surahNameAr,
     required this.surahNameEn,
     required this.isSajdah,
+    this.hafsNumberInSurah,
   });
 
   final int surahNumber;
@@ -35,6 +36,19 @@ class QuranVerse {
   final String surahNameAr;
   final String surahNameEn;
   final bool isSajdah;
+
+  /// The same verse's number in the Hafs counting, when this verse came from
+  /// another reading.
+  ///
+  /// Null for Hafs itself, where the question does not arise. It travels on
+  /// the verse rather than being looked up later because the one place that
+  /// needs it — building a per-ayah audio URL — is three layers away from the
+  /// mushaf that knows the answer, and a lookup that far from its source is a
+  /// lookup someone eventually forgets to do.
+  final int? hafsNumberInSurah;
+
+  /// The number to ask a Hafs-numbered recording for.
+  int get hafsVerseNumber => hafsNumberInSurah ?? numberInSurah;
 
   /// `2:255` — the canonical way to address a verse.
   String get key => '$surahNumber:$numberInSurah';

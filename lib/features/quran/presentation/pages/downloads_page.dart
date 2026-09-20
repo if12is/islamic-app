@@ -5,12 +5,17 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/data_saver.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/arabic_numerals.dart';
+import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../data/services/audio_download_service.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../data/services/reciter_catalogue.dart';
-import '../widgets/reciter_picker_sheet.dart';
+import '../../data/services/warsh_mushaf_service.dart';
+import '../../domain/entities/riwaya.dart';
+import '../widgets/recitation_picker_sheet.dart';
 import '../providers/downloads_provider.dart';
 import '../providers/reader_settings_provider.dart';
 
@@ -48,7 +53,11 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
       _reciterLabel ?? ReciterCatalogue.displayName(_reciterCode);
 
   Future<void> _pickReciter() async {
-    final voice = await ReciterPickerSheet.show(context, _reciterCode);
+    final voice = await RecitationPickerSheet.showSurah(
+      context,
+      selectedId: _reciterCode,
+      edition: ref.read(readerSettingsProvider).edition,
+    );
     if (voice == null || !mounted) {
       return;
     }
@@ -69,98 +78,111 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
         context.tr('reciter_library'),
         style: AppTextStyles.display(context, fontSize: 18),
       ),
-      body: downloads.when(
-        loading:
-            () => const Center(child: CircularProgressIndicator.adaptive()),
-        error: (error, _) => Center(child: Text(error.toString())),
-        data: (state) {
-          final surahs = QuranLocalService.searchSurahs(_query);
+      body: Column(
+        children: [
+          const _WarshMushafSection(),
+          Expanded(
+            child: downloads.when(
+              loading:
+                  () =>
+                      const Center(child: CircularProgressIndicator.adaptive()),
+              error: (error, _) => Center(child: Text(error.toString())),
+              data: (state) {
+                final surahs = QuranLocalService.searchSurahs(_query);
 
-          return Column(
-            children: [
-              // Say it once, at the top, rather than letting every row offer a
-              // download button that cannot work.
-              if (!AudioDownloadService.isSupported)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.tertiaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          context.tr('downloads_web_unsupported'),
-                          style: AppTextStyles.caption(context),
+                return Column(
+                  children: [
+                    // Say it once, at the top, rather than letting every row
+                    // offer a download button that cannot work.
+                    if (!AudioDownloadService.isSupported)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.tertiaryContainer
+                              .withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 18,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                context.tr('downloads_web_unsupported'),
+                                style: AppTextStyles.caption(context),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                // A dropdown cannot hold two hundred and forty voices. The
-                // picker is a searchable sheet instead.
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: context.tr('reciter'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  child: InkWell(
-                    onTap: _pickReciter,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _reciterName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.body(context, fontSize: 15),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      // A dropdown cannot hold two hundred and forty voices. The
+                      // picker is a searchable sheet instead.
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: context.tr('reciter'),
+                          border: const OutlineInputBorder(),
+                        ),
+                        child: InkWell(
+                          onTap: _pickReciter,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _reciterName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.body(
+                                    context,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.unfold_more, size: 18),
+                            ],
                           ),
                         ),
-                        const Icon(Icons.unfold_more, size: 18),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TextField(
-                  onChanged: (value) => setState(() => _query = value),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: context.tr('search_surah_or_number_hint'),
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              _storageRow(context, state),
-              _bulkRow(context, state, surahs),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                  itemCount: surahs.length,
-                  itemBuilder: (context, index) {
-                    final surah = surahs[index];
-                    return _surahTile(context, state, surah);
-                  },
-                ),
-              ),
-            ],
-          );
-        },
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: TextField(
+                        onChanged: (value) => setState(() => _query = value),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search),
+                          hintText: context.tr('search_surah_or_number_hint'),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    _storageRow(context, state),
+                    _bulkRow(context, state, surahs),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                        itemCount: surahs.length,
+                        itemBuilder: (context, index) {
+                          final surah = surahs[index];
+                          return _surahTile(context, state, surah);
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -381,6 +403,246 @@ class _DownloadsPageState extends ConsumerState<DownloadsPage> {
                             ? notifier.delete(_reciterCode, surah.id)
                             : notifier.download(_reciterCode, surah.id),
               ),
+    );
+  }
+}
+
+/// How many of a fetched mushaf's 114 surahs are already on this device.
+String _mushafOnDeviceLine(BuildContext context, int done) {
+  return AppLocalizations.translate(
+    Localizations.localeOf(context).languageCode,
+    'mushaf_on_device',
+    replacements: {
+      'done': localizeDigits(context, '$done'),
+      'total': localizeDigits(context, '114'),
+    },
+  );
+}
+
+/// Offline text of the Warsh mushaf, next to the audio library.
+class _WarshMushafSection extends StatefulWidget {
+  const _WarshMushafSection();
+
+  @override
+  State<_WarshMushafSection> createState() => _WarshMushafSectionState();
+}
+
+class _WarshMushafSectionState extends State<_WarshMushafSection> {
+  static const int _surahTotal = 114;
+
+  int _cached = 0;
+  int _progress = 0;
+  bool _downloading = false;
+  bool _failed = false;
+
+  /// Bumped to drop an in-flight pass when the reader cancels or leaves.
+  int _runId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshCount());
+  }
+
+  @override
+  void dispose() {
+    _runId++;
+    super.dispose();
+  }
+
+  Future<void> _refreshCount() async {
+    try {
+      final count = await WarshMushafService.cachedCount(MushafEdition.warsh);
+      if (mounted) {
+        setState(() => _cached = count);
+      }
+    } catch (e) {
+      AppLogger.warning('Could not count cached mushaf surahs: $e');
+    }
+  }
+
+  Future<void> _downloadAll() async {
+    final run = ++_runId;
+    setState(() {
+      _downloading = true;
+      _progress = 0;
+      _failed = false;
+    });
+
+    final failed = <int>[];
+    for (var surah = 1; surah <= _surahTotal; surah++) {
+      if (!mounted || run != _runId) {
+        return;
+      }
+
+      final already = await WarshMushafService.isCached(
+        MushafEdition.warsh,
+        surah,
+      );
+      if (!already) {
+        final verses = await WarshMushafService.surah(
+          MushafEdition.warsh,
+          surah,
+        );
+        if (verses.isEmpty) {
+          failed.add(surah);
+        }
+        // Quranpedia allows 120 requests/minute. A short pause after each
+        // fetch keeps a full 114-surah pass under that ceiling even if a
+        // timed-out call is retried by the client.
+        if (surah < _surahTotal) {
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+        }
+      }
+
+      if (!mounted || run != _runId) {
+        return;
+      }
+      setState(() => _progress = surah);
+    }
+
+    if (!mounted || run != _runId) {
+      return;
+    }
+
+    try {
+      final count = await WarshMushafService.cachedCount(MushafEdition.warsh);
+      if (!mounted || run != _runId) {
+        return;
+      }
+      setState(() {
+        _downloading = false;
+        _cached = count;
+        _failed = failed.isNotEmpty;
+      });
+    } catch (e) {
+      AppLogger.warning('Could not refresh mushaf count: $e');
+      if (mounted && run == _runId) {
+        setState(() {
+          _downloading = false;
+          _failed = true;
+        });
+      }
+    }
+  }
+
+  void _cancel() {
+    _runId++;
+    setState(() => _downloading = false);
+    _refreshCount();
+  }
+
+  Future<void> _delete() async {
+    try {
+      await WarshMushafService.clear(MushafEdition.warsh);
+      if (mounted) {
+        setState(() {
+          _cached = 0;
+          _progress = 0;
+          _failed = false;
+        });
+      }
+    } catch (e) {
+      AppLogger.warning('Could not delete the cached mushaf: $e');
+      if (mounted) {
+        setState(() => _failed = true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    const buttonStyle = ButtonStyle(
+      minimumSize: WidgetStatePropertyAll(Size(48, 48)),
+      tapTargetSize: MaterialTapTargetSize.padded,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: AppCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              MushafEdition.warsh.nameAr,
+              textDirection: TextDirection.rtl,
+              style: AppTextStyles.body(
+                context,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: tokens.ink,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              _downloading
+                  ? context.tr('mushaf_downloading')
+                  : _mushafOnDeviceLine(context, _cached),
+              style: AppTextStyles.caption(context, color: tokens.inkMuted),
+            ),
+            if (_downloading) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _progress / _surahTotal,
+                  minHeight: 6,
+                  color: tokens.brand,
+                  backgroundColor: tokens.brandSoft,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _mushafOnDeviceLine(context, _progress),
+                style: AppTextStyles.caption(context, color: tokens.inkMuted),
+              ),
+            ],
+            if (_failed) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                context.tr('mushaf_download_failed'),
+                style: AppTextStyles.caption(context, color: tokens.danger),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            if (_downloading)
+              OutlinedButton.icon(
+                style: buttonStyle,
+                onPressed: _cancel,
+                icon: const Icon(Icons.stop_circle_outlined, size: 18),
+                label: Text(context.tr('cancel')),
+              )
+            else ...[
+              if (_cached < _surahTotal)
+                FilledButton.tonalIcon(
+                  style: buttonStyle,
+                  onPressed: _downloadAll,
+                  icon: const Icon(
+                    Icons.download_for_offline_outlined,
+                    size: 18,
+                  ),
+                  label: Text(context.tr('download_mushaf')),
+                ),
+              if (_cached > 0) ...[
+                if (_cached < _surahTotal)
+                  const SizedBox(height: AppSpacing.sm),
+                OutlinedButton.icon(
+                  style: buttonStyle,
+                  onPressed: _delete,
+                  icon: Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: tokens.danger,
+                  ),
+                  label: Text(context.tr('delete_mushaf')),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

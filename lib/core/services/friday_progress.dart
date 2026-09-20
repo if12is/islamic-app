@@ -32,9 +32,11 @@ class FridayProgress {
   static Set<int>? _kahfPages;
 
   /// The Mushaf pages Al-Kahf is printed on.
-  static Set<int> kahfPages() => _kahfPages ??= {
-    for (final verse in QuranLocalService.versesOfSurah(kahfSurah)) verse.page,
-  };
+  static Set<int> kahfPages() =>
+      _kahfPages ??= {
+        for (final verse in QuranLocalService.versesOfSurah(kahfSurah))
+          verse.page,
+      };
 
   static bool isFriday(DateTime date) => date.weekday == DateTime.friday;
 

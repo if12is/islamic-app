@@ -269,11 +269,12 @@ class NotificationPreferences {
       ),
       prayerLogRemindersEnabled:
           prayerLogRemindersEnabled ?? this.prayerLogRemindersEnabled,
-      prayerLogDelayMinutes: (prayerLogDelayMinutes ??
-              this.prayerLogDelayMinutes)
-          .clamp(5, 120),
-      prayerLogFollowUps: (prayerLogFollowUps ?? this.prayerLogFollowUps)
-          .clamp(0, maxPrayerLogFollowUps),
+      prayerLogDelayMinutes:
+          (prayerLogDelayMinutes ?? this.prayerLogDelayMinutes).clamp(5, 120),
+      prayerLogFollowUps: (prayerLogFollowUps ?? this.prayerLogFollowUps).clamp(
+        0,
+        maxPrayerLogFollowUps,
+      ),
     );
   }
 

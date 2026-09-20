@@ -127,12 +127,23 @@ class AudioDownloadService {
   Future<String?> playableReciterFor(
     int surahNumber, {
     required String preferred,
+    bool Function(String reciterCode)? accepts,
   }) async {
     if (await localPathIfAvailable(preferred, surahNumber) != null) {
       return preferred;
     }
     final others = await downloadedRecitersFor(surahNumber);
-    return others.isEmpty ? null : others.first;
+    for (final candidate in others) {
+      // Standing in for a missing download is a kindness; standing in with a
+      // recording of a different reading is not. A reader on the Warsh mushaf
+      // handed a downloaded Hafs recitation hears words that are not on the
+      // page in front of them, and nothing on screen admits the swap — which
+      // is the whole complaint this filter answers.
+      if (accepts == null || accepts(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   /// Download a surah, reporting bytes as they arrive.

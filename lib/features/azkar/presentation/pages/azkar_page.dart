@@ -606,11 +606,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
 }
 
 class SmartTasbeehWidget extends StatefulWidget {
-  const SmartTasbeehWidget({
-    super.key,
-    this.onRoundsChanged,
-    this.wirdTasbeeh,
-  });
+  const SmartTasbeehWidget({super.key, this.onRoundsChanged, this.wirdTasbeeh});
 
   /// Fired when a round moves, so the daily wird can re-read it.
   final VoidCallback? onRoundsChanged;
@@ -957,7 +953,10 @@ class _SmartTasbeehWidgetState extends State<SmartTasbeehWidget> {
           ),
           // Said where it will count, so the wird ticking over on its own is
           // not a surprise.
-          if (TasbeehLink.zekrForPhrase(_currentZekrIndex, widget.wirdTasbeeh) !=
+          if (TasbeehLink.zekrForPhrase(
+                _currentZekrIndex,
+                widget.wirdTasbeeh,
+              ) !=
               null)
             Row(
               mainAxisSize: MainAxisSize.min,
