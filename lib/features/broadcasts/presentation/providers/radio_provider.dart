@@ -58,6 +58,10 @@ class RadioState {
 class RadioController extends Notifier<RadioState> {
   AudioPlayer get _player => ref.read(quranAudioPlayerProvider);
 
+  /// Bumped on each tune-in and whenever the player changes hands, so a
+  /// slow station cannot finish loading over whatever replaced it.
+  int _run = 0;
+
   @override
   RadioState build() {
     final playingSub = _player.playingStream.listen((playing) {
@@ -80,8 +84,11 @@ class RadioController extends Notifier<RadioState> {
     // Somebody else took the player: drop the station rather than leave a bar
     // on screen with a pause button for audio that stopped.
     final ownerSub = AppAudio.ownerChanges.listen((owner) {
-      if (owner != AudioOwner.radio && state.isOn) {
-        state = const RadioState();
+      if (owner != AudioOwner.radio) {
+        _run++;
+        if (state.isOn) {
+          state = const RadioState();
+        }
       }
     });
 
@@ -101,16 +108,29 @@ class RadioController extends Notifier<RadioState> {
       return;
     }
 
+    final run = ++_run;
     state = RadioState(station: station, connecting: true);
     AppAudio.claim(AudioOwner.radio);
 
     // Each address in turn: the catalogue's own host fails on about one
     // station in five, and falling through to it is the difference between a
     // station that works and one that never does.
+    //
+    // Between addresses — up to fifteen seconds each — the listener may
+    // have started something else, or another station. That load interrupts
+    // this one, which surfaces here as one more failed address; carrying on
+    // to the next would take the player back from whatever they chose.
     Object? lastError;
     for (final source in station.sources) {
+      if (!_stillCurrent(run)) {
+        return;
+      }
       try {
         await QuranMedia.prepareSession();
+        final art = await QuranMedia.coverUri();
+        if (!_stillCurrent(run)) {
+          return;
+        }
         await _player.setAudioSource(
           AudioSource.uri(
             Uri.parse(source),
@@ -119,16 +139,22 @@ class RadioController extends Notifier<RadioState> {
               title: station.name,
               album: 'البث المباشر',
               artist: 'إذاعة',
-              artUri: await QuranMedia.coverUri(),
+              artUri: art,
               isLive: true,
             ),
           ),
         );
+        if (!_stillCurrent(run)) {
+          return;
+        }
         await _player.setSpeed(1);
         await _player.play();
         state = state.copyWith(connecting: false, clearError: true);
         return;
       } catch (e, stack) {
+        if (!_stillCurrent(run)) {
+          return;
+        }
         lastError = e;
         AppLogger.warning('Radio source failed ($source): $e');
         if (source == station.sources.last) {
@@ -140,6 +166,9 @@ class RadioController extends Notifier<RadioState> {
     state = RadioState(errorKey: _describe(lastError));
     AppAudio.release(AudioOwner.radio);
   }
+
+  bool _stillCurrent(int run) =>
+      run == _run && AppAudio.owner == AudioOwner.radio;
 
   Future<void> toggle() async {
     if (!state.isOn) {
@@ -160,6 +189,12 @@ class RadioController extends Notifier<RadioState> {
   }
 
   Future<void> stop() async {
+    _run++;
+    if (AppAudio.owner != AudioOwner.radio) {
+      // Already given up to someone else: their audio is not this to stop.
+      state = const RadioState();
+      return;
+    }
     await _player.stop();
     AppAudio.release(AudioOwner.radio);
     state = const RadioState();

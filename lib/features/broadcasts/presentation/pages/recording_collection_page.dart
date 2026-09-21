@@ -9,6 +9,7 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_icon_tile.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../quran/presentation/providers/quran_audio_provider.dart';
+import '../../data/recordings_catalogue.dart';
 import '../../domain/recording.dart';
 import '../providers/recordings_provider.dart';
 
@@ -200,7 +201,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _TrackList extends ConsumerWidget {
+class _TrackList extends ConsumerStatefulWidget {
   const _TrackList({
     required this.collection,
     required this.tracks,
@@ -214,9 +215,73 @@ class _TrackList extends ConsumerWidget {
   final RecordingsState playback;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TrackList> createState() => _TrackListState();
+}
+
+class _TrackListState extends ConsumerState<_TrackList> {
+  final TextEditingController _search = TextEditingController();
+  String? _group;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  bool get _showSearch => widget.tracks.length > 30;
+
+  List<String> get _groups {
+    final groups = <String>[];
+    for (final track in widget.tracks) {
+      final group = track.group;
+      if (group == null || group.isEmpty || groups.contains(group)) {
+        continue;
+      }
+      groups.add(group);
+    }
+    return groups;
+  }
+
+  bool get _showChips => _groups.length > 3;
+
+  List<({int index, RecordingTrack track})> get _visible {
+    final query = _foldForSearch(_search.text.trim());
+    final group = _group;
+    final matches = <({int index, RecordingTrack track})>[];
+    for (var i = 0; i < widget.tracks.length; i++) {
+      final track = widget.tracks[i];
+      if (group != null && track.group != group) {
+        continue;
+      }
+      if (query.isNotEmpty && !_trackMatches(track, query)) {
+        continue;
+      }
+      matches.add((index: i, track: track));
+    }
+    return matches;
+  }
+
+  bool _trackMatches(RecordingTrack track, String query) {
+    return _foldForSearch(track.titleAr).contains(query) ||
+        _foldForSearch(track.subtitleAr).contains(query) ||
+        _foldForSearch(track.group ?? '').contains(query);
+  }
+
+  Future<void> _refresh() async {
+    await RecordingsCatalogue.tracks(widget.collection, refresh: true);
+    ref.invalidate(recordingTracksProvider(widget.collection.id));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final collection = widget.collection;
+    final tracks = widget.tracks;
+    final playback = widget.playback;
+    final groups = _groups;
+    final visible = _visible;
+
     return FutureBuilder<String?>(
-      future: lastTrackId,
+      future: widget.lastTrackId,
       builder: (context, snapshot) {
         // Not while this collection is already the one playing: the button
         // would name a place the player has moved on from, and pressing it
@@ -228,90 +293,192 @@ class _TrackList extends ConsumerWidget {
                 ? -1
                 : tracks.indexWhere((track) => track.id == resumeId);
 
-        return ListView.builder(
-          padding: AppScaffold.scrollPadding,
-          itemCount: tracks.length + 1,
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Header(collection: collection, trackCount: tracks.length),
-                  if (resumeIndex >= 0) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: FilledButton.icon(
-                        onPressed:
-                            () => ref
-                                .read(recordingsProvider.notifier)
-                                .play(collection, tracks, resumeIndex),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: Text(context.tr('recordings_continue')),
+        // Search and nights sit under the header, not above it: the header
+        // is this page's title, and the first thing read should be what the
+        // collection is.
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: AppScaffold.scrollPadding,
+            itemCount: visible.isEmpty ? 2 : visible.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Header(collection: collection, trackCount: tracks.length),
+                    if (resumeIndex >= 0) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton.icon(
+                          onPressed:
+                              () => ref
+                                  .read(recordingsProvider.notifier)
+                                  .play(collection, tracks, resumeIndex),
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: Text(context.tr('recordings_continue')),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                    if (_showSearch) _searchField(context),
+                    if (_showChips) _chipRow(context, groups),
+                  ],
+                );
+              }
+
+              if (visible.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+                  child: Center(
+                    child: Text(
+                      context.tr('recordings_search_empty'),
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.body(
+                        context,
+                        color: context.tokens.inkMuted,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                  ],
+                  ),
+                );
+              }
+
+              final at = index - 1;
+              final entry = visible[at];
+              final track = entry.track;
+              final previous = at == 0 ? null : visible[at - 1].track;
+              final showGroup =
+                  track.group != null && track.group != previous?.group;
+              final isCurrent =
+                  playback.collection?.id == collection.id &&
+                  playback.current?.id == track.id;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showGroup)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: AppSpacing.md,
+                        bottom: AppSpacing.sm,
+                      ),
+                      child: Text(
+                        localizeDigits(context, track.group!),
+                        style: AppTextStyles.display(
+                          context,
+                          fontSize: 16,
+                          color: context.tokens.brand,
+                        ),
+                      ),
+                    ),
+                  AppListRow(
+                    title: localizeDigits(context, track.titleAr),
+                    meta:
+                        track.subtitleAr.isEmpty
+                            ? null
+                            : localizeDigits(context, track.subtitleAr),
+                    trailingText:
+                        track.duration == null
+                            ? null
+                            : _formatRecordingClock(context, track.duration!),
+                    selected: isCurrent,
+                    leading: AppIconTile(
+                      isCurrent && playback.playing
+                          ? Icons.graphic_eq_rounded
+                          : Icons.play_arrow_rounded,
+                      role: AppIconRole.row,
+                      tone: isCurrent ? AppIconTone.brand : AppIconTone.neutral,
+                      selected: isCurrent,
+                    ),
+                    onTap:
+                        () => ref
+                            .read(recordingsProvider.notifier)
+                            .play(collection, tracks, entry.index),
+                  ),
                 ],
               );
-            }
-
-            final at = index - 1;
-            final track = tracks[at];
-            final previous = at == 0 ? null : tracks[at - 1];
-            final showGroup =
-                track.group != null && track.group != previous?.group;
-            final isCurrent =
-                playback.collection?.id == collection.id &&
-                playback.current?.id == track.id;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (showGroup)
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      top: AppSpacing.md,
-                      bottom: AppSpacing.sm,
-                    ),
-                    child: Text(
-                      localizeDigits(context, track.group!),
-                      style: AppTextStyles.display(
-                        context,
-                        fontSize: 16,
-                        color: context.tokens.brand,
-                      ),
-                    ),
-                  ),
-                AppListRow(
-                  title: localizeDigits(context, track.titleAr),
-                  meta:
-                      track.subtitleAr.isEmpty
-                          ? null
-                          : localizeDigits(context, track.subtitleAr),
-                  trailingText:
-                      track.duration == null
-                          ? null
-                          : _formatRecordingClock(context, track.duration!),
-                  selected: isCurrent,
-                  leading: AppIconTile(
-                    isCurrent && playback.playing
-                        ? Icons.graphic_eq_rounded
-                        : Icons.play_arrow_rounded,
-                    role: AppIconRole.row,
-                    tone: isCurrent ? AppIconTone.brand : AppIconTone.neutral,
-                    selected: isCurrent,
-                  ),
-                  onTap:
-                      () => ref
-                          .read(recordingsProvider.notifier)
-                          .play(collection, tracks, at),
-                ),
-              ],
-            );
-          },
+            },
+          ),
         );
       },
+    );
+  }
+
+  Widget _searchField(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: TextField(
+          controller: _search,
+          onChanged: (_) => setState(() {}),
+          style: AppTextStyles.body(context, fontSize: 16),
+          decoration: InputDecoration(
+            hintText: context.tr('recordings_search_hint'),
+            hintStyle: AppTextStyles.body(
+              context,
+              color: tokens.inkMuted,
+              fontSize: 16,
+            ),
+            suffixIcon:
+                _search.text.isEmpty
+                    ? null
+                    : IconButton(
+                      tooltip: context.tr('clear'),
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _search.clear();
+                        setState(() {});
+                      },
+                    ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _chipRow(BuildContext context, List<String> groups) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: SizedBox(
+        height: 56,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: groups.length + 1,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return ChoiceChip(
+                label: Text(context.tr('all')),
+                selected: _group == null,
+                onSelected: (_) => setState(() => _group = null),
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+                visualDensity: VisualDensity.standard,
+                labelPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+              );
+            }
+            final group = groups[index - 1];
+            return ChoiceChip(
+              label: Text(localizeDigits(context, group)),
+              selected: _group == group,
+              onSelected: (_) => setState(() => _group = group),
+              materialTapTargetSize: MaterialTapTargetSize.padded,
+              visualDensity: VisualDensity.standard,
+              labelPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -351,15 +518,26 @@ class _PlayerBar extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                localizeDigits(
-                  context,
-                  RecordingsController.displayTitle(current),
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.body(context, fontSize: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      localizeDigits(
+                        context,
+                        RecordingsController.displayTitle(current),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.body(context, fontSize: 15),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('stop'),
+                    onPressed: () => controller.stop(),
+                    icon: const Icon(Icons.stop_rounded),
+                  ),
+                ],
               ),
               _SeekBar(onSeek: controller.seek),
               Row(
@@ -528,6 +706,28 @@ class _SeekBarState extends ConsumerState<_SeekBar> {
       },
     );
   }
+}
+
+/// Fold Arabic so a typed query matches titles that differ only in harakat,
+/// hamza form, ta marbuta, alef maqsura, or digit shape.
+String _foldForSearch(String input) {
+  final western = toWesternDigits(input);
+  final buffer = StringBuffer();
+  for (final rune in western.runes) {
+    if ((rune >= 0x064B && rune <= 0x0652) ||
+        rune == 0x0670 ||
+        rune == 0x0640) {
+      continue;
+    }
+    final mapped = switch (rune) {
+      0x0622 || 0x0623 || 0x0625 || 0x0671 => 0x0627,
+      0x0629 => 0x0647,
+      0x0649 => 0x064A,
+      _ => rune,
+    };
+    buffer.writeCharCode(mapped);
+  }
+  return buffer.toString();
 }
 
 /// `h:mm:ss` past an hour, otherwise `m:ss`. Digits follow the locale.

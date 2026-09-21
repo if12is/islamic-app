@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/app_audio.dart';
 import '../../../../core/services/quran_media.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../quran/presentation/providers/quran_audio_provider.dart';
 import '../../data/recordings_catalogue.dart';
 import '../../domain/recording.dart';
@@ -85,7 +86,12 @@ class RecordingsController extends Notifier<RecordingsState> {
   static const Duration finishedMargin = Duration(seconds: 30);
 
   /// How often the place is written down while playing.
-  static const Duration saveEvery = Duration(seconds: 10);
+  ///
+  /// Every write re-saves the whole preferences file, which the app shares
+  /// with everything else it keeps. A pause, a skip, a stop or a surah
+  /// taking over each write at once, so this only bounds what a crash or a
+  /// killed app can lose — half a minute, which «back 30» gives back.
+  static const Duration saveEvery = Duration(seconds: 30);
 
   /// Bumped on each load, so a slow load cannot overwrite a newer one.
   int _run = 0;
@@ -161,7 +167,7 @@ class RecordingsController extends Notifier<RecordingsState> {
       // minute forty. The direction of the move cannot tell them apart.
       unawaited(_keepHeard());
       state = state.copyWith(index: index);
-      _lastSaved = Duration.zero;
+      unawaited(_resumeLanded(index));
       unawaited(_rememberLast());
     });
 
@@ -315,7 +321,9 @@ class RecordingsController extends Notifier<RecordingsState> {
               Uri.parse(track.url),
               tag: MediaItem(
                 id: track.id,
-                title: displayTitle(track),
+                // Arabic words, so Arabic digits, as in the album line
+                // beneath it — the lock screen has no language to ask.
+                title: toArabicDigits(displayTitle(track)),
                 artist: collection.reciterAr,
                 album:
                     collection.subtitleAr.isEmpty
@@ -417,7 +425,7 @@ class RecordingsController extends Notifier<RecordingsState> {
       return;
     }
     await _keepHeard();
-    final run = _run;
+    final run = ++_run;
     _switching = true;
     _heardIndex = null;
     try {
@@ -435,6 +443,30 @@ class RecordingsController extends Notifier<RecordingsState> {
       }
     }
     unawaited(_rememberLast());
+  }
+
+  /// The player moved to [index] by itself and starts that file from the
+  /// top. If it was left part way, go back to that place — otherwise the
+  /// first seconds of listening, written down, would erase it. A night
+  /// reached from the lock screen is picked up as it would be from here.
+  Future<void> _resumeLanded(int index) async {
+    final run = ++_run;
+    _switching = true;
+    _heardIndex = null;
+    try {
+      final resume = await savedPosition(state.tracks[index]);
+      if (run != _run || state.index != index) {
+        return;
+      }
+      _lastSaved = resume ?? Duration.zero;
+      if (resume != null) {
+        await _player.seek(resume, index: index);
+      }
+    } finally {
+      if (run == _run) {
+        _switching = false;
+      }
+    }
   }
 
   /// Jump within the current file.

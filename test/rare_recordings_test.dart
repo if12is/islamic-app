@@ -525,6 +525,146 @@ void main() {
       expect(tracks.first.url, isNot(contains('❤')));
       expect(Uri.tryParse(tracks.first.url), isNotNull);
     });
+
+    test('a name without surah numbers keeps its words, not its noise', () {
+      expect(
+        RecordingsCatalogue.untaggedTitle(
+          '101 s ابتهال نادر للشيخ محمد صديق المنشاوي.mp3',
+        ),
+        'ابتهال نادر للشيخ محمد صديق المنشاوي',
+      );
+      expect(
+        RecordingsCatalogue.untaggedTitle(
+          '097 s سورة الرحمن تلاوة خالدة من روائع الشيخ المنشاوي 💙.mp3',
+        ),
+        'سورة الرحمن تلاوة خالدة من روائع الشيخ المنشاوي',
+      );
+      expect(
+        RecordingsCatalogue.untaggedTitle(
+          '095 s تتچافى چنوبهم عن المضاچع يدعون ربهم خوفاً وطمعا !!! '
+          'الشيخ المنشاوي 😭😭.mp3',
+        ),
+        'تتجافى جنوبهم عن المضاجع يدعون ربهم خوفاً وطمعا الشيخ المنشاوي',
+      );
+      expect(
+        RecordingsCatalogue.untaggedTitle(
+          '050 s - أنين المنشاوي _ تمالك دموعك #shorts (128 kbps).mp3',
+        ),
+        'أنين المنشاوي تمالك دموعك',
+      );
+      expect(
+        RecordingsCatalogue.untaggedTitle(
+          '031 30 من الروم فانظر إلى آثار رحمة الله   القارئ المنشاوي.mp3',
+        ),
+        'من الروم فانظر إلى آثار رحمة الله القارئ المنشاوي',
+      );
+      expect(
+        RecordingsCatalogue.untaggedTitle('104 s #shorts.mp3'),
+        'تلاوة 104',
+      );
+    });
+
+    test('clips cut for a video site’s shorts are left out', () {
+      final tracks = RecordingsCatalogue.parseArchive(
+        collection,
+        _payload([
+          {
+            'name': '100 s من روائع المنشاوي.mp3',
+            'source': 'original',
+            'length': '612.4',
+          },
+          {
+            'name': '069 s - المنشاوي #shorts (128 kbps).mp3',
+            'source': 'original',
+            'length': '22.6',
+          },
+          {
+            'name':
+                '050 s - أنين المنشاوي _ تمالك دموعك #shorts (128 kbps).mp3',
+            'source': 'original',
+            'length': '43.91',
+          },
+        ]),
+      );
+      expect(tracks.map((t) => t.titleAr), ['من روائع المنشاوي']);
+    });
+  });
+
+  group('Titles the archive stored in the wrong code page', () {
+    test('are read back as the Arabic they were', () {
+      expect(
+        RecordingsCatalogue.repairArabic('ÌäæÈ ÇÝÑíÞíÇ - 1966'),
+        'جنوب افريقيا - 1966',
+      );
+      expect(
+        RecordingsCatalogue.repairArabic('ÇáãÓÌÏ ÇáÇãæì - ÓæÑíÇ - 1958'),
+        'المسجد الاموى - سوريا - 1958',
+      );
+      expect(
+        RecordingsCatalogue.repairArabic('ãäÒá ÇáÔíÎ ÚÈÏ ÇáÈÇÓØ - 1960'),
+        'منزل الشيخ عبد الباسط - 1960',
+      );
+    });
+
+    test('a title that is already right is left alone', () {
+      for (final title in [
+        'مسجد الحسين - 1971',
+        'Ramadan 01, 1445',
+        '002-Surah-Al-Baqarah',
+        'Café',
+        '',
+      ]) {
+        expect(RecordingsCatalogue.repairArabic(title), title);
+      }
+    });
+
+    test('the collection shows the repaired title', () {
+      final tracks = RecordingsCatalogue.parseArchive(
+        _collection('archive:way2sona_20160404'),
+        _payload([
+          {
+            'name': '12.mp3',
+            'source': 'original',
+            'title': 'ÌäæÈ ÇÝÑíÞíÇ - 1966',
+            'length': '1712.3',
+          },
+        ]),
+      );
+      expect(tracks.single.titleAr, 'جنوب افريقيا - 1966');
+    });
+  });
+
+  group('A file too short to be a recitation', () {
+    test('is left out where the collection says so', () {
+      final tracks = RecordingsCatalogue.parseArchive(
+        _collection('archive:Mohammed_Refat_uP_bY_mUSLEm'),
+        _payload([
+          {'name': '2013.mp3', 'source': 'original', 'length': '21.0'},
+          {
+            'name': '001-الفاتحة_uP_bY_mUSLEm.mp3',
+            'source': 'original',
+            'length': '97.2',
+          },
+          // No length given: kept, not guessed at.
+          {'name': '002-البقرة_uP_bY_mUSLEm.mp3', 'source': 'original'},
+        ]),
+      );
+      expect(tracks.map((t) => t.titleAr), ['الفاتحة', 'البقرة']);
+    });
+
+    test('is kept where it is a whole surah', () {
+      final tracks = RecordingsCatalogue.parseArchive(
+        _collection('archive:MakkahTaraweeh1429'),
+        _payload([
+          {
+            'name': '103-Surah-Al-Asr.mp3',
+            'source': 'original',
+            'length': '13.25',
+          },
+        ]),
+      );
+      expect(tracks, hasLength(1));
+    });
   });
 
   group('Picking up where a recording was left', () {
@@ -642,26 +782,37 @@ void main() {
       expect(RecordingsCatalogue.cleanTitle('_uP_bY_mUSLEm'), isEmpty);
     });
 
-    test('a track survives being cached and read back', () {
-      const track = RecordingTrack(
-        id: 'archive:x/1.mp3',
-        titleAr: 'الركعات 1–4',
-        subtitleAr: '1966م',
-        url: 'https://archive.org/download/x/1.mp3',
-        duration: Duration(seconds: 90),
-        group: 'الليلة 1',
-        order: 3,
+    test('the cached file list reads back into the same tracks', () {
+      final collection = _collection('archive:ramadan1445makkahtaraweeh');
+      final direct = RecordingsCatalogue.parseArchive(collection, _makkah1445);
+      final compact = RecordingsCatalogue.compactFiles(_makkah1445);
+      final back = RecordingsCatalogue.parseArchive(
+        collection,
+        RecordingsCatalogue.expandFiles(compact),
       );
-      final back = RecordingTrack.fromJson(track.toJson())!;
 
-      expect(back.id, track.id);
-      expect(back.titleAr, track.titleAr);
-      expect(back.subtitleAr, track.subtitleAr);
-      expect(back.url, track.url);
-      expect(back.duration, track.duration);
-      expect(back.group, track.group);
-      expect(back.order, 3);
-      expect(RecordingTrack.fromJson({'id': 'x'}), isNull);
+      expect(back.map((t) => t.id), direct.map((t) => t.id));
+      expect(back.map((t) => t.titleAr), direct.map((t) => t.titleAr));
+      expect(back.map((t) => t.group), direct.map((t) => t.group));
+      expect(back.map((t) => t.duration), direct.map((t) => t.duration));
+      // Only the originals are kept, not the derived images.
+      expect(compact, isNot(contains('.png')));
+    });
+
+    test('an unreadable or empty cache reads as no files', () {
+      final collection = _collection('archive:MakkahTaraweeh1429');
+      for (final junk in [null, '', 'not json', '{"a":1}', '[3, [4]]']) {
+        expect(
+          RecordingsCatalogue.parseArchive(
+            collection,
+            RecordingsCatalogue.expandFiles(junk),
+          ),
+          isEmpty,
+          reason: '$junk',
+        );
+      }
+      // A dark or renamed item answers with an empty object.
+      expect(RecordingsCatalogue.compactFiles(<String, dynamic>{}), '[]');
     });
 
     test('a payload that is not what was asked for is empty, not a crash', () {

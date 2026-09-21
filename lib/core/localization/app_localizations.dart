@@ -349,6 +349,8 @@ class AppLocalizations {
       'recordings_live_section': 'Live · moving recitations',
       'recordings_continue': 'Continue where you stopped',
       'recordings_count': '{count} recordings',
+      'recordings_search_hint': 'Search recordings',
+      'recordings_search_empty': 'No matches',
       'recording_list_failed':
           'The recordings could not be loaded. Check your connection and try again.',
       'recording_failed': 'This recording could not be played.',
@@ -1686,6 +1688,8 @@ class AppLocalizations {
       'recordings_live_section': 'مباشر · إذاعات التلاوات الخاشعة',
       'recordings_continue': 'تابع من حيث توقفت',
       'recordings_count': '{count} تسجيلاً',
+      'recordings_search_hint': 'ابحث في التسجيلات',
+      'recordings_search_empty': 'لا توجد نتائج',
       'recording_list_failed':
           'تعذّر تحميل التسجيلات. تحقّق من الاتصال ثم حاول مرة أخرى.',
       'recording_failed': 'تعذّر تشغيل هذا التسجيل.',

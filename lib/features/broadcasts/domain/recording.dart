@@ -49,7 +49,8 @@ enum TrackLayout {
 
   /// `021 s 50 55 اجمل تلاوة نادرة…mp3` — the surah numbers follow an `s`,
   /// and the rest of the name is written for a video site. Titled from the
-  /// surah numbers alone, with the year if the name has one.
+  /// surah numbers alone, with the year if the name has one; a name with no
+  /// numbers keeps its Arabic words, stripped of the site's decoration.
   surahTagged,
 }
 
@@ -66,6 +67,7 @@ class RecordingCollection {
     this.subtitleAr = '',
     this.noteAr = '',
     this.exclude = const [],
+    this.minLength,
   });
 
   /// Stable across releases: kept in preferences as the key for remembered
@@ -97,6 +99,12 @@ class RecordingCollection {
   /// prayer and without — and listing both doubles every night with a
   /// near-identical copy. The prayer as it was prayed is kept.
   final List<String> exclude;
+
+  /// Files shorter than this are left out, where a collection mixes its
+  /// recitations with the uploader's spoken signature or with clips cut for
+  /// a video site. Not set on the surah-by-surah Taraweeh, where al-`Asr is
+  /// thirteen seconds long and belongs there.
+  final Duration? minLength;
 }
 
 /// One file of a collection.
@@ -126,37 +134,6 @@ class RecordingTrack {
   /// where a collection has no grouping.
   final String? group;
 
-  /// Position within the collection, for a stable order after a cache read.
+  /// Position within the collection.
   final int order;
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    't': titleAr,
-    's': subtitleAr,
-    'u': url,
-    if (duration != null) 'd': duration!.inMilliseconds,
-    if (group != null) 'g': group,
-    'o': order,
-  };
-
-  static RecordingTrack? fromJson(Map<String, dynamic> json) {
-    final id = json['id'];
-    final title = json['t'];
-    final url = json['u'];
-    if (id is! String || title is! String || url is! String || url.isEmpty) {
-      return null;
-    }
-    final duration = json['d'];
-    final order = json['o'];
-    return RecordingTrack(
-      id: id,
-      titleAr: title,
-      subtitleAr: json['s'] as String? ?? '',
-      url: url,
-      duration:
-          duration is num ? Duration(milliseconds: duration.toInt()) : null,
-      group: json['g'] as String?,
-      order: order is num ? order.toInt() : 0,
-    );
-  }
 }

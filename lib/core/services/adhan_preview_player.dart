@@ -60,6 +60,10 @@ class AdhanPreviewPlayer {
       return AdhanPreviewResult.unavailable;
     }
 
+    // Taken openly, so whatever was playing lets go and keeps its place —
+    // a Taraweeh night paused for a preview must not have the adhan's few
+    // seconds written down as where it was.
+    AppAudio.claim(AudioOwner.adhanPreview);
     try {
       await _player.stop();
       await _player.setAudioSource(_audioSource(selection, source));
@@ -70,20 +74,32 @@ class AdhanPreviewPlayer {
     } catch (e, stack) {
       AppLogger.error('Could not preview the adhan', e, stack);
       playing.value = null;
+      AppAudio.release(AudioOwner.adhanPreview);
       return AdhanPreviewResult.failed;
     }
   }
 
   static Future<void> stop() async {
     playing.value = null;
+    if (AppAudio.owner != AudioOwner.adhanPreview) {
+      // Someone else has the player now; theirs is not ours to stop.
+      return;
+    }
     await _player.stop();
+    AppAudio.release(AudioOwner.adhanPreview);
   }
 
   static void _listenForCompletion() {
     _completionSub?.cancel();
     _completionSub = _player.playerStateStream.listen((state) {
+      if (AppAudio.owner != AudioOwner.adhanPreview) {
+        // Taken over: the preview is no longer what the player is playing.
+        playing.value = null;
+        return;
+      }
       if (state.processingState == ProcessingState.completed) {
         playing.value = null;
+        AppAudio.release(AudioOwner.adhanPreview);
       }
     });
   }

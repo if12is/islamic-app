@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/services/data_saver.dart';
 import '../../../core/services/secure_http_client.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../quran/data/services/quran_local_service.dart';
@@ -27,8 +28,17 @@ class RecordingsCatalogue {
   /// Answers 302 to a storage node over https, which the player follows.
   static const String downloadEndpoint = 'https://archive.org/download/';
 
-  static const String _cachePrefix = 'recording_tracks_v1:';
-  static const String _cachedAtPrefix = 'recording_tracks_at_v1:';
+  /// The item's own file list is what is kept, not the tracks made from it:
+  /// a third of the size, and a parser fixed in a later release reads the
+  /// list already on the device instead of waiting a month to refetch it.
+  static const String _cachePrefix = 'recording_files_v2:';
+  static const String _cachedAtPrefix = 'recording_files_at_v2:';
+
+  /// What the first release kept — every finished track, address and all.
+  static const List<String> _retiredPrefixes = [
+    'recording_tracks_v1:',
+    'recording_tracks_at_v1:',
+  ];
 
   /// An archive item almost never changes once it is complete.
   static const Duration refreshAfter = Duration(days: 30);
@@ -56,6 +66,8 @@ class RecordingsCatalogue {
       source: RecordingSource.archive,
       identifier: 'Mohammed_Refat_uP_bY_mUSLEm',
       layout: TrackLayout.titled,
+      // One file is the uploader reading his own credit, 21 seconds long.
+      minLength: Duration(minutes: 1),
     ),
     RecordingCollection(
       id: 'archive:Tasjilat-Mojawada_Kharijia_Mustapha_Ismail_uP_bY_mUSLEm',
@@ -65,6 +77,7 @@ class RecordingsCatalogue {
       source: RecordingSource.archive,
       identifier: 'Tasjilat-Mojawada_Kharijia_Mustapha_Ismail_uP_bY_mUSLEm',
       layout: TrackLayout.titled,
+      minLength: Duration(minutes: 1),
     ),
     RecordingCollection(
       id: 'archive:20230814_20230814_1538',
@@ -75,6 +88,10 @@ class RecordingsCatalogue {
       source: RecordingSource.archive,
       identifier: '20230814_20230814_1538',
       layout: TrackLayout.surahTagged,
+      // Forty-five of its files are clips under a minute cut for a video
+      // site's shorts, each a verse or two under a clickbait caption. The
+      // recitations are the long files.
+      minLength: Duration(minutes: 1),
     ),
     RecordingCollection(
       id: 'mp3quran:112:10924',
@@ -217,14 +234,28 @@ class RecordingsCatalogue {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final cached = _readCache(prefs, collection.id);
-    if (cached.isNotEmpty && !refresh && !_isStale(prefs, collection.id)) {
+    await _retire(prefs, collection.id);
+    final cached = parseArchive(
+      collection,
+      expandFiles(prefs.getString('$_cachePrefix${collection.id}')),
+    );
+    // Data saver keeps a list already on the device however old it is: an
+    // archive item whose files were written once does not need re-reading
+    // on someone's allowance. Pulling the list down still refreshes it.
+    if (cached.isNotEmpty &&
+        !refresh &&
+        (!_isStale(prefs, collection.id) ||
+            !DataSaver.allowsBackgroundRefresh)) {
       return _memory[collection.id] = cached;
     }
 
-    final fetched = await _fetchArchive(collection, client);
+    final files = await _fetchFiles(collection, client);
+    final fetched =
+        files == null
+            ? const <RecordingTrack>[]
+            : parseArchive(collection, expandFiles(files));
     if (fetched.isNotEmpty) {
-      await _writeCache(prefs, collection.id, fetched);
+      await _writeCache(prefs, collection.id, files!);
       return _memory[collection.id] = fetched;
     }
 
@@ -256,7 +287,9 @@ class RecordingsCatalogue {
     ];
   }
 
-  static Future<List<RecordingTrack>> _fetchArchive(
+  /// The item's file list as [compactFiles] writes it, or null when the
+  /// host cannot be reached.
+  static Future<String?> _fetchFiles(
     RecordingCollection collection,
     Dio? client,
   ) async {
@@ -266,10 +299,59 @@ class RecordingsCatalogue {
         '$metadataEndpoint${collection.identifier}',
       );
       final body = response.data;
-      return parseArchive(collection, body is String ? jsonDecode(body) : body);
+      return compactFiles(body is String ? jsonDecode(body) : body);
     } catch (e) {
       AppLogger.warning('Could not list ${collection.identifier}: $e');
-      return const [];
+      return null;
+    }
+  }
+
+  /// The part of an item's metadata the parser reads, and only that: the
+  /// original mp3 files, each as `[name, title, length]`. Pure, for tests.
+  ///
+  /// The full metadata of one item runs to half a megabyte of checksums,
+  /// derivative formats and spectrogram images.
+  static String compactFiles(Object? decoded) {
+    final files = decoded is Map ? decoded['files'] : null;
+    return jsonEncode([
+      if (files is List)
+        for (final raw in files)
+          if (raw is Map &&
+              raw['source'] == 'original' &&
+              raw['name'] is String &&
+              (raw['name'] as String).toLowerCase().endsWith('.mp3'))
+            [
+              raw['name'],
+              raw['title'] is String ? raw['title'] : '',
+              raw['length'],
+            ],
+    ]);
+  }
+
+  /// [compactFiles] read back into the shape [parseArchive] takes. Anything
+  /// unreadable reads as no files. Pure, for tests.
+  static Map<String, Object?> expandFiles(String? compact) {
+    if (compact == null || compact.isEmpty) {
+      return const {'files': []};
+    }
+    try {
+      final list = jsonDecode(compact);
+      return {
+        'files': [
+          if (list is List)
+            for (final entry in list)
+              if (entry is List && entry.isNotEmpty && entry.first is String)
+                {
+                  'name': entry.first,
+                  'title': entry.length > 1 ? entry[1] : null,
+                  'length': entry.length > 2 ? entry[2] : null,
+                  'source': 'original',
+                },
+        ],
+      };
+    } catch (e) {
+      AppLogger.warning('Recording file list unreadable: $e');
+      return const {'files': []};
     }
   }
 
@@ -309,12 +391,17 @@ class RecordingsCatalogue {
       if (collection.exclude.any(lower.contains)) {
         continue;
       }
+      final duration = parseLength(raw['length']);
+      final shortest = collection.minLength;
+      if (shortest != null && duration != null && duration < shortest) {
+        continue;
+      }
       final title = raw['title'];
       kept.add(
         _ArchiveFile(
           name: name,
-          title: title is String ? title : '',
-          duration: parseLength(raw['length']),
+          title: title is String ? repairArabic(title) : '',
+          duration: duration,
         ),
       );
     }
@@ -406,6 +493,54 @@ class RecordingsCatalogue {
     }
     return a.name.compareTo(b.name);
   }
+
+  /// Arabic that was saved as Windows-1256 and read back as Latin-1, put
+  /// right: `ÌäæÈ ÇÝÑíÞíÇ - 1966` → `جنوب افريقيا - 1966`.
+  ///
+  /// Old Arabic MP3 tags were written in the Windows code page, and the
+  /// archive read 38 of the Abdul Basit titles as Latin-1 — each byte one
+  /// accented letter. Every byte survives that, so mapping each back through
+  /// the code page recovers the title exactly. Only a title with no Arabic
+  /// in it and a run of those letters is touched; one that is already right
+  /// comes back as it was.
+  static String repairArabic(String text) {
+    if (RegExp(r'[؀-ۿ]').hasMatch(text) ||
+        !RegExp(r'[À-ÿ]{2,}').hasMatch(text)) {
+      return text;
+    }
+    return String.fromCharCodes([
+      for (final unit in text.codeUnits)
+        unit >= 0x80 && unit <= 0xFF ? _windows1256[unit - 0x80] : unit,
+    ]);
+  }
+
+  /// Windows-1256 from 0x80 to 0xFF, as Unicode.
+  static const List<int> _windows1256 = [
+    // 0x80
+    0x20AC, 0x067E, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021,
+    0x02C6, 0x2030, 0x0679, 0x2039, 0x0152, 0x0686, 0x0698, 0x0688,
+    // 0x90
+    0x06AF, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
+    0x06A9, 0x2122, 0x0691, 0x203A, 0x0153, 0x200C, 0x200D, 0x06BA,
+    // 0xA0
+    0x00A0, 0x060C, 0x00A2, 0x00A3, 0x00A4, 0x00A5, 0x00A6, 0x00A7,
+    0x00A8, 0x00A9, 0x06BE, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x00AF,
+    // 0xB0
+    0x00B0, 0x00B1, 0x00B2, 0x00B3, 0x00B4, 0x00B5, 0x00B6, 0x00B7,
+    0x00B8, 0x00B9, 0x061B, 0x00BB, 0x00BC, 0x00BD, 0x00BE, 0x061F,
+    // 0xC0
+    0x06C1, 0x0621, 0x0622, 0x0623, 0x0624, 0x0625, 0x0626, 0x0627,
+    0x0628, 0x0629, 0x062A, 0x062B, 0x062C, 0x062D, 0x062E, 0x062F,
+    // 0xD0
+    0x0630, 0x0631, 0x0632, 0x0633, 0x0634, 0x0635, 0x0636, 0x00D7,
+    0x0637, 0x0638, 0x0639, 0x063A, 0x0640, 0x0641, 0x0642, 0x0643,
+    // 0xE0
+    0x00E0, 0x0644, 0x00E2, 0x0645, 0x0646, 0x0647, 0x0648, 0x00E7,
+    0x00E8, 0x00E9, 0x00EA, 0x00EB, 0x0649, 0x064A, 0x00EE, 0x00EF,
+    // 0xF0
+    0x064B, 0x064C, 0x064D, 0x064E, 0x00F4, 0x064F, 0x0650, 0x00F7,
+    0x0651, 0x00F9, 0x0652, 0x00FB, 0x00FC, 0x200E, 0x200F, 0x06D2,
+  ];
 
   /// A title with the uploader's signature, running number and extension
   /// taken off.
@@ -503,7 +638,8 @@ class RecordingsCatalogue {
   /// The words after the numbers were written to be clicked on a video site —
   /// «هل هذا يعقل !», hearts, exclamation marks — and have no place over a
   /// recitation of the Qur'an. The surah numbers are what the file actually
-  /// holds, so they are the title.
+  /// holds, so they are the title. A file without them keeps its words, with
+  /// the decoration taken off by [untaggedTitle].
   static List<_Titled> _surahTaggedTracks(List<_ArchiveFile> files) {
     final sorted = [...files]..sort(_byLeadingNumber);
     return [
@@ -511,8 +647,7 @@ class RecordingsCatalogue {
         () {
           final surahs = surahsTagged(file.name);
           if (surahs.isEmpty) {
-            final number = leadingNumber(file.name);
-            return _Titled(file, number == null ? 'تلاوة' : 'تلاوة $number');
+            return _Titled(file, untaggedTitle(file.name));
           }
           final year = RegExp(r'\b(19\d{2}|20\d{2})\b').firstMatch(file.name);
           return _Titled(
@@ -537,6 +672,31 @@ class RecordingsCatalogue {
         if (int.tryParse(token) case final number?)
           if (number >= 1 && number <= 114 && seen.add(number)) number,
     ];
+  }
+
+  /// The Arabic words of a file name written for a video site, and nothing
+  /// else: `101 s ابتهال نادر للشيخ محمد صديق المنشاوي.mp3` → `ابتهال نادر
+  /// للشيخ محمد صديق المنشاوي`.
+  ///
+  /// Off come the running number and its `s`, hashtags, «shorts», the
+  /// `(128 kbps)` a converter appended, emoji, hearts and runs of
+  /// exclamation marks. The Persian `چ` a caption uses to look different is
+  /// read as the `ج` it stands for. A name with no Arabic left is only its
+  /// number.
+  static String untaggedTitle(String name) {
+    var text = name.replaceAll(RegExp(r'\.mp3$', caseSensitive: false), '');
+    text = text.replaceFirst(RegExp(r'^[\d\s]+(?:s(?=[\s\-_]|$))?'), '');
+    text = text.replaceAll(RegExp(r'\(\s*\d*\s*kbps\s*\)|\(\d+\)'), ' ');
+    text = text.replaceAll(RegExp('shorts', caseSensitive: false), ' ');
+    text = text.replaceAll('چ', 'ج');
+    // Arabic letters with their marks, digits and spaces are all that stay.
+    text = text.replaceAll(RegExp(r'[^ء-ْٰ-ۓ٠-٩0-9\s]'), ' ');
+    text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (RegExp(r'[ء-ي]').hasMatch(text)) {
+      return text;
+    }
+    final number = leadingNumber(name);
+    return number == null ? 'تلاوة' : 'تلاوة $number';
   }
 
   /// `من سورة ق`, `من سورتي الحجرات وق`, `من سور الصف والجمعة والمنافقون`.
@@ -619,46 +779,28 @@ class RecordingsCatalogue {
         refreshAfter;
   }
 
-  static List<RecordingTrack> _readCache(SharedPreferences prefs, String id) {
-    final raw = prefs.getString('$_cachePrefix$id');
-    if (raw == null || raw.isEmpty) {
-      return const [];
-    }
-    try {
-      final list = jsonDecode(raw);
-      if (list is! List) {
-        return const [];
-      }
-      final tracks = [
-        for (final entry in list)
-          if (entry is Map)
-            if (RecordingTrack.fromJson(Map<String, dynamic>.from(entry))
-                case final track?)
-              track,
-      ]..sort((a, b) => a.order.compareTo(b.order));
-      return tracks;
-    } catch (e) {
-      AppLogger.warning('Recording cache unreadable for $id: $e');
-      return const [];
-    }
-  }
-
   static Future<void> _writeCache(
     SharedPreferences prefs,
     String id,
-    List<RecordingTrack> tracks,
+    String files,
   ) async {
     try {
-      await prefs.setString(
-        '$_cachePrefix$id',
-        jsonEncode([for (final track in tracks) track.toJson()]),
-      );
+      await prefs.setString('$_cachePrefix$id', files);
       await prefs.setInt(
         '$_cachedAtPrefix$id',
         DateTime.now().millisecondsSinceEpoch,
       );
     } catch (e) {
       AppLogger.warning('Could not cache recordings for $id: $e');
+    }
+  }
+
+  /// Drop what the first release kept for [id], once, as it is next opened.
+  static Future<void> _retire(SharedPreferences prefs, String id) async {
+    for (final prefix in _retiredPrefixes) {
+      if (prefs.containsKey('$prefix$id')) {
+        await prefs.remove('$prefix$id');
+      }
     }
   }
 

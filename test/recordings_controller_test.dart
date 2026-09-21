@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/core/services/app_audio.dart';
+import 'package:islamic_app/features/broadcasts/domain/broadcast.dart';
 import 'package:islamic_app/features/broadcasts/domain/recording.dart';
+import 'package:islamic_app/features/broadcasts/presentation/providers/radio_provider.dart';
 import 'package:islamic_app/features/broadcasts/presentation/providers/recordings_provider.dart';
 import 'package:islamic_app/features/quran/presentation/providers/quran_audio_provider.dart';
 import 'package:just_audio/just_audio.dart';
@@ -66,6 +68,31 @@ class _FakePlayer extends Fake implements AudioPlayer {
     _processing = ProcessingState.ready;
     _emitState();
     return duration;
+  }
+
+  /// Every single source loaded, in order — the radio loads one at a time.
+  final loadedUris = <String>[];
+
+  /// When set, the next single-source load waits on it: a station that is
+  /// slow to answer.
+  Completer<void>? hold;
+
+  @override
+  Future<Duration?> setAudioSource(
+    AudioSource audioSource, {
+    bool preload = true,
+    int? initialIndex,
+    Duration? initialPosition,
+  }) async {
+    loadedUris.add((audioSource as UriAudioSource).uri.toString());
+    final waiting = hold;
+    if (waiting != null) {
+      hold = null;
+      await waiting.future;
+    }
+    _processing = ProcessingState.ready;
+    _emitState();
+    return null;
   }
 
   @override
@@ -247,6 +274,27 @@ void main() {
     },
   );
 
+  test('a lock-screen skip picks up the night it lands on', () async {
+    SharedPreferences.setMockInitialValues({
+      'recording_position_v1:${nights[1].id}':
+          const Duration(minutes: 20).inMilliseconds,
+    });
+    await controller.play(_night, nights, 0);
+    player.hear(const Duration(minutes: 40));
+    await pumpEventQueue();
+
+    player.moveOn(1);
+    // The player starts the new night from the top, and reports it, before
+    // it is sent back to the kept place.
+    player.hear(const Duration(seconds: 11));
+    await pumpEventQueue();
+
+    expect(state().index, 1);
+    expect(player.seeks.last, (const Duration(minutes: 20), 1));
+    expect(await _kept(nights[1].id), const Duration(minutes: 20));
+    expect(await _kept(nights[0].id), const Duration(minutes: 40));
+  });
+
   test('opening another collection keeps the place in the one left', () async {
     await controller.play(_night, nights, 0);
     player.hear(const Duration(minutes: 40));
@@ -335,4 +383,33 @@ void main() {
     expect(state().isOn, isFalse);
     expect(await _kept(nights[0].id), const Duration(minutes: 12, seconds: 5));
   });
+
+  test(
+    'a slow station does not take the player back from a recording',
+    () async {
+      const station = Broadcast(
+        id: 'radio:1',
+        name: 'إذاعة',
+        url: 'https://first.example/live',
+        fallbackUrl: 'https://second.example/live',
+        kind: BroadcastKind.radio,
+      );
+      final slow = Completer<void>();
+      player.hold = slow;
+      final tuning = container.read(radioProvider.notifier).play(station);
+      await pumpEventQueue();
+
+      // While the first address hangs, a recording is started. Its load
+      // interrupts the station's, which then fails.
+      await controller.play(_night, nights, 0);
+      slow.completeError(PlayerInterruptedException('Loading interrupted'));
+      await tuning;
+      await pumpEventQueue();
+
+      expect(player.loadedUris, ['https://first.example/live']);
+      expect(AppAudio.owner, AudioOwner.recordings);
+      expect(state().isOn, isTrue);
+      expect(container.read(radioProvider).isOn, isFalse);
+    },
+  );
 }
