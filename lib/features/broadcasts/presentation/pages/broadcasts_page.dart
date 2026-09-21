@@ -4,14 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/glass_container.dart';
+import '../../../../core/widgets/now_playing_strip.dart';
 import '../../data/broadcast_catalogue.dart';
+import '../../data/recordings_catalogue.dart';
 import '../../domain/broadcast.dart';
+import '../../domain/recording.dart';
 import '../providers/radio_provider.dart';
 import 'live_tv_page.dart';
+import 'recording_collection_page.dart';
+
+/// Which list the Broadcasts page is showing. Kept apart from [BroadcastKind]
+/// because recordings are not a live stream.
+enum _BroadcastShelf { radio, tv, recordings }
 
 /// Live radio and the two Qur'an television channels.
 ///
@@ -34,7 +43,7 @@ class BroadcastsPage extends ConsumerStatefulWidget {
 
 class _BroadcastsPageState extends ConsumerState<BroadcastsPage> {
   final TextEditingController _search = TextEditingController();
-  BroadcastKind _kind = BroadcastKind.radio;
+  _BroadcastShelf _shelf = _BroadcastShelf.radio;
   String _query = '';
 
   @override
@@ -71,25 +80,29 @@ class _BroadcastsPageState extends ConsumerState<BroadcastsPage> {
               AppSpacing.page,
               AppSpacing.sm,
             ),
-            child: PillSelector<BroadcastKind>(
-              scrollable: false,
-              value: _kind,
-              onChanged: (value) => setState(() => _kind = value),
+            child: PillSelector<_BroadcastShelf>(
+              value: _shelf,
+              onChanged: (value) => setState(() => _shelf = value),
               options: [
                 PillOption(
-                  value: BroadcastKind.radio,
+                  value: _BroadcastShelf.radio,
                   label: context.tr('broadcasts_radio'),
                   icon: Icons.radio_rounded,
                 ),
                 PillOption(
-                  value: BroadcastKind.tv,
+                  value: _BroadcastShelf.tv,
                   label: context.tr('broadcasts_tv'),
                   icon: Icons.live_tv_rounded,
+                ),
+                PillOption(
+                  value: _BroadcastShelf.recordings,
+                  label: context.tr('broadcasts_recordings'),
+                  icon: Icons.album_rounded,
                 ),
               ],
             ),
           ),
-          if (_kind == BroadcastKind.radio)
+          if (_shelf == _BroadcastShelf.radio)
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.page,
@@ -104,17 +117,31 @@ class _BroadcastsPageState extends ConsumerState<BroadcastsPage> {
               ),
             ),
           Expanded(
-            child: catalogue.when(
-              loading:
-                  () =>
-                      const Center(child: CircularProgressIndicator.adaptive()),
-              error:
-                  (error, _) =>
-                      _message(tokens, context.tr('broadcast_list_failed')),
-              data: (all) => _list(tokens, all),
-            ),
+            child:
+                _shelf == _BroadcastShelf.recordings
+                    ? _recordingsShelf(tokens)
+                    : catalogue.when(
+                      loading:
+                          () => const Center(
+                            child: CircularProgressIndicator.adaptive(),
+                          ),
+                      error:
+                          (error, _) => _message(
+                            tokens,
+                            context.tr('broadcast_list_failed'),
+                          ),
+                      data: (all) => _list(tokens, all),
+                    ),
           ),
-          if (radio.isOn) _nowPlaying(tokens, radio),
+          if (radio.isOn)
+            _nowPlaying(tokens, radio)
+          else
+            // Anything else playing — a recording from the shelf above, most
+            // likely. This page is pushed over the shell, so the strip the
+            // shell keeps above the navigation bar is hidden underneath it,
+            // and stepping back from a collection would otherwise leave a
+            // ninety-minute night playing with no control on screen.
+            const SafeArea(top: false, child: NowPlayingStrip()),
         ],
       ),
     );
@@ -132,9 +159,11 @@ class _BroadcastsPageState extends ConsumerState<BroadcastsPage> {
   );
 
   Widget _list(AppTokens tokens, List<Broadcast> all) {
-    final ofKind = BroadcastCatalogue.of(all, _kind);
+    final kind =
+        _shelf == _BroadcastShelf.tv ? BroadcastKind.tv : BroadcastKind.radio;
+    final ofKind = BroadcastCatalogue.of(all, kind);
     final matches =
-        _kind == BroadcastKind.radio
+        kind == BroadcastKind.radio
             ? BroadcastCatalogue.search(ofKind, _query)
             : ofKind;
 
@@ -150,9 +179,9 @@ class _BroadcastsPageState extends ConsumerState<BroadcastsPage> {
 
     return ListView.builder(
       padding: AppScaffold.scrollPadding,
-      itemCount: ordered.length + (_kind == BroadcastKind.tv ? 1 : 0),
+      itemCount: ordered.length + (kind == BroadcastKind.tv ? 1 : 0),
       itemBuilder: (context, index) {
-        if (_kind == BroadcastKind.tv && index == ordered.length) {
+        if (kind == BroadcastKind.tv && index == ordered.length) {
           return Padding(
             padding: const EdgeInsets.only(top: AppSpacing.md),
             child: Text(
@@ -166,6 +195,97 @@ class _BroadcastsPageState extends ConsumerState<BroadcastsPage> {
           child: _row(tokens, ordered[index]),
         );
       },
+    );
+  }
+
+  Widget _recordingsShelf(AppTokens tokens) {
+    final rare = RecordingsCatalogue.of(RecordingCategory.rare);
+    final taraweeh = RecordingsCatalogue.of(RecordingCategory.taraweeh);
+    final stations = ref.watch(broadcastsProvider).asData?.value ?? const [];
+    final byId = {for (final station in stations) station.id: station};
+    final live = [
+      for (final id in RecordingsCatalogue.liveRadioIds)
+        if (byId[id] case final station?) station,
+    ];
+
+    return SingleChildScrollView(
+      padding: AppScaffold.scrollPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeader(title: context.tr('recordings_rare_section')),
+          for (final collection in rare) _collectionCard(tokens, collection),
+          const SizedBox(height: AppSpacing.lg),
+          SectionHeader(title: context.tr('recordings_taraweeh_section')),
+          for (final collection in taraweeh)
+            _collectionCard(tokens, collection),
+          if (live.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            SectionHeader(title: context.tr('recordings_live_section')),
+            for (final station in live)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _row(tokens, station),
+              ),
+          ],
+          Padding(
+            padding: const EdgeInsets.only(
+              top: AppSpacing.lg,
+              bottom: AppSpacing.md,
+            ),
+            child: Text(
+              context.tr('recordings_source_note'),
+              style: AppTextStyles.caption(context, color: tokens.inkFaint),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _collectionCard(AppTokens tokens, RecordingCollection collection) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        onTap: () => RecordingCollectionPage.open(context, collection),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              localizeDigits(context, collection.reciterAr),
+              style: AppTextStyles.display(context, fontSize: 18),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              localizeDigits(context, collection.titleAr),
+              style: AppTextStyles.body(context, fontSize: 14),
+            ),
+            if (collection.subtitleAr.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                localizeDigits(context, collection.subtitleAr),
+                style: AppTextStyles.caption(
+                  context,
+                  color: tokens.inkMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            if (collection.noteAr.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                localizeDigits(context, collection.noteAr),
+                style: AppTextStyles.caption(
+                  context,
+                  color: tokens.inkFaint,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

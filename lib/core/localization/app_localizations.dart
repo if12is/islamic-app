@@ -343,6 +343,19 @@ class AppLocalizations {
       'broadcast_channel_down': 'The channel is not responding.',
       'broadcast_channel_down_desc':
           'The stream is published by the broadcaster, not by this app. It is worth trying again in a while.',
+      'broadcasts_recordings': 'Rare recitations',
+      'recordings_rare_section': 'Rare recordings of the great reciters',
+      'recordings_taraweeh_section': 'Taraweeh from the two Holy Mosques',
+      'recordings_live_section': 'Live · moving recitations',
+      'recordings_continue': 'Continue where you stopped',
+      'recordings_count': '{count} recordings',
+      'recording_list_failed':
+          'The recordings could not be loaded. Check your connection and try again.',
+      'recording_failed': 'This recording could not be played.',
+      'recordings_back_30': 'Back 30 seconds',
+      'recordings_forward_30': 'Forward 30 seconds',
+      'recordings_source_note':
+          'Recordings stream from the Internet Archive and mp3quran.',
       'mute': 'Mute',
       'unmute': 'Unmute',
       // Storage and the data saver.
@@ -1667,6 +1680,19 @@ class AppLocalizations {
       'broadcast_channel_down': 'القناة لا تستجيب.',
       'broadcast_channel_down_desc':
           'البثّ من جهة القناة لا من التطبيق. جرّب بعد قليل.',
+      'broadcasts_recordings': 'تلاوات نادرة',
+      'recordings_rare_section': 'تلاوات نادرة لكبار القراء',
+      'recordings_taraweeh_section': 'صلاة التراويح من الحرمين',
+      'recordings_live_section': 'مباشر · إذاعات التلاوات الخاشعة',
+      'recordings_continue': 'تابع من حيث توقفت',
+      'recordings_count': '{count} تسجيلاً',
+      'recording_list_failed':
+          'تعذّر تحميل التسجيلات. تحقّق من الاتصال ثم حاول مرة أخرى.',
+      'recording_failed': 'تعذّر تشغيل هذا التسجيل.',
+      'recordings_back_30': 'رجوع ٣٠ ثانية',
+      'recordings_forward_30': 'تقديم ٣٠ ثانية',
+      'recordings_source_note':
+          'التسجيلات تُبثّ من أرشيف الإنترنت وموقع mp3quran.',
       'mute': 'كتم',
       'unmute': 'إلغاء الكتم',
       // التخزين وتوفير البيانات.

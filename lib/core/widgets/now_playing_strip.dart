@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/broadcasts/presentation/pages/broadcasts_page.dart';
+import '../../features/broadcasts/presentation/pages/recording_collection_page.dart';
 import '../../features/broadcasts/presentation/providers/radio_provider.dart';
+import '../../features/broadcasts/presentation/providers/recordings_provider.dart';
 import '../../features/quran/data/services/quran_local_service.dart';
 import '../../features/quran/presentation/pages/now_playing_page.dart';
 import '../../features/quran/presentation/pages/surah_reader_page.dart';
@@ -42,6 +44,9 @@ class NowPlayingStrip extends ConsumerWidget {
     final surah = ref.watch(surahAudioProvider);
     final verses = ref.watch(quranAudioProvider);
     final radio = ref.watch(radioProvider);
+    // Watched so the strip redraws as the recording changes; read again in
+    // `_resolve` alongside the owner check that decides whether it shows.
+    ref.watch(recordingsProvider);
 
     final entry = _resolve(context, ref, surah, verses, radio);
     // AnimatedSize rather than a plain conditional: the bar sliding in under
@@ -140,6 +145,24 @@ class NowPlayingStrip extends ConsumerWidget {
                       ),
                 ),
               ),
+        );
+
+      case AudioOwner.recordings:
+        final recording = ref.read(recordingsProvider);
+        final track = recording.current;
+        final collection = recording.collection;
+        if (track == null || collection == null) {
+          return null;
+        }
+        return _NowPlaying(
+          icon: Icons.album_rounded,
+          title: RecordingsController.displayTitle(track),
+          subtitle: collection.reciterAr,
+          playing: recording.playing,
+          loading: recording.loading,
+          onToggle: ref.read(recordingsProvider.notifier).toggle,
+          onStop: ref.read(recordingsProvider.notifier).stop,
+          onOpen: () => RecordingCollectionPage.open(context, collection),
         );
 
       case AudioOwner.adhanPreview:

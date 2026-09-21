@@ -8,7 +8,7 @@ import 'package:just_audio/just_audio.dart';
 /// Without a name for that, the previous owner keeps showing a bar for audio
 /// that is no longer playing — a stopped surah still on screen with a pause
 /// button, while the radio plays underneath it.
-enum AudioOwner { none, surah, verses, radio, adhanPreview }
+enum AudioOwner { none, surah, verses, radio, adhanPreview, recordings }
 
 /// The one audio player in the app.
 ///

@@ -24,6 +24,11 @@ class SecureHttpClient {
     // The `www` matters: the bare domain answers 301, and this client does not
     // follow redirects, so mp3quran.net would be rejected as a bad response.
     'www.mp3quran.net',
+    // The Internet Archive's metadata API, which lists the files of the
+    // curated rare recitations and Taraweeh collections. Answers 200 with no
+    // redirect. The audio itself streams through the player, not this client,
+    // from storage nodes the download path redirects to.
+    'archive.org',
     // OpenStreetMap's query endpoint, for finding the nearest mosques. Only
     // this one mirror: the alternatives that answer are hosted elsewhere
     // again, and a search sends the user's coordinates — so the fewer places
