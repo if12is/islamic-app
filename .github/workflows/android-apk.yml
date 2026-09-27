@@ -383,6 +383,16 @@ jobs:
             echo "CODE_SIGNING_REQUIRED=NO" >> "$config"
             echo "CODE_SIGN_IDENTITY=" >> "$config"
           done
+          # CocoaPods asks the linker for -framework sherpa-onnx. The binary
+          # inside the xcframework is SherpaOnnxC.framework, so the link fails
+          # with "Framework 'sherpa-onnx' not found" unless that name exists.
+          shopt -s nullglob
+          for slice in "$HOME"/.pub-cache/hosted/pub.dev/sherpa_onnx_ios-*/ios/sherpa_onnx_ios/sherpa-onnx.xcframework/ios-*; do
+            if [ -d "$slice/SherpaOnnxC.framework" ]; then
+              ln -sfn SherpaOnnxC "$slice/SherpaOnnxC.framework/sherpa-onnx"
+              ln -sfn SherpaOnnxC.framework "$slice/sherpa-onnx.framework"
+            fi
+          done
           flutter build ios --release --no-codesign
 
       - name: Package Fajr.ipa

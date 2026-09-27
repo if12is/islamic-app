@@ -1,6 +1,6 @@
 # CocoaPods for the iOS runner. Generated the same way `flutter create` does,
 # and committed so CI can build an IPA without a Mac on the developer's desk.
-platform :ios, '13.0'
+platform :ios, '15.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
