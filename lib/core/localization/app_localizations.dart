@@ -54,6 +54,11 @@ class AppLocalizations {
       'location_pinned': 'Pinned manually — times follow this place.',
       // Phase 4: page mode, memorisation, backup, Ramadan, downloads.
       'reader_view_mode': 'Layout',
+      'quran_verse_language': 'Quran text',
+      'quran_verse_arabic': 'Arabic',
+      'quran_verse_english': 'English',
+      'quran_verse_english_hint':
+          'Saheeh International, loaded once per surah and kept on this device.',
       'view_continuous': 'Continuous',
       'view_pages': 'Pages',
       'hifz': 'Memorisation',
@@ -1405,6 +1410,11 @@ class AppLocalizations {
       'location_pinned': 'موقع مثبّت يدوياً — المواقيت تتبعه.',
       // Phase 4: page mode, memorisation, backup, Ramadan, downloads.
       'reader_view_mode': 'طريقة العرض',
+      'quran_verse_language': 'نص القرآن',
+      'quran_verse_arabic': 'عربي',
+      'quran_verse_english': 'إنجليزي',
+      'quran_verse_english_hint':
+          'ترجمة صحيح إنترناشونال، تُجلب مرة لكل سورة وتبقى على الجهاز.',
       'view_continuous': 'متصل',
       'view_pages': 'صفحات',
       'hifz': 'الحفظ',

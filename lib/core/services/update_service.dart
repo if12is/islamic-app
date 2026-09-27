@@ -369,7 +369,7 @@ class UpdateService {
 
   /// Pull "1.0.1" and the build number out of whatever the release is called.
   ///
-  /// The APK is named `islamic-app-1.0.1-build47.apk`, and the title carries
+  /// The APK is named `Fajr-1.0.1-build47-arm64-v8a.apk`, and the title carries
   /// the same pair, so either will do — but the build number is what decides
   /// newer, and a release without one cannot be compared at all.
   static (String, int)? _versionFrom(String tag, String name, String? asset) {

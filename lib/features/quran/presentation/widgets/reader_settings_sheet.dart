@@ -58,6 +58,32 @@ class ReaderSettingsSheet extends ConsumerWidget {
               _preview(context, settings, palette),
               const SizedBox(height: 24),
 
+              if (!context.isAppRtl) ...[
+                _label(context, 'quran_verse_language'),
+                SegmentedButton<VerseLanguage>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(
+                      value: VerseLanguage.arabic,
+                      label: Text(context.tr('quran_verse_arabic')),
+                    ),
+                    ButtonSegment(
+                      value: VerseLanguage.english,
+                      label: Text(context.tr('quran_verse_english')),
+                    ),
+                  ],
+                  selected: {settings.verseLanguage},
+                  onSelectionChanged:
+                      (value) => notifier.setVerseLanguage(value.first),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  context.tr('quran_verse_english_hint'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 20),
+              ],
+
               _label(context, 'reader_view_mode'),
               SegmentedButton<ReaderViewMode>(
                 showSelectedIcon: false,

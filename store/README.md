@@ -15,8 +15,8 @@
 ولا يتغيّر ولا يحتاج تسجيل دخول**:
 
 ```
-https://github.com/if12is/islamic-app/releases/download/apk-latest/islamic-app-latest-arm64-v8a.apk
-https://github.com/if12is/islamic-app/releases/download/apk-latest/islamic-app-latest-armeabi-v7a.apk
+https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr-latest-arm64-v8a.apk
+https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr-latest-armeabi-v7a.apk
 ```
 
 تحققت منهما: يردّان `200` و‏86.8 و‏93.7 ميجابايت بلا أي مصادقة.

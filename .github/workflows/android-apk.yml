@@ -165,8 +165,8 @@ jobs:
           for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
             abi="${apk##*/app-}"
             abi="${abi%-release.apk}"
-            cp "$apk" "dist/islamic-app-${FILE}-${abi}.apk"
-            cp "$apk" "dist/islamic-app-latest-${abi}.apk"
+            cp "$apk" "dist/Fajr-${FILE}-${abi}.apk"
+            cp "$apk" "dist/Fajr-latest-${abi}.apk"
           done
           ls -lh dist
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -176,7 +176,7 @@ jobs:
       - name: Upload APK (Actions artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: islamic-app-${{ steps.meta.outputs.file }}
+          name: Fajr-${{ steps.meta.outputs.file }}
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 30
@@ -246,7 +246,7 @@ jobs:
 
           gh release create apk-latest \
             dist/*.apk \
-            --title "Latest development APK (${{ steps.meta.outputs.version }})" \
+            --title "Fajr (${{ steps.meta.outputs.version }})" \
             --notes "$(cat <<EOF
           Rolling development APK. This release is replaced on every push to \`master\`.
 
@@ -255,8 +255,9 @@ jobs:
           - Commit: \`${{ github.sha }}\`
           - Branch: \`${{ github.ref_name }}\`
 
-          Install the APK that matches the phone CPU (Honor 600 is \`arm64-v8a\`).
-          The in-app updater downloads that file only — not the old 150 MB universal package.
+          Install **Fajr** — the file is named after the app.
+          Android: the APK that matches the phone CPU (Honor 600 is \`arm64-v8a\`).
+          iPhone: \`Fajr.ipa\` (unsigned, install with Sideloadly, AltStore, or TrollStore — not the App Store).
 
           To keep a version forever, create a versioned release (see AGENTS.md).
 
@@ -281,13 +282,13 @@ jobs:
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; uploading APK onto it."
-            gh release upload "$TAG" dist/islamic-app-${{ steps.meta.outputs.file }}-*.apk --clobber
+            gh release upload "$TAG" dist/Fajr-${{ steps.meta.outputs.file }}-*.apk --clobber
             exit 0
           fi
 
           gh release create "$TAG" \
-            dist/islamic-app-${{ steps.meta.outputs.file }}-*.apk \
-            --title "Islamic App ${VERSION}" \
+            dist/Fajr-${{ steps.meta.outputs.file }}-*.apk \
+            --title "Fajr ${VERSION}" \
             --notes "$(cat <<EOF
           Versioned release \`${VERSION}\`. This release is kept; it is not deleted by later pushes.
 
@@ -331,8 +332,8 @@ jobs:
             echo "### Download URLs (stable — they do not change between releases)"
             echo
             echo '```'
-            echo "${BASE}/islamic-app-latest-arm64-v8a.apk"
-            echo "${BASE}/islamic-app-latest-armeabi-v7a.apk"
+            echo "${BASE}/Fajr-latest-arm64-v8a.apk"
+            echo "${BASE}/Fajr-latest-armeabi-v7a.apk"
             echo '```'
             echo
             echo "Upload **arm64-v8a** first: every current phone runs it."
@@ -350,3 +351,69 @@ jobs:
             echo
             echo "Listing text and screenshots: \`store/listing.md\`, \`ads/cards/\`."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Unsigned IPA, the same shape as Mo-Music: a phone can install it with
+  # Sideloadly, AltStore, or TrollStore. Apple will not install a GitHub file
+  # the way Android installs an APK, so this is not an App Store build.
+  build-ios:
+    name: Build iOS
+    needs: build-apk
+    runs-on: macos-latest
+    if: needs.build-apk.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          flutter config --no-enable-swift-package-manager
+          flutter pub get
+
+      - name: Build without an Apple certificate
+        run: |
+          set -euo pipefail
+          for config in ios/Flutter/Release.xcconfig ios/Flutter/Debug.xcconfig; do
+            echo "CODE_SIGNING_ALLOWED=NO" >> "$config"
+            echo "CODE_SIGNING_REQUIRED=NO" >> "$config"
+            echo "CODE_SIGN_IDENTITY=" >> "$config"
+          done
+          flutter build ios --release --no-codesign
+
+      - name: Package Fajr.ipa
+        run: |
+          set -euo pipefail
+          mkdir -p dist/Payload
+          cp -R build/ios/iphoneos/Runner.app dist/Payload/
+          (cd dist && zip -qry Fajr.ipa Payload)
+          cp dist/Fajr.ipa dist/Fajr-ios-unsigned.ipa
+          rm -rf dist/Payload
+          ls -lh dist/*.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fajr-ios
+          path: dist/*.ipa
+          retention-days: 30
+
+      - name: Attach IPA to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BASE="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          BASE="${BASE%%+*}"
+          # The Android job has already created whichever release this push
+          # asked for. Attach the IPA onto each one that exists.
+          for tag in apk-latest "v${BASE}"; do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release upload "$tag" dist/Fajr.ipa dist/Fajr-ios-unsigned.ipa --clobber
+            fi
+          done
+

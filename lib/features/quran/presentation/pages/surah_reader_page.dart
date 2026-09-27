@@ -16,6 +16,7 @@ import '../../../../core/widgets/islamic_ornaments.dart';
 import '../../data/bookmark_store.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../data/services/mushaf_reader.dart';
+import '../../data/services/quran_english_translation.dart';
 import '../../data/services/quran_local_service.dart';
 import '../../domain/entities/riwaya.dart';
 import '../../domain/tajweed_palette.dart';
@@ -88,6 +89,9 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
   final Map<String, TapGestureRecognizer> _tapRecognizers = {};
 
   List<QuranVerse> _verses = const [];
+
+  /// English translation keyed by `surah:ayah`, filled when that language is on.
+  Map<String, String> _english = const {};
   String? _selectedKey;
   bool _loading = true;
 
@@ -282,6 +286,9 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       // on purpose and should not have to dismiss a card to hear.
       if (mounted && !widget.autoPlay && _errorKey.isEmpty) {
         await ReaderTour.maybeShow(context);
+      }
+      if (mounted) {
+        unawaited(_loadEnglish(verses));
       }
     } catch (e, stack) {
       AppLogger.error('Failed to load verses', e, stack);
@@ -659,6 +666,16 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       },
     );
 
+    ref.listen<VerseLanguage>(
+      readerSettingsProvider.select((value) => value.verseLanguage),
+      (previous, next) {
+        if (previous == next || next != VerseLanguage.english) {
+          return;
+        }
+        unawaited(_loadEnglish(_verses));
+      },
+    );
+
     final bookmarks = ref.watch(bookmarksProvider).value ?? const [];
     // Which Hafs verses are bookmarked, per surah. Matched against everything
     // a verse carries rather than by key, because a verse this reading merges
@@ -907,6 +924,30 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     });
   }
 
+  /// Saheeh International for every surah on this page. A juz crosses surahs,
+  /// so each one is fetched on its own and kept.
+  Future<void> _loadEnglish(List<QuranVerse> verses) async {
+    if (!mounted || context.isAppRtl) {
+      return;
+    }
+    if (ref.read(readerSettingsProvider).verseLanguage !=
+        VerseLanguage.english) {
+      return;
+    }
+    final surahs = verses.map((verse) => verse.surahNumber).toSet();
+    final merged = <String, String>{};
+    for (final surah in surahs) {
+      final ayahs = await QuranEnglishTranslation().forSurah(surah);
+      for (final entry in ayahs.entries) {
+        merged['$surah:${entry.key}'] = entry.value;
+      }
+    }
+    if (!mounted || merged.isEmpty) {
+      return;
+    }
+    setState(() => _english = merged);
+  }
+
   /// Turns verses into laid-out blocks: surah banners, basmalah, and justified
   /// text with tappable ayah spans. Shared by both view modes.
   List<Widget> _verseBlocks(
@@ -916,10 +957,16 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     Map<int, Set<int>> bookmarkedVerses,
     QuranAudioState audio, {
     bool showBanners = true,
+    bool showEnglish = false,
   }) {
     final blocks = <Widget>[];
     var spans = <InlineSpan>[];
     var currentSurah = -1;
+    final useEnglish = showEnglish && _english.isNotEmpty;
+    final scriptFamily =
+        useEnglish ? AppTheme.fontFamily : settings.font.family;
+    final scriptDirection =
+        useEnglish ? TextDirection.ltr : TextDirection.rtl;
 
     void flush() {
       if (spans.isEmpty) {
@@ -928,16 +975,16 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       blocks.add(
         RichText(
           textAlign: TextAlign.justify,
-          textDirection: TextDirection.rtl,
+          textDirection: scriptDirection,
           strutStyle: StrutStyle(
             fontSize: settings.fontSize,
             height: settings.lineHeight,
             forceStrutHeight: true,
-            fontFamily: settings.font.family,
+            fontFamily: scriptFamily,
           ),
           text: TextSpan(
             style: TextStyle(
-              fontFamily: settings.font.family,
+              fontFamily: scriptFamily,
               fontSize: settings.fontSize,
               height: settings.lineHeight,
               color: palette.text,
@@ -990,6 +1037,8 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
               ? palette.accent.withValues(alpha: 0.12)
               : null;
 
+      final translated = useEnglish ? _english[verse.key] : null;
+      final body = translated ?? '${verse.text} ';
       final verseStyle = TextStyle(
         color: isPlaying ? palette.accent : palette.text,
         backgroundColor: background,
@@ -998,10 +1047,11 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       // Tajweed colouring gives way to the playing highlight: while a verse is
       // being recited the reader is following the voice, and two colour
       // systems fighting over the same letters helps with neither.
-      if (settings.showTajweed && !isPlaying) {
+      // English is a translation, so the tajweed colours do not apply.
+      if (settings.showTajweed && !isPlaying && translated == null) {
         spans.addAll(
           TajweedText.spansFor(
-            text: '${verse.text} ',
+            text: body.endsWith(' ') ? body : '$body ',
             baseStyle: verseStyle,
             palette: TajweedPalette.forGround(isDark: palette.isDark),
             recognizer: recognizer,
@@ -1010,7 +1060,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       } else {
         spans.add(
           TextSpan(
-            text: '${verse.text} ',
+            text: body.endsWith(' ') ? body : '$body ',
             style: verseStyle,
             recognizer: recognizer,
           ),
@@ -1054,6 +1104,9 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       palette,
       bookmarkedVerses,
       audio,
+      showEnglish:
+          !context.isAppRtl &&
+          settings.verseLanguage == VerseLanguage.english,
     );
 
     return NotificationListener<ScrollNotification>(
@@ -1103,7 +1156,9 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     return PageView.builder(
       controller: _pageController,
       // RTL: swiping from the left edge moves forward, like turning a Mushaf.
-      reverse: true,
+      reverse:
+          context.isAppRtl ||
+          settings.verseLanguage != VerseLanguage.english,
       itemCount: _pages.length,
       onPageChanged: _onPageChanged,
       itemBuilder: (context, index) {
@@ -1115,6 +1170,9 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
           palette,
           bookmarkedVerses,
           audio,
+          showEnglish:
+              !context.isAppRtl &&
+              settings.verseLanguage == VerseLanguage.english,
         );
 
         return SingleChildScrollView(

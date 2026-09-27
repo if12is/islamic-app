@@ -1,18 +1,12 @@
 {
   "ar": [
-    "جديد في البثوث: تلاوات نادرة لكبار القرّاء، من محمد رفعت ومصطفى إسماعيل إلى المنشاوي وعبد الباسط.",
-    "صلاة التراويح كاملة من المسجد الحرام والمسجد النبوي، ليلةً ليلة، ومعها دعاء ختم القرآن.",
-    "التسجيل يكمل من حيث توقفت، حتى لو أغلقت التطبيق.",
-    "أزرار كبيرة للرجوع والتقديم ثلاثين ثانية.",
-    "ابحث داخل التسجيلات، أو اختر الليلة مباشرة من صلاة التراويح.",
-    "قراءة ثالثة: قالون عن نافع، والرواية التي تختارها يتبعها النص والقرّاء والتلاوة."
+    "اسم التحميل على GitHub أصبح Fajr، باسم التطبيق.",
+    "نسخة آيفون: ملف Fajr.ipa يُثبَّت عبر Sideloadly أو AltStore أو TrollStore.",
+    "في الواجهة الإنجليزية يمكن قراءة القرآن بالعربية أو بالترجمة الإنجليزية."
   ],
   "en": [
-    "New in Broadcasts: rare recordings of the great reciters, from Muhammad Rifat and Mustafa Ismail to al-Minshawi and Abdul Basit.",
-    "Complete Taraweeh from Makkah and Madinah, night by night, with the prayer for completing the Quran.",
-    "Recordings pick up where you stopped, even after closing the app.",
-    "Large buttons to go back or forward thirty seconds.",
-    "Search inside a collection, or jump straight to a night of Taraweeh.",
-    "A third reading, Qalun from Nafi — the text, reciters and audio all follow the reading you choose."
+    "GitHub downloads are named Fajr, after the app.",
+    "iPhone build: Fajr.ipa, installed with Sideloadly, AltStore, or TrollStore.",
+    "In English, the Quran can be read in Arabic or in the English translation."
   ]
 }

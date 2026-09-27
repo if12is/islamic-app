@@ -27,6 +27,10 @@ enum ReaderFont {
 /// Reading surfaces tuned for different light conditions.
 enum ReaderTheme { auto, light, sepia, dark, green }
 
+/// The words on the page. Arabic is the bundled Mushaf. English is Saheeh
+/// International, fetched once per surah and then kept on the device.
+enum VerseLanguage { arabic, english }
+
 /// How the Mushaf is laid out.
 enum ReaderViewMode {
   /// One continuous scroll — good for reading a long passage.
@@ -70,6 +74,7 @@ class ReaderSettings {
     this.reciterCode = 'ar.alafasy',
     this.reciterChosen = false,
     this.viewMode = ReaderViewMode.continuous,
+    this.verseLanguage = VerseLanguage.arabic,
     this.showTajweed = false,
     this.edition = MushafEdition.hafs,
   });
@@ -113,6 +118,9 @@ class ReaderSettings {
   /// Continuous scroll or page-by-page.
   final ReaderViewMode viewMode;
 
+  /// Arabic Mushaf, or the English translation when the app is in English.
+  final VerseLanguage verseLanguage;
+
   /// Colour the tajweed rules on the page.
   final bool showTajweed;
 
@@ -137,6 +145,7 @@ class ReaderSettings {
     String? reciterCode,
     bool? reciterChosen,
     ReaderViewMode? viewMode,
+    VerseLanguage? verseLanguage,
     bool? showTajweed,
     MushafEdition? edition,
   }) {
@@ -158,6 +167,7 @@ class ReaderSettings {
       reciterCode: reciterCode ?? this.reciterCode,
       reciterChosen: reciterChosen ?? this.reciterChosen,
       viewMode: viewMode ?? this.viewMode,
+      verseLanguage: verseLanguage ?? this.verseLanguage,
       showTajweed: showTajweed ?? this.showTajweed,
       edition: edition ?? this.edition,
     );
@@ -176,6 +186,7 @@ class ReaderSettings {
     'reciterCode': reciterCode,
     'reciterChosen': reciterChosen,
     'viewMode': viewMode.name,
+    'verseLanguage': verseLanguage.name,
     'showTajweed': showTajweed,
     'edition': edition.id,
   };
@@ -218,6 +229,10 @@ class ReaderSettings {
       viewMode: ReaderViewMode.values.firstWhere(
         (mode) => mode.name == json['viewMode'],
         orElse: () => ReaderViewMode.continuous,
+      ),
+      verseLanguage: VerseLanguage.values.firstWhere(
+        (language) => language.name == json['verseLanguage'],
+        orElse: () => VerseLanguage.arabic,
       ),
       showTajweed: json['showTajweed'] == true,
       edition: MushafEdition.fromId(json['edition'] as String?),
@@ -389,6 +404,9 @@ class ReaderSettingsNotifier extends Notifier<ReaderSettings> {
     final catalogued = ReciterCatalogue.byId(code, ReciterCatalogue.known);
     return catalogued != null && edition.accepts(catalogued.riwayaId);
   }
+
+  Future<void> setVerseLanguage(VerseLanguage language) =>
+      update(state.copyWith(verseLanguage: language));
 
   Future<void> setViewMode(ReaderViewMode mode) =>
       update(state.copyWith(viewMode: mode));
