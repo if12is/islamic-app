@@ -1,3 +1,4 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/core/models/adhan_sound.dart';
 import 'package:islamic_app/core/models/notification_preferences.dart';
@@ -775,6 +776,23 @@ void main() {
       final prefs = NotificationPreferences.decode('not json at all');
       expect(prefs.modeFor(PrayerIds.fajr), PrayerAlertMode.adhan);
       expect(prefs.masterEnabled, isFalse);
+    });
+  });
+
+  group('Delivery while the app is closed', () {
+    test('prayer alerts use the alarm clock, which the system does not drop', () {
+      expect(
+        NotificationService.scheduleModeFor(NotificationKind.prayer, true),
+        AndroidScheduleMode.alarmClock,
+      );
+      expect(
+        NotificationService.scheduleModeFor(NotificationKind.preAdhan, true),
+        AndroidScheduleMode.alarmClock,
+      );
+      expect(
+        NotificationService.scheduleModeFor(NotificationKind.azkar, false),
+        AndroidScheduleMode.alarmClock,
+      );
     });
   });
 }

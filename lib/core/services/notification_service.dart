@@ -161,10 +161,10 @@ class NotificationService {
   static const String channelPrayerSilent = 'prayer_silent_v2';
   static const String channelPreAdhan = 'pre_adhan_v2';
   static const String channelIqama = 'iqama_v2';
-  static const String channelAzkar = 'azkar_v2';
-  static const String channelDailyAyah = 'daily_ayah_v2';
-  static const String channelWird = 'wird_v2';
-  static const String channelEvents = 'islamic_events_v1';
+  static const String channelAzkar = 'azkar_v3';
+  static const String channelDailyAyah = 'daily_ayah_v3';
+  static const String channelWird = 'wird_v3';
+  static const String channelEvents = 'islamic_events_v2';
   static const String channelPrayerLog = 'prayer_log_v1';
   static const String channelFriday = 'friday_v1';
   static const String channelTest = 'test_alerts_v2';
@@ -297,25 +297,25 @@ class NotificationService {
         channelAzkar,
         'Azkar',
         description: 'Morning and evening azkar reminders',
-        importance: Importance.defaultImportance,
+        importance: Importance.high,
       ),
       const AndroidNotificationChannel(
         channelDailyAyah,
         'Verse of the day',
         description: 'A daily verse from the Quran',
-        importance: Importance.defaultImportance,
+        importance: Importance.high,
       ),
       const AndroidNotificationChannel(
         channelWird,
         'Daily wird',
         description: 'Reminder to read your daily portion',
-        importance: Importance.defaultImportance,
+        importance: Importance.high,
       ),
       const AndroidNotificationChannel(
         channelEvents,
         'Islamic occasions',
         description: 'Ashura, Arafah, the Eids, white days, and fasting days',
-        importance: Importance.defaultImportance,
+        importance: Importance.high,
       ),
       const AndroidNotificationChannel(
         channelPrayerLog,
@@ -440,16 +440,45 @@ class NotificationService {
     return await android?.requestExactAlarmsPermission() ?? false;
   }
 
+  /// Notification permission, then exact alarms if the system is still
+  /// holding them back. Exact alarms are what keep a prayer on the minute
+  /// after the app has been closed all day.
+  static Future<void> prepareForBackgroundDelivery() async {
+    await requestPermissions();
+    if (!await canScheduleExactAlarms()) {
+      await requestExactAlarmPermission();
+    }
+  }
+
+  /// Adhan over the lock screen. Opens the system page only when it is off.
+  static Future<void> requestFullScreenIntentPermission() async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    await initialize();
+    final android =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+    await android?.requestFullScreenIntentPermission();
+  }
+
   /// Schedule a batch, replacing everything scheduled before it.
+  ///
+  /// New alarms are written before any old one is removed. The previous order
+  /// cancelled the whole week first, so a process killed halfway — common
+  /// once the app leaves the foreground — left the rest of the day with
+  /// nothing queued.
   ///
   /// Returns how many notifications were actually handed to the platform.
   static Future<int> replaceSchedule(
     List<ScheduledNotification> notifications,
   ) async {
     await initialize();
-    await cancelAllScheduled();
 
-    // A custom adhan needs its channel before anything is scheduled onto it.
+    final previous = await _plugin.pendingNotificationRequests();
+
     for (final item in notifications) {
       if (item.adhanSound.isCustom) {
         await ensureAdhanChannel(item.adhanSound);
@@ -457,16 +486,19 @@ class NotificationService {
     }
 
     final exact = await canScheduleExactAlarms();
-    final scheduleMode =
-        exact
-            ? AndroidScheduleMode.exactAllowWhileIdle
-            : AndroidScheduleMode.inexactAllowWhileIdle;
-
     var scheduled = 0;
+    final kept = <int>{};
     for (final item in notifications) {
-      final ok = await _scheduleOne(item, scheduleMode);
+      final ok = await _scheduleOne(item, exact);
       if (ok) {
         scheduled++;
+        kept.add(item.id);
+      }
+    }
+
+    for (final pending in previous) {
+      if (!kept.contains(pending.id)) {
+        await _plugin.cancel(id: pending.id);
       }
     }
 
@@ -474,36 +506,82 @@ class NotificationService {
     return scheduled;
   }
 
+  /// Alarm-clock delivery for everything the user is waiting on by the clock.
+  ///
+  /// `exactAllowWhileIdle` is still deferred or dropped once the app has been
+  /// closed — Doze does it, and so do the vendor layers on Samsung, Xiaomi,
+  /// Oppo, Vivo, Honor and the rest — even when battery optimisation is off.
+  /// An alarm-clock alarm is owned by Android itself and survives that on
+  /// every device, not on one brand.
+  static AndroidScheduleMode scheduleModeFor(
+    NotificationKind kind,
+    bool exact,
+  ) {
+    if (kind == NotificationKind.test) {
+      return exact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+    }
+    return AndroidScheduleMode.alarmClock;
+  }
+
   static Future<bool> _scheduleOne(
     ScheduledNotification item,
-    AndroidScheduleMode scheduleMode,
+    bool exact,
   ) async {
     final when = tz.TZDateTime.from(item.time, tz.local);
     if (!when.isAfter(tz.TZDateTime.now(tz.local))) {
       return false;
     }
 
+    final preferred = scheduleModeFor(item.kind, exact);
+    final fallback =
+        exact
+            ? AndroidScheduleMode.exactAllowWhileIdle
+            : AndroidScheduleMode.inexactAllowWhileIdle;
+
     try {
-      await _plugin.zonedSchedule(
-        id: item.id,
-        title: item.title,
-        body: item.body,
-        scheduledDate: when,
-        notificationDetails: detailsFor(
-          kind: item.kind,
-          mode: item.mode,
-          body: item.body,
-          actions: item.actions,
-          adhanSound: item.adhanSound,
-        ),
-        androidScheduleMode: scheduleMode,
-        payload: item.payload,
-      );
+      await _write(item, when, preferred);
       return true;
     } catch (e, stack) {
-      AppLogger.error('Failed to schedule notification ${item.id}', e, stack);
-      return false;
+      if (preferred == fallback) {
+        AppLogger.error('Failed to schedule notification ${item.id}', e, stack);
+        return false;
+      }
+      try {
+        await _write(item, when, fallback);
+        return true;
+      } catch (error, errorStack) {
+        AppLogger.error(
+          'Failed to schedule notification ${item.id}',
+          error,
+          errorStack,
+        );
+        return false;
+      }
     }
+  }
+
+  static Future<void> _write(
+    ScheduledNotification item,
+    tz.TZDateTime when,
+    AndroidScheduleMode scheduleMode,
+  ) {
+    return _plugin.zonedSchedule(
+      id: item.id,
+      title: item.title,
+      body: item.body,
+      scheduledDate: when,
+      notificationDetails: detailsFor(
+        kind: item.kind,
+        mode: item.mode,
+        body: item.body,
+        actions: item.actions,
+        adhanSound: item.adhanSound,
+      ),
+      androidScheduleMode: scheduleMode,
+      payload: item.payload,
+    );
   }
 
   /// If the app was started by tapping a notification, open its screen.
@@ -588,10 +666,7 @@ class NotificationService {
           body: body,
           adhanSound: adhanSound,
         ),
-        androidScheduleMode:
-            exact
-                ? AndroidScheduleMode.exactAllowWhileIdle
-                : AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: scheduleModeFor(NotificationKind.prayer, exact),
       );
       AppLogger.info('Delivery test scheduled for $when (exact: $exact)');
       return true;
@@ -682,6 +757,12 @@ class NotificationService {
         vibrationPattern:
             mode == PrayerAlertMode.adhan ? _adhanVibration : null,
         silent: mode == PrayerAlertMode.silent,
+        visibility:
+            mode == PrayerAlertMode.silent
+                ? NotificationVisibility.secret
+                : NotificationVisibility.public,
+        fullScreenIntent:
+            kind == NotificationKind.prayer && mode == PrayerAlertMode.adhan,
         category:
             kind == NotificationKind.prayer && mode == PrayerAlertMode.adhan
                 ? AndroidNotificationCategory.alarm

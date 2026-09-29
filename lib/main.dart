@@ -10,6 +10,7 @@ import 'core/localization/app_localizations.dart';
 import 'core/services/app_services.dart';
 import 'core/services/notification_router.dart';
 import 'core/services/notification_scheduler.dart';
+import 'core/services/delivery_check.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/seasonal_theme.dart';
 import 'core/theme/design_tokens.dart';
@@ -69,11 +70,45 @@ Future<void> _bootstrap() async {
   publishStoredEdition();
 
   unawaited(runStartupSync());
-  unawaited(NotificationScheduler.refresh());
+  unawaited(_prepareNotifications());
   unawaited(NotificationService.handleLaunchPayload());
   // Teach the audio URL builder about every reciter before anything asks it
   // for one. Cached after the first run, so this is usually a disk read.
   unawaited(ReciterCatalogue.load());
+}
+
+/// Permissions first, then the week's alarms. Exact-alarm and lock-screen
+/// prompts are skipped once the system already allows them. Battery and
+/// autostart are asked once: repeating those screens on every launch trains
+/// people to dismiss them.
+Future<void> _prepareNotifications() async {
+  try {
+    await NotificationService.prepareForBackgroundDelivery();
+  } catch (e, stack) {
+    AppLogger.error('Notification permission request failed', e, stack);
+  }
+
+  await NotificationScheduler.refresh();
+
+  try {
+    if (appPreferences.getBool('delivery_vendor_prompted') == true) {
+      return;
+    }
+    await appPreferences.setBool('delivery_vendor_prompted', true);
+    final report = await DeliveryCheck.run();
+    final batteryRestricted = report.conditions.any(
+      (condition) => condition.id == 'battery' && condition.ok != true,
+    );
+    await NotificationService.requestFullScreenIntentPermission();
+    if (batteryRestricted) {
+      await DeliveryCheck.requestBatteryExemption();
+    }
+    if (report.vendorRestricts) {
+      await DeliveryCheck.openAutostartSettings();
+    }
+  } catch (e, stack) {
+    AppLogger.error('Background delivery setup failed', e, stack);
+  }
 }
 
 /// Main application widget.

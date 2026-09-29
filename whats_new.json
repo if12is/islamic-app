@@ -1,12 +1,10 @@
 {
   "ar": [
-    "اسم التحميل على GitHub أصبح Fajr، باسم التطبيق.",
-    "نسخة آيفون: ملف Fajr.ipa يُثبَّت عبر Sideloadly أو AltStore أو TrollStore.",
-    "في الواجهة الإنجليزية يمكن قراءة القرآن بالعربية أو بالترجمة الإنجليزية."
+    "الأذان وباقي التنبيهات بتوصل والتطبيق مقفول، على كل أجهزة أندرويد.",
+    "التنبيه يظهر على شاشة القفل في وقت الصلاة نفسه."
   ],
   "en": [
-    "GitHub downloads are named Fajr, after the app.",
-    "iPhone build: Fajr.ipa, installed with Sideloadly, AltStore, or TrollStore.",
-    "In English, the Quran can be read in Arabic or in the English translation."
+    "The adhan and the other reminders arrive while the app is closed, on every Android device.",
+    "The alert shows on the lock screen at the prayer time itself."
   ]
 }
