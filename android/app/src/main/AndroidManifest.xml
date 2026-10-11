@@ -75,17 +75,14 @@
 
         <!-- The prayer alarm engine: it shows each alert and arms the next one,
              so weeks of prayers keep arriving without the app being opened, and
-             re-arms everything after each event that loses alarms — a reboot, an
-             app update, the clock or time zone moving, exact alarms being
-             granted, or the system letting the app run again after stopping it. -->
+             re-arms everything after each event that loses or moves alarms — a
+             reboot, an app update, the clock or time zone moving, exact alarms
+             being granted. Its own alarms reach it by explicit component, so
+             they need no filter. A force-stopped app receives none of these;
+             opening it re-arms instead. -->
         <receiver
             android:name=".alarms.PrayerAlarmReceiver"
-            android:exported="false"
-            android:directBootAware="false">
-            <intent-filter>
-                <action android:name="com.islamicapp.islamic_app.ALARM_FIRE" />
-                <data android:scheme="prayer-alarm" />
-            </intent-filter>
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
@@ -94,7 +91,6 @@
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
-                <action android:name="android.intent.action.PACKAGE_UNSTOPPED" />
             </intent-filter>
         </receiver>
 

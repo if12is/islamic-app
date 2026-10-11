@@ -9,13 +9,22 @@ import 'notification_service.dart';
 
 /// One alert, as it was delivered or as it was missed.
 class AlarmRecord {
-  const AlarmRecord({required this.id, required this.due, this.shown});
+  const AlarmRecord({
+    required this.id,
+    required this.due,
+    this.shown,
+    this.blocked = false,
+  });
 
   final int id;
   final DateTime due;
 
   /// When it actually reached the screen. Null for a missed one.
   final DateTime? shown;
+
+  /// Its alarm fired, but notifications were switched off and the system
+  /// dropped it — not the app being stopped.
+  final bool blocked;
 
   bool get late =>
       shown != null && shown!.difference(due) > const Duration(minutes: 2);
@@ -37,6 +46,7 @@ class AlarmRecord {
           shown is int && shown > 0
               ? DateTime.fromMillisecondsSinceEpoch(shown)
               : null,
+      blocked: entry['reason'] == 'blocked',
     );
   }
 }
@@ -181,19 +191,21 @@ class AlarmHealth {
 /// The app's own alarm engine, on the Android side of the method channel.
 ///
 /// Why the app does not simply hand the week to the notification plugin, as it
-/// used to: the plugin arms every alert at once and keeps nothing it can
-/// rebuild from. Android cancels all of an app's alarms when the system — or
-/// one of the vendor battery managers on Xiaomi, Oppo, Vivo, Honor or Samsung
-/// — stops the app, and from Android 15 that is written into the platform:
-/// a stopped app loses every pending alarm it holds. Nothing then brought
-/// them back until somebody opened the app, which is exactly the complaint:
-/// miss a day and the adhan stops.
+/// used to: the plugin armed one week at once, and nothing extended it but
+/// opening the app — so a week without opening it was a week of silence.
 ///
-/// So the plan is written to the device as data, and the engine arms only the
-/// next two alarms. Each one that fires arms the next, and a reboot, an app
-/// update, a clock change or the app being opened arms them all again. The
-/// plan reaches six weeks ahead, so a phone nobody touches keeps calling to
-/// prayer.
+/// So the plan is written to the device as data, six weeks of it, and the
+/// engine arms only the next two alarms. Each one that fires arms the next,
+/// and a reboot, an app update, a clock change or the app being opened arms
+/// them all again. A phone nobody touches keeps calling to prayer.
+///
+/// What no app can survive from inside is being force-stopped — by the user,
+/// or by a vendor battery manager on Honor, Xiaomi, Oppo, Vivo or Samsung that
+/// does the same. Android then cancels every alarm the app holds and sends it
+/// nothing, boot included, until it is opened. The engine cannot undo that;
+/// it can only notice — the missed alerts, and on Android 15 the force-stop
+/// itself — so the notification centre can say so and send the user to the
+/// phone's auto-start setting, which is what prevents it.
 class PrayerAlarms {
   PrayerAlarms._();
 
@@ -239,12 +251,43 @@ class PrayerAlarms {
       'alarm': adhan,
       'fullScreen': adhan && item.kind == NotificationKind.prayer,
       'silent': item.mode == PrayerAlertMode.silent,
+      // Android 7 has no channels, so there the alert carries these itself.
+      if (soundFor(item) case final sound?) 'sound': sound,
+      'vibrate':
+          item.mode == PrayerAlertMode.adhan ||
+          item.mode == PrayerAlertMode.notification ||
+          item.mode == PrayerAlertMode.vibrate,
       if (item.actions.isNotEmpty)
         'actions': [
           for (final action in item.actions)
             {'id': action.id, 'label': action.label},
         ],
     };
+  }
+
+  /// The sound an alert plays on Android 7, where no channel decides it:
+  /// `raw:<name>` for a bundled adhan, a `content://` URI for one the user
+  /// brought or downloaded, `default` for the phone's own tone, or null.
+  /// Pure, for tests.
+  static String? soundFor(ScheduledNotification item) {
+    switch (item.mode) {
+      case PrayerAlertMode.silent:
+      case PrayerAlertMode.off:
+      case PrayerAlertMode.vibrate:
+        return null;
+      case PrayerAlertMode.notification:
+        return 'default';
+      case PrayerAlertMode.adhan:
+        if (item.kind != NotificationKind.prayer) {
+          return 'default';
+        }
+        final sound = item.adhanSound.sanitized;
+        if (sound.isCustom) {
+          return sound.uri;
+        }
+        final raw = NotificationService.adhanSoundById(sound.id).rawResource;
+        return raw == null ? 'default' : 'raw:$raw';
+    }
   }
 
   static Future<void> cancel(Iterable<int> ids) async {

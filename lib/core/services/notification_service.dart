@@ -490,15 +490,25 @@ class NotificationService {
     // plan as data and arms the next alarms as each one fires. Anything the
     // plugin still holds from an older release is dropped here, or the two
     // would both sound the same adhan.
+    //
+    // Only once the engine has taken the plan. A failed hand-over falls
+    // through to the plugin below, as before, rather than leaving nothing
+    // scheduled anywhere.
     if (PrayerAlarms.available) {
       final accepted = await PrayerAlarms.setPlan(notifications);
-      for (final pending in previous) {
-        if (pending.id < _engineIdCeiling) {
-          await _plugin.cancel(id: pending.id);
+      if (accepted > 0 || notifications.isEmpty) {
+        for (final pending in previous) {
+          if (pending.id < _engineIdCeiling) {
+            await _plugin.cancel(id: pending.id);
+          }
         }
+        AppLogger.info('Handed $accepted alerts to the alarm engine');
+        return accepted;
       }
-      AppLogger.info('Handed $accepted alerts to the alarm engine');
-      return accepted;
+      AppLogger.warning(
+        'The alarm engine took none of ${notifications.length} alerts; '
+        'scheduling through the plugin instead',
+      );
     }
 
     final exact = await canScheduleExactAlarms();
@@ -600,6 +610,18 @@ class NotificationService {
     );
   }
 
+  /// A prayer alert tapped while the app sat in the background.
+  ///
+  /// Only the engine is asked. The plugin's launch details describe how the
+  /// process was started and never change after that, so asking it on every
+  /// return to the app would replay the first tap forever.
+  static Future<void> handleEngineLaunch() async {
+    final engine = await PrayerAlarms.takeLaunch();
+    if (engine != null) {
+      NotificationRouter.handle(engine.payload, actionId: engine.actionId);
+    }
+  }
+
   /// If the app was started by tapping a notification, open its screen.
   ///
   /// Two places to ask: the alarm engine, which shows the prayer alerts, and
@@ -634,7 +656,9 @@ class NotificationService {
   /// Drop one scheduled notification, leaving the rest of the plan alone.
   static Future<void> cancelOne(int id) async {
     await initialize();
-    await PrayerAlarms.cancel([id]);
+    if (id < _engineIdCeiling) {
+      await PrayerAlarms.cancel([id]);
+    }
     await _plugin.cancel(id: id);
   }
 
@@ -642,7 +666,10 @@ class NotificationService {
   /// series once the thing it asks about has been done.
   static Future<void> cancelMany(Iterable<int> ids) async {
     await initialize();
-    await PrayerAlarms.cancel(ids);
+    await PrayerAlarms.cancel([
+      for (final id in ids)
+        if (id < _engineIdCeiling) id,
+    ]);
     for (final id in ids) {
       await _plugin.cancel(id: id);
     }
@@ -708,10 +735,18 @@ class NotificationService {
     }
   }
 
-  /// How many notifications the platform currently holds for us.
+  /// How many notifications are waiting to be delivered.
+  ///
+  /// On Android the alarm engine holds them, not the plugin, whose own queue
+  /// is now empty by design — asking it would report nothing scheduled on
+  /// the very screen that checks whether delivery is healthy.
   static Future<int> pendingCount() async {
     await initialize();
     final pending = await _plugin.pendingNotificationRequests();
+    if (PrayerAlarms.available) {
+      final health = await PrayerAlarms.health();
+      return health.planSize + pending.length;
+    }
     return pending.length;
   }
 

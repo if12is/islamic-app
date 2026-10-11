@@ -57,10 +57,10 @@ class NotificationPlanner {
   ///
   /// Six weeks. The engine keeps the plan as data and hands Android only the
   /// next two alarms, so the length costs storage rather than alarms — and it
-  /// is what stops the schedule running out on a phone nobody opens. It is
-  /// not longer because the notification ids leave a hundred days of room
-  /// between categories, and running into the next category would make two
-  /// alerts share an id.
+  /// is what stops the schedule running out on a phone nobody opens. It must
+  /// stay under 56: the Friday reminders reuse their ids every eight weeks
+  /// (the day slot runs modulo 8), so a ninth Friday in the horizon would
+  /// share the first one's ids and one of the two would never arrive.
   static const int engineHorizonDays = 45;
 
   /// Six weeks of prayers, the calls before them, the iqamas and the daily

@@ -87,6 +87,12 @@ class MainActivity : AudioServiceActivity() {
             launchPayload = payload
             launchAction = action
         }
+        // A button under an alert opens the app but leaves the alert in the
+        // shade; the plugin used to clear it, so this does.
+        val notificationId = intent?.getIntExtra(AlarmNotifier.EXTRA_NOTIFICATION_ID, -1) ?: -1
+        if (action != null && notificationId >= 0) {
+            AlarmNotifier.dismiss(applicationContext, notificationId)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -97,8 +103,9 @@ class MainActivity : AudioServiceActivity() {
     override fun onResume() {
         super.onResume()
         // Opening the app is the one moment that recovers from the system
-        // having stopped it, which cancels every alarm it held.
-        AlarmEngine.arm(applicationContext, "foreground")
+        // having stopped it, which cancels every alarm it held. Off the main
+        // thread: the plan is a file of a few hundred kilobytes.
+        AlarmEngine.armAsync(applicationContext, "foreground")
     }
 
     private fun handleCall(call: MethodCall, result: MethodChannel.Result) {

@@ -9,22 +9,27 @@ import android.content.Intent
 import android.os.Build
 import android.os.PowerManager
 import android.util.Log
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Hands the next few alerts to Android's alarm manager, and nothing more.
  *
  * Two alarms are armed at a time, not the whole plan. Android holds a few
- * hundred alarms per app at most, vendors quietly thin out long queues, and a
- * queue is no use anyway once the app has been stopped — every alarm in it is
- * cancelled at the same moment. A short queue that re-arms itself each time
- * one fires survives everything except being stopped, and recovers from that
- * the next time the phone boots, the clock changes, or the app is opened.
+ * hundred alarms per app at most, vendors quietly thin out long queues, and
+ * a queue of a week runs out after a week. A short queue that re-arms itself
+ * each time one fires carries six weeks forward with nothing else running.
+ *
+ * What it cannot survive is the app being force-stopped — by the user, or by
+ * a vendor battery manager on Honor, Xiaomi, Oppo, Vivo or Samsung that does
+ * the same thing. A stopped app loses every alarm it holds and receives no
+ * broadcast at all, boot included, until someone opens it; nothing an app
+ * does from inside can change that. The answer there is the phone's own
+ * auto-start setting, which the notification centre walks the user through.
  *
  * The nearest alarm is an alarm clock: the one kind of alarm Android never
  * delays, never batches into a maintenance window, and wakes the device out
- * of doze for. The vendor battery managers on Xiaomi, Oppo, Vivo, Honor and
- * Samsung leave it alone too, because it is the same call the clock app makes
- * for a morning alarm.
+ * of doze for.
  */
 object AlarmEngine {
     private const val TAG = "PrayerAlarms"
@@ -35,25 +40,61 @@ object AlarmEngine {
 
     /** An alert whose time passed while the phone was off is still worth
      *  showing this long after — a prayer ten minutes ago, not this morning's. */
-    private const val LATE_GRACE_MS = 10 * 60 * 1000L
+    const val LATE_GRACE_MS = 10 * 60 * 1000L
 
     const val ACTION_FIRE = "com.islamicapp.islamic_app.ALARM_FIRE"
     const val EXTRA_ID = "id"
+
+    /** Reasons that mean the clock itself moved, not that time passed. */
+    private val clockChanges = setOf(
+        Intent.ACTION_TIME_CHANGED,
+        Intent.ACTION_TIMEZONE_CHANGED,
+    )
+
+    /**
+     * One thread for all of it, so the plan's file and the alarm manager are
+     * never worked on from two places at once, and never from the main thread,
+     * where reading a few hundred kilobytes on every resume would show.
+     */
+    private val worker: ExecutorService = Executors.newSingleThreadExecutor()
+
+    /** [arm], off the main thread; [done] runs after, on the same thread. */
+    fun armAsync(context: Context, reason: String, done: (() -> Unit)? = null) {
+        val app = context.applicationContext
+        worker.execute {
+            try {
+                arm(app, reason)
+            } catch (error: Exception) {
+                Log.e(TAG, "Arming failed ($reason)", error)
+            } finally {
+                done?.invoke()
+            }
+        }
+    }
+
+    /** Run [work] on the engine's thread. */
+    fun submit(work: () -> Unit) {
+        worker.execute {
+            try {
+                work()
+            } catch (error: Exception) {
+                Log.e(TAG, "Alarm engine work failed", error)
+            }
+        }
+    }
 
     /**
      * Bring the armed alarms in line with the plan.
      *
      * Called after the plan is written, when one fires, and on every event
      * that can lose alarms: boot, an app update, the clock or time zone
-     * changing, exact-alarm permission being granted, the app being started
-     * again after the system stopped it.
+     * changing, exact-alarm permission being granted, the app being opened.
      */
-    @Synchronized
-    fun arm(context: Context, reason: String) {
+    fun arm(context: Context, reason: String) = PrayerPlan.locked {
         val manager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         if (manager == null) {
             Log.w(TAG, "No alarm manager; nothing armed")
-            return
+            return@locked
         }
 
         val now = System.currentTimeMillis()
@@ -63,16 +104,27 @@ object AlarmEngine {
         // off or dozing through it. Anything older is a miss, and recorded as
         // one so the app can say so instead of pretending it arrived.
         val overdue = plan.filter { it.at <= now }
-        val late = overdue.filter { now - it.at <= LATE_GRACE_MS }
-        val missed = overdue.filter { now - it.at > LATE_GRACE_MS }
-        if (missed.isNotEmpty()) {
-            PrayerPlan.rememberMissed(context, missed)
-        }
-        for (item in late) {
-            AlarmNotifier.show(context, item)
-            PrayerPlan.rememberDelivered(context, item, System.currentTimeMillis())
-        }
         if (overdue.isNotEmpty()) {
+            if (reason in clockChanges) {
+                // The clock moved, not time. A phone whose clock jumps a day
+                // forward at boot did not miss a day of prayers, and showing
+                // or counting them would be wrong both ways.
+                Log.i(TAG, "Clock changed: dropping ${overdue.size} past alerts unrecorded")
+            } else {
+                val shown = PrayerPlan.deliveredKeys(context)
+                val late = overdue.filter {
+                    now - it.at <= LATE_GRACE_MS && !shown.contains(it.key)
+                }
+                val missed = overdue.filter {
+                    now - it.at > LATE_GRACE_MS && !shown.contains(it.key)
+                }
+                if (missed.isNotEmpty()) {
+                    PrayerPlan.rememberMissed(context, missed)
+                }
+                for (item in late) {
+                    present(context, item)
+                }
+            }
             PrayerPlan.write(context, plan.filter { it.at > now })
         }
 
@@ -109,23 +161,47 @@ object AlarmEngine {
             }
         }
 
-        PrayerPlan.rememberArmed(context, wanted)
-        PrayerPlan.rememberRecovery(context, reason)
+        PrayerPlan.rememberArming(context, wanted, reason)
         Log.i(TAG, "Armed ${wanted.size} of ${plan.size} ($reason)")
     }
 
+    /**
+     * Show [item] and write down what became of it.
+     *
+     * Delivered only if the user could actually have seen it: with
+     * notifications switched off, or this kind silenced, Android drops the
+     * post without a word, and recording that as delivered would hide the
+     * very failure the record is kept to reveal.
+     */
+    fun present(context: Context, item: PlanItem) {
+        val posted = try {
+            AlarmNotifier.show(context, item)
+        } catch (error: Exception) {
+            Log.e(TAG, "Could not show alert ${item.id}", error)
+            false
+        }
+        if (posted && AlarmNotifier.canReachUser(context, item.channel)) {
+            PrayerPlan.rememberDelivered(context, item, System.currentTimeMillis())
+        } else {
+            PrayerPlan.rememberMissed(context, listOf(item), reason = "blocked")
+        }
+    }
+
     /** Forget [ids]: both the plan entry and any alarm already armed for it. */
-    fun cancel(context: Context, ids: Set<Int>) {
+    fun cancel(context: Context, ids: Set<Int>) = PrayerPlan.locked {
         val manager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         for (id in ids) {
             manager?.cancel(firePending(context, id))
             AlarmNotifier.dismiss(context, id)
         }
-        PrayerPlan.remove(context, ids)
-        arm(context, "cancel")
+        val inPlan = PrayerPlan.items(context).any { ids.contains(it.id) }
+        if (inPlan) {
+            PrayerPlan.remove(context, ids)
+            arm(context, "cancel")
+        }
     }
 
-    fun clear(context: Context) {
+    fun clear(context: Context) = PrayerPlan.locked {
         val manager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         for (id in PrayerPlan.armedIds(context)) {
             manager?.cancel(firePending(context, id))
@@ -179,6 +255,7 @@ object AlarmEngine {
             }
         report["standbyBucket"] = standbyBucket(context)
         report["forceStopped"] = wasForceStopped(context)
+        report["notificationsEnabled"] = AlarmNotifier.notificationsEnabled(context)
         report["manufacturer"] = Build.MANUFACTURER ?: ""
         report["sdkInt"] = Build.VERSION.SDK_INT
         report["bootedAt"] = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()

@@ -102,7 +102,7 @@ class _HomePageState extends ConsumerState<HomePage>
       // Tapping a prayer alert while the app was in the background brings it
       // here rather than through a cold start, so the tap is collected here
       // too or it would open nothing.
-      unawaited(NotificationService.handleLaunchPayload());
+      unawaited(NotificationService.handleEngineLaunch());
     }
   }
 

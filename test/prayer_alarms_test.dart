@@ -92,6 +92,84 @@ void main() {
     });
   });
 
+  group('The sound an alert carries for Android 7', () {
+    ScheduledNotification alert(
+      PrayerAlertMode mode, {
+      NotificationKind kind = NotificationKind.prayer,
+      AdhanSoundSelection sound = AdhanSoundSelection.system,
+    }) => ScheduledNotification(
+      id: 1001,
+      kind: kind,
+      time: DateTime(2026, 10, 12, 4, 30),
+      title: 'الفجر',
+      body: '',
+      mode: mode,
+      adhanSound: sound,
+    );
+
+    test('a bundled adhan is named by its resource', () {
+      expect(
+        PrayerAlarms.soundFor(
+          alert(
+            PrayerAlertMode.adhan,
+            sound: const AdhanSoundSelection(id: 'rifat'),
+          ),
+        ),
+        'raw:adhan_rifat',
+      );
+    });
+
+    test('an adhan the user brought plays from where it was saved', () {
+      const uri = 'content://media/external/audio/media/7';
+      expect(
+        PrayerAlarms.soundFor(
+          alert(
+            PrayerAlertMode.adhan,
+            sound: const AdhanSoundSelection(
+              id: AdhanSoundSelection.customId,
+              uri: uri,
+            ),
+          ),
+        ),
+        uri,
+      );
+    });
+
+    test('quiet modes carry no sound, and only the right ones vibrate', () {
+      expect(PrayerAlarms.soundFor(alert(PrayerAlertMode.silent)), isNull);
+      expect(PrayerAlarms.soundFor(alert(PrayerAlertMode.vibrate)), isNull);
+      expect(
+        PrayerAlarms.soundFor(alert(PrayerAlertMode.notification)),
+        'default',
+      );
+      expect(
+        PrayerAlarms.encode(alert(PrayerAlertMode.vibrate))['vibrate'],
+        isTrue,
+      );
+      expect(
+        PrayerAlarms.encode(alert(PrayerAlertMode.silent))['vibrate'],
+        isFalse,
+      );
+      expect(
+        PrayerAlarms.encode(alert(PrayerAlertMode.silent)).containsKey('sound'),
+        isFalse,
+      );
+    });
+
+    test('only a prayer plays the adhan itself', () {
+      expect(
+        PrayerAlarms.soundFor(
+          alert(
+            PrayerAlertMode.adhan,
+            kind: NotificationKind.preAdhan,
+            sound: const AdhanSoundSelection(id: 'rifat'),
+          ),
+        ),
+        'default',
+      );
+    });
+  });
+
   group('Six weeks of alerts', () {
     final days = PrayerCalculationService.computeRange(
       latitude: 30.0444,
@@ -237,6 +315,19 @@ void main() {
         }).atRisk,
         isFalse,
       );
+    });
+
+    test('an alert dropped because notifications were off says so', () {
+      final due = DateTime.now().subtract(const Duration(days: 1));
+      final health = healthWith({
+        'missed': jsonEncode([
+          {'id': 1, 'due': due.millisecondsSinceEpoch, 'reason': 'blocked'},
+          {'id': 2, 'due': due.millisecondsSinceEpoch, 'reason': 'missed'},
+        ]),
+      });
+      expect(health.missed.first.blocked, isTrue);
+      expect(health.missed.last.blocked, isFalse);
+      expect(health.missedRecently, hasLength(2));
     });
 
     test('unreadable history is empty rather than a crash', () {

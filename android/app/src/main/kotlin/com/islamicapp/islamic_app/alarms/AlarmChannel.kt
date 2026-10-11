@@ -1,6 +1,8 @@
 package com.islamicapp.islamic_app.alarms
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONArray
@@ -12,49 +14,94 @@ import org.json.JSONArray
  * preferences and the language. The engine decides nothing; it delivers. So
  * the plan crosses once, as plain data, and from then on the engine can carry
  * it for weeks on its own.
+ *
+ * The work runs on the engine's own thread — a plan of six weeks is a few
+ * hundred kilobytes to parse and write — and the answer goes back on the main
+ * thread, the only one a method channel may reply on.
  */
 object AlarmChannel {
     const val NAME = "islamic_app/alarms"
 
+    private val main = Handler(Looper.getMainLooper())
+
     fun handle(context: Context, call: MethodCall, result: MethodChannel.Result) {
+        val app = context.applicationContext
         when (call.method) {
             "setPlan" -> {
                 val raw = call.argument<String>("items") ?: "[]"
-                // Only what is still to come. An alert whose time had already
-                // passed when the plan was made was never promised, and left
-                // in, the next arming would write it down as missed — a false
-                // alarm on the screen that reports what did not arrive.
-                val now = System.currentTimeMillis()
-                val items = parse(raw).filter { it.at > now }
-                PrayerPlan.write(context, items)
-                AlarmEngine.arm(context, "plan")
-                result.success(items.size)
+                respond(result) {
+                    PrayerPlan.locked {
+                        val items = handOver(app, parse(raw))
+                        PrayerPlan.write(app, items)
+                        AlarmEngine.arm(app, "plan")
+                        items.size
+                    }
+                }
             }
 
             "cancel" -> {
                 val ids = call.argument<List<Int>>("ids")?.toSet() ?: emptySet()
-                AlarmEngine.cancel(context, ids)
-                result.success(true)
+                respond(result) {
+                    AlarmEngine.cancel(app, ids)
+                    true
+                }
             }
 
-            "clear" -> {
-                AlarmEngine.clear(context)
-                result.success(true)
+            "clear" -> respond(result) {
+                AlarmEngine.clear(app)
+                true
             }
 
             "arm" -> {
-                AlarmEngine.arm(context, call.argument<String>("reason") ?: "app")
-                result.success(true)
+                val reason = call.argument<String>("reason") ?: "app"
+                respond(result) {
+                    AlarmEngine.arm(app, reason)
+                    true
+                }
             }
 
-            "diagnostics" -> result.success(AlarmEngine.diagnostics(context))
+            "diagnostics" -> respond(result) { AlarmEngine.diagnostics(app) }
 
-            "clearHistory" -> {
-                PrayerPlan.clearHistory(context)
-                result.success(true)
+            "clearHistory" -> respond(result) {
+                PrayerPlan.clearHistory(app)
+                true
             }
 
             else -> result.notImplemented()
+        }
+    }
+
+    /**
+     * What of a new plan the engine takes on.
+     *
+     * Everything still to come, and anything due in the last few minutes that
+     * has not been shown yet — an alarm can fire a few seconds after its time,
+     * and a plan written in those seconds must not drop the alert it was
+     * about to show. The engine shows that one once, late. Older alerts were
+     * never promised by this plan, and left in, they would be written down as
+     * missed: a false alarm on the screen that reports what did not arrive.
+     */
+    private fun handOver(context: Context, items: List<PlanItem>): List<PlanItem> {
+        val now = System.currentTimeMillis()
+        val shown = PrayerPlan.deliveredKeys(context)
+        return items.filter { item ->
+            item.at > now || (now - item.at <= AlarmEngine.LATE_GRACE_MS && !shown.contains(item.key))
+        }
+    }
+
+    private fun respond(result: MethodChannel.Result, work: () -> Any?) {
+        AlarmEngine.submit {
+            val answer = try {
+                Result.success(work())
+            } catch (error: Exception) {
+                Result.failure(error)
+            }
+            main.post {
+                answer.fold(
+                    onSuccess = { result.success(it) },
+                    onFailure = { result.error("alarm_engine", it.message, null) },
+                )
+            }
         }
     }
 
