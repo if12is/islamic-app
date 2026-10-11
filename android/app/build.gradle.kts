@@ -108,4 +108,6 @@ flutter {
 dependencies {
     // Required by flutter_local_notifications for Java 8+ APIs on older Android.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    // NotificationCompat, for the prayer alarm engine's own notifications.
+    implementation("androidx.core:core-ktx:1.15.0")
 }

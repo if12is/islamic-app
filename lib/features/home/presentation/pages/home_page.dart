@@ -8,6 +8,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/hijri_service.dart';
 import '../../../../core/services/notification_router.dart';
 import '../../../../core/services/notification_scheduler.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/seasonal_theme.dart';
 import '../../../../core/utils/arabic_numerals.dart';
 import '../../../../core/utils/duration_words.dart';
@@ -98,6 +99,10 @@ class _HomePageState extends ConsumerState<HomePage>
     // week it planned on the day it was opened slowly runs out.
     if (state == AppLifecycleState.resumed) {
       unawaited(NotificationScheduler.refreshIfStale());
+      // Tapping a prayer alert while the app was in the background brings it
+      // here rather than through a cold start, so the tap is collected here
+      // too or it would open nothing.
+      unawaited(NotificationService.handleLaunchPayload());
     }
   }
 

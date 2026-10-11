@@ -8,6 +8,7 @@ import '../models/adhan_sound.dart';
 import '../models/notification_preferences.dart';
 import '../utils/app_logger.dart';
 import 'notification_router.dart';
+import 'prayer_alarms.dart';
 
 /// The notification categories the app schedules.
 ///
@@ -485,6 +486,21 @@ class NotificationService {
       }
     }
 
+    // Android delivers through the app's own alarm engine, which keeps the
+    // plan as data and arms the next alarms as each one fires. Anything the
+    // plugin still holds from an older release is dropped here, or the two
+    // would both sound the same adhan.
+    if (PrayerAlarms.available) {
+      final accepted = await PrayerAlarms.setPlan(notifications);
+      for (final pending in previous) {
+        if (pending.id < _engineIdCeiling) {
+          await _plugin.cancel(id: pending.id);
+        }
+      }
+      AppLogger.info('Handed $accepted alerts to the alarm engine');
+      return accepted;
+    }
+
     final exact = await canScheduleExactAlarms();
     var scheduled = 0;
     final kept = <int>{};
@@ -585,8 +601,16 @@ class NotificationService {
   }
 
   /// If the app was started by tapping a notification, open its screen.
+  ///
+  /// Two places to ask: the alarm engine, which shows the prayer alerts, and
+  /// the plugin, which still shows the immediate ones.
   static Future<void> handleLaunchPayload() async {
     await initialize();
+    final engine = await PrayerAlarms.takeLaunch();
+    if (engine != null) {
+      NotificationRouter.handle(engine.payload, actionId: engine.actionId);
+      return;
+    }
     final details = await _plugin.getNotificationAppLaunchDetails();
     if (details?.didNotificationLaunchApp ?? false) {
       NotificationRouter.handle(
@@ -596,14 +620,21 @@ class NotificationService {
     }
   }
 
+  /// Ids below this belong to the planner, and so to the alarm engine. The
+  /// delivery test and the immediate "test" notifications sit above it and
+  /// stay with the plugin.
+  static const int _engineIdCeiling = 10000;
+
   static Future<void> cancelAllScheduled() async {
     await initialize();
+    await PrayerAlarms.clear();
     await _plugin.cancelAll();
   }
 
   /// Drop one scheduled notification, leaving the rest of the plan alone.
   static Future<void> cancelOne(int id) async {
     await initialize();
+    await PrayerAlarms.cancel([id]);
     await _plugin.cancel(id: id);
   }
 
@@ -611,6 +642,7 @@ class NotificationService {
   /// series once the thing it asks about has been done.
   static Future<void> cancelMany(Iterable<int> ids) async {
     await initialize();
+    await PrayerAlarms.cancel(ids);
     for (final id in ids) {
       await _plugin.cancel(id: id);
     }
@@ -815,6 +847,17 @@ class NotificationService {
         ? null
         : RawResourceAndroidNotificationSound(resource);
   }
+
+  /// Which channel an alert belongs to.
+  ///
+  /// The channel carries the adhan, the vibration and whether the user has
+  /// silenced that category, so the alarm engine posts to the same one this
+  /// service would have used.
+  static String channelIdFor({
+    required NotificationKind kind,
+    required PrayerAlertMode mode,
+    AdhanSoundSelection adhanSound = AdhanSoundSelection.system,
+  }) => _channelIdFor(kind: kind, mode: mode, adhanSound: adhanSound);
 
   static String _channelIdFor({
     required NotificationKind kind,

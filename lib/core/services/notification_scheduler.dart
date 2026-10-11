@@ -13,6 +13,7 @@ import 'friday_progress.dart';
 import 'hijri_service.dart';
 import 'surah_virtues.dart';
 import 'notification_service.dart';
+import 'prayer_alarms.dart';
 import 'prayer_calculation_service.dart';
 import 'prayer_settings_store.dart';
 import 'widget_service.dart';
@@ -51,6 +52,20 @@ class NotificationPlanner {
   /// How many days ahead we schedule. Android keeps the alarms across reboots
   /// via the boot receiver; the app also reschedules on every launch.
   static const int horizonDays = 7;
+
+  /// How many days ahead the app's own alarm engine plans.
+  ///
+  /// Six weeks. The engine keeps the plan as data and hands Android only the
+  /// next two alarms, so the length costs storage rather than alarms — and it
+  /// is what stops the schedule running out on a phone nobody opens. It is
+  /// not longer because the notification ids leave a hundred days of room
+  /// between categories, and running into the next category would make two
+  /// alerts share an id.
+  static const int engineHorizonDays = 45;
+
+  /// Six weeks of prayers, the calls before them, the iqamas and the daily
+  /// reminders come to a little over a thousand.
+  static const int engineMaxItems = 1600;
 
   /// Enough for a week with every reminder switched on (a little over 200),
   /// and well under the 500 alarms Android allows one app.
@@ -788,6 +803,7 @@ class NotificationScheduler {
     SharedPreferences? preferences,
     NotificationPreferences? overrides,
     int maxItems = NotificationPlanner.defaultMaxItems,
+    int horizonDays = NotificationPlanner.horizonDays,
   }) async {
     final prefs = preferences ?? await SharedPreferences.getInstance();
     final settings = overrides ?? readPreferences(prefs);
@@ -798,7 +814,7 @@ class NotificationScheduler {
       longitude:
           prefs.getDouble(AppConstants.userLongitudeKey) ?? _fallbackLongitude,
       method: prefs.getInt(AppConstants.prayerMethodKey) ?? 3,
-      days: NotificationPlanner.horizonDays,
+      days: horizonDays,
       // Madhab, manual offsets, and the high-latitude rule move the times, so
       // reminders must be built from the same settings the screens use.
       settings: PrayerSettingsStore.read(prefs),
@@ -920,9 +936,22 @@ class NotificationScheduler {
         return ScheduleResult.empty;
       }
 
+      // The alarm engine holds the plan as data and arms two alarms at a
+      // time, so the horizon costs nothing but storage: six weeks of prayers
+      // keep arriving on a phone whose owner never opens the app. Without the
+      // engine — iOS — the platform holds every alert itself, and a week is
+      // as much as it will take.
       final plan = await preview(
         preferences: prefs,
         overrides: withLearnedWirdTime(settings, prefs),
+        horizonDays:
+            PrayerAlarms.available
+                ? NotificationPlanner.engineHorizonDays
+                : NotificationPlanner.horizonDays,
+        maxItems:
+            PrayerAlarms.available
+                ? NotificationPlanner.engineMaxItems
+                : NotificationPlanner.defaultMaxItems,
       );
       final scheduled = await NotificationService.replaceSchedule(plan);
       _lastPlannedDay = DateTime.now();

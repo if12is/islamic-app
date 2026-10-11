@@ -18,6 +18,9 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.speech.RecognizerIntent
+import com.islamicapp.islamic_app.alarms.AlarmChannel
+import com.islamicapp.islamic_app.alarms.AlarmEngine
+import com.islamicapp.islamic_app.alarms.AlarmNotifier
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -34,12 +37,15 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : AudioServiceActivity() {
 
     private var pendingResult: MethodChannel.Result? = null
+    private var launchPayload: String? = null
+    private var launchAction: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Honor Magic Capsule ignores the LOW-importance channel audio_service
         // would create. Pre-create it louder so the plugin reuses ours.
         ensureMediaNotificationChannel()
         super.onCreate(savedInstanceState)
+        captureLaunch(intent)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -47,11 +53,62 @@ class MainActivity : AudioServiceActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result -> handleCall(call, result) }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AlarmChannel.NAME)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "takeLaunch") {
+                    result.success(takeLaunch())
+                } else {
+                    AlarmChannel.handle(applicationContext, call, result)
+                }
+            }
+    }
+
+    /**
+     * What the user tapped to get here, handed over once.
+     *
+     * A prayer alert shown by the alarm engine opens this activity with the
+     * payload attached, the way the notification plugin's own launch details
+     * work — so the app lands on the screen the alert was about.
+     */
+    private fun takeLaunch(): Map<String, String?>? {
+        val payload = launchPayload
+        val action = launchAction
+        launchPayload = null
+        launchAction = null
+        if (payload == null && action == null) return null
+        return mapOf("payload" to payload, "action" to action)
+    }
+
+    private fun captureLaunch(intent: Intent?) {
+        val payload = intent?.getStringExtra(AlarmNotifier.EXTRA_PAYLOAD)
+        val action = intent?.getStringExtra(AlarmNotifier.EXTRA_ACTION)
+        if (payload != null || action != null) {
+            launchPayload = payload
+            launchAction = action
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        captureLaunch(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Opening the app is the one moment that recovers from the system
+        // having stopped it, which cancels every alarm it held.
+        AlarmEngine.arm(applicationContext, "foreground")
     }
 
     private fun handleCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "importAudioFile" -> startImport(result)
+            "installSound" -> installSound(
+                call.argument<String>("path"),
+                call.argument<String>("name"),
+                result,
+            )
             "pickSystemSound" -> startSystemPicker(result)
             "soundTitle" -> result.success(titleFor(call.argument<String>("uri")))
             "openSpeechSettings" -> result.success(openSpeechSettings())
@@ -177,6 +234,15 @@ class MainActivity : AudioServiceActivity() {
      * these are worth trying even though every one of them is a guess.
      */
     private fun openAutostartSettings(): Boolean {
+        // This phone's own screen first. The list below is tried in order and
+        // most entries belong to other vendors, so a Xiaomi would otherwise
+        // walk through Honor's and Huawei's components before reaching its
+        // own — harmless, but it only takes one of them to resolve to the
+        // wrong screen for the user to be left in the wrong place.
+        for (intent in vendorCandidates()) {
+            if (openIntent(intent)) return true
+        }
+
         val candidates = listOf(
             // Honor, since it split from Huawei: its own system manager, with
             // the startup list under a package of its own.
@@ -252,6 +318,154 @@ class MainActivity : AudioServiceActivity() {
             if (openIntent(intent)) return true
         }
         return false
+    }
+
+    /**
+     * The screens that matter on this make of phone, in the order they help.
+     *
+     * Each vendor keeps its own list of apps allowed to start themselves, and
+     * an app left off it is force-stopped — which cancels every alarm it
+     * holds. None of these components is documented or promised; they are
+     * tried, and the generic app-details page catches whatever is left.
+     */
+    private fun vendorCandidates(): List<Intent> {
+        val brand = "${Build.MANUFACTURER} ${Build.BRAND}".lowercase()
+        fun component(pkg: String, cls: String) = Intent().setClassName(pkg, cls)
+
+        return when {
+            brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco") ->
+                listOf(
+                    component(
+                        "com.miui.securitycenter",
+                        "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                    ),
+                    component(
+                        "com.miui.powerkeeper",
+                        "com.miui.powerkeeper.ui.HiddenAppsConfigActivity"
+                    ),
+                )
+
+            brand.contains("honor") ->
+                listOf(
+                    component(
+                        "com.hihonor.systemmanager",
+                        "com.hihonor.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+                    ),
+                    component(
+                        "com.hihonor.systemmanager",
+                        "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+                    ),
+                    component(
+                        "com.hihonor.systemmanager",
+                        "com.hihonor.systemmanager.optimize.process.ProtectActivity"
+                    ),
+                )
+
+            brand.contains("huawei") ->
+                listOf(
+                    component(
+                        "com.huawei.systemmanager",
+                        "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"
+                    ),
+                    component(
+                        "com.huawei.systemmanager",
+                        "com.huawei.systemmanager.optimize.process.ProtectActivity"
+                    ),
+                )
+
+            brand.contains("oppo") || brand.contains("realme") ->
+                listOf(
+                    component(
+                        "com.coloros.safecenter",
+                        "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+                    ),
+                    component(
+                        "com.coloros.safecenter",
+                        "com.coloros.safecenter.startupapp.StartupAppListActivity"
+                    ),
+                    component(
+                        "com.oppo.safe",
+                        "com.oppo.safe.permission.startup.StartupAppListActivity"
+                    ),
+                )
+
+            brand.contains("vivo") || brand.contains("iqoo") ->
+                listOf(
+                    component(
+                        "com.iqoo.secure",
+                        "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"
+                    ),
+                    component(
+                        "com.iqoo.secure",
+                        "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager"
+                    ),
+                    component(
+                        "com.vivo.permissionmanager",
+                        "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"
+                    ),
+                )
+
+            // Sleeping apps, which Samsung re-fills by itself after an update.
+            brand.contains("samsung") ->
+                listOf(
+                    component(
+                        "com.samsung.android.lool",
+                        "com.samsung.android.sm.battery.ui.usage.CheckableAppListActivity"
+                    ),
+                    component(
+                        "com.samsung.android.lool",
+                        "com.samsung.android.sm.battery.ui.BatteryActivity"
+                    ),
+                    component(
+                        "com.samsung.android.lool",
+                        "com.samsung.android.sm.ui.battery.BatteryActivity"
+                    ),
+                )
+
+            brand.contains("oneplus") ->
+                listOf(
+                    Intent("com.android.settings.action.BACKGROUND_OPTIMIZE"),
+                    component(
+                        "com.oneplus.security",
+                        "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity"
+                    ),
+                    component(
+                        "com.coloros.safecenter",
+                        "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+                    ),
+                )
+
+            brand.contains("asus") ->
+                listOf(
+                    component(
+                        "com.asus.mobilemanager",
+                        "com.asus.mobilemanager.autostart.AutoStartActivity"
+                    ),
+                    component(
+                        "com.asus.mobilemanager",
+                        "com.asus.mobilemanager.powersaver.PowerSaverSettings"
+                    ),
+                )
+
+            brand.contains("letv") ->
+                listOf(
+                    component("com.letv.android.letvsafe", "com.letv.android.letvsafe.AutobootManageActivity")
+                )
+
+            brand.contains("nokia") ->
+                listOf(
+                    component(
+                        "com.evenwell.powersaving.g3",
+                        "com.evenwell.powersaving.g3.exception.PowerSaverExceptionActivity"
+                    )
+                )
+
+            // Transsion (Tecno, Infinix, itel) and Meizu keep their auto-start
+            // list inside their own manager app with no component anyone has
+            // documented, so the app's own page and written steps are all
+            // there is.
+            else -> emptyList()
+        }
     }
 
     /** Start [intent] if anything on this device can handle it. */
@@ -341,41 +555,77 @@ class MainActivity : AudioServiceActivity() {
 
         try {
             val name = displayNameFor(source) ?: "adhan.mp3"
-            val values = ContentValues().apply {
-                put(MediaStore.Audio.Media.DISPLAY_NAME, name)
-                put(
-                    MediaStore.Audio.Media.MIME_TYPE,
-                    contentResolver.getType(source) ?: "audio/mpeg"
-                )
-                put(MediaStore.Audio.Media.IS_NOTIFICATION, 1)
-                put(MediaStore.Audio.Media.IS_MUSIC, 0)
-                put(
-                    MediaStore.Audio.Media.RELATIVE_PATH,
-                    Environment.DIRECTORY_NOTIFICATIONS
-                )
-            }
-
-            val collection =
-                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-            val target = contentResolver.insert(collection, values)
-            if (target == null) {
-                result.error("copy_failed", "Could not create the sound file", null)
-                return
-            }
-
-            contentResolver.openInputStream(source).use { input ->
-                contentResolver.openOutputStream(target).use { output ->
-                    if (input == null || output == null) {
-                        throw IllegalStateException("Unreadable audio file")
-                    }
-                    input.copyTo(output)
-                }
-            }
-
+            val target = copyIntoNotificationSounds(
+                name,
+                contentResolver.getType(source) ?: "audio/mpeg",
+            ) { contentResolver.openInputStream(source) }
             result.success(mapOf("uri" to target.toString(), "title" to name))
         } catch (error: Exception) {
             result.error("copy_failed", error.message, null)
         }
+    }
+
+    /**
+     * Make an adhan downloaded from the library playable as a notification
+     * sound — the same route an imported file takes, from a file the app
+     * already holds instead of one the user picked.
+     */
+    private fun installSound(path: String?, name: String?, result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            result.error("unsupported", "Installing an adhan needs Android 10 or newer", null)
+            return
+        }
+        val file = path?.let { java.io.File(it) }
+        if (file == null || !file.exists()) {
+            result.error("missing", "The downloaded file is not there", null)
+            return
+        }
+        try {
+            val display = name?.takeIf { it.isNotBlank() } ?: file.name
+            val target = copyIntoNotificationSounds("$display.mp3", "audio/mpeg") {
+                file.inputStream()
+            }
+            result.success(mapOf("uri" to target.toString(), "title" to display))
+        } catch (error: Exception) {
+            result.error("copy_failed", error.message, null)
+        }
+    }
+
+    /**
+     * Copy audio into the shared notification sounds, where Android's own
+     * notification player can read it. A file in the app's private storage
+     * is invisible to the system, so a channel pointed at one plays nothing.
+     */
+    private fun copyIntoNotificationSounds(
+        name: String,
+        mime: String,
+        open: () -> java.io.InputStream?,
+    ): Uri {
+        val values = ContentValues().apply {
+            put(MediaStore.Audio.Media.DISPLAY_NAME, name)
+            put(MediaStore.Audio.Media.MIME_TYPE, mime)
+            put(MediaStore.Audio.Media.IS_NOTIFICATION, 1)
+            put(MediaStore.Audio.Media.IS_MUSIC, 0)
+            put(
+                MediaStore.Audio.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_NOTIFICATIONS
+            )
+        }
+
+        val collection =
+            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val target = contentResolver.insert(collection, values)
+            ?: throw IllegalStateException("Could not create the sound file")
+
+        open().use { input ->
+            contentResolver.openOutputStream(target).use { output ->
+                if (input == null || output == null) {
+                    throw IllegalStateException("Unreadable audio file")
+                }
+                input.copyTo(output)
+            }
+        }
+        return target
     }
 
     private fun finishPick(data: Intent, result: MethodChannel.Result) {

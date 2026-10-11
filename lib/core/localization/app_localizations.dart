@@ -216,6 +216,50 @@ class AppLocalizations {
       'delivery_test_hint':
           'Lock the phone now and put it down. A real prayer alert is queued the same way a real one is; if it does not sound while the screen is off, the problem is above and not in the settings.',
       'delivery_test_failed': 'The test could not be scheduled.',
+      'delivery_headline_ok': 'Alerts are working',
+      'delivery_headline_missed': 'Some alerts did not arrive',
+      'delivery_missed_week': '{count} alerts did not arrive in the past week',
+      'delivery_missed_latest': 'Most recent missed alert: {when}',
+      'delivery_last_fired': 'Last alert that arrived: {when}',
+      'delivery_plan_size': 'Alerts prepared: {count}',
+      'delivery_plan_until': 'Until {date}',
+      'delivery_blocker_exact':
+          'The adhan may arrive late because the phone will not allow a reminder at the exact minute.',
+      'delivery_blocker_background':
+          'The phone is stopping this app while the screen is off, so the adhan may not sound.',
+      'delivery_blocker_throttled':
+          'The phone has limited this app, and the adhan may stop if you do not open the app each day.',
+      'delivery_blocker_force_stopped':
+          'The phone closed the app completely, which cancelled its reminders until you opened it. Allow Auto-start so they come back on their own.',
+      'delivery_blocker_power_save':
+          'Battery saving is on, and it may stop the adhan while the phone is asleep.',
+      'delivery_how_to': 'How to fix this on your phone',
+      'delivery_steps_xiaomi':
+          '1. Open Settings → Apps → Fajr → Autostart, and turn it on.\n2. On that same app screen open Battery and choose No restrictions.\n3. Do not swipe Fajr closed from the recent-apps list.\n4. Come back here and tap Check now.',
+      'delivery_steps_huawei':
+          '1. Open Settings → Apps → App launch → Fajr (on older phones: Settings → Battery → App launch).\n2. Turn off Manage automatically, then turn on all three options.\n3. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_honor':
+          '1. Open Settings → Apps → App launch → Fajr.\n2. Turn off Manage automatically, then turn on all three: Auto-launch, Secondary launch and Run in background.\n3. In the recent-apps list, pull Fajr’s card down to lock it, and do not swipe it away.\n4. Come back here and tap Check now.',
+      'delivery_steps_oppo':
+          '1. Open Settings → App management → App list → Fajr.\n2. Turn on Auto-launch and allow it to run in the background.\n3. Under Battery choose Do not optimise for this app.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_vivo':
+          '1. Open Settings → Battery → High background power consumption.\n2. Find Fajr and choose Allow.\n3. On the app screen turn Auto-start on.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_samsung':
+          '1. Open Settings → Battery → Background usage limits.\n2. Open Never sleeping apps and add Fajr.\n3. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_oneplus':
+          '1. Open Settings → Battery → Battery optimisation.\n2. Find Fajr and choose Don’t optimise.\n3. Open Apps → Auto-launch and add Fajr.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_tecno':
+          '1. Open Phone Master or Settings → Battery.\n2. Set Fajr’s battery use to No restrictions.\n3. Allow Auto-start for Fajr.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_motorola':
+          '1. Open Settings → Apps → Fajr → Battery.\n2. Choose Unrestricted.\n3. Turn battery saving off for this app.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_nothing':
+          '1. Open Settings → Battery → Battery usage → Fajr.\n2. Choose Unrestricted.\n3. Allow the app to run while the screen is off.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_asus':
+          '1. Open Settings → Battery → Power management.\n2. Turn Auto-start on for Fajr.\n3. Turn battery optimisation off for this app.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_meizu':
+          '1. Open Settings → Security → Permissions → Auto-start.\n2. Allow Auto-start for Fajr.\n3. Under Battery turn smart saving off for this app.\n4. Do not swipe Fajr closed from the recent-apps list.',
+      'delivery_steps_generic':
+          '1. Open Settings → Apps → Fajr.\n2. Allow Auto-start and allow it to run while the screen is off.\n3. Under Battery choose No restrictions, or Don’t optimise.\n4. Do not swipe Fajr closed from the recent-apps list.',
       'wird_not_due': 'Later today',
       'download_queued': 'Waiting its turn…',
       'tasbeeh_grand_total': 'All phrases',
@@ -363,6 +407,18 @@ class AppLocalizations {
       'recordings_forward_30': 'Forward 30 seconds',
       'recordings_source_note':
           'Recordings stream from the Internet Archive and mp3quran.',
+      // The imams of the two Holy Mosques, week by week.
+      'haramain_title': 'Imams of the Two Holy Mosques this week',
+      'haramain_each_prayer': 'The imam of each prayer this week',
+      'haramain_haram': 'Al-Masjid al-Haram',
+      'haramain_nabawi': 'Al-Masjid an-Nabawi',
+      'haramain_week_range': 'From {from} to {to}, {year} AH',
+      'haramain_updated': 'Last updated: {time}',
+      'haramain_source': 'Source: Al-Madina newspaper',
+      'haramain_stale': 'The new schedule is published on Saturday evening',
+      'haramain_unavailable':
+          'The imams schedule could not be loaded. Check your connection and try again.',
+      'haramain_open_failed': 'The article could not be opened.',
       'mute': 'Mute',
       'unmute': 'Unmute',
       // Storage and the data saver.
@@ -693,6 +749,33 @@ class AppLocalizations {
       'adhan_sound_custom': 'Your adhan',
       'adhan_sound_custom_desc': 'A file you added',
       'adhan_sound_saved': 'Adhan saved.',
+      'adhan_library_entry': 'Adhans from around the world',
+      'adhan_library_entry_desc': 'Haramain, Egypt, the Levant and more',
+      'adhan_library_title': 'Adhan library',
+      'adhan_region_haramain': 'The Two Holy Mosques',
+      'adhan_region_egypt': 'Egypt',
+      'adhan_region_levant': 'Levant and Palestine',
+      'adhan_region_gulf': 'Gulf and Yemen',
+      'adhan_region_maghreb': 'Maghreb',
+      'adhan_region_turkey': 'Turkey',
+      'adhan_region_asia': 'Asia',
+      'adhan_region_africa': 'Africa',
+      'adhan_filter_all': 'All',
+      'adhan_filter_fajr': 'For Fajr',
+      'adhan_filter_rare': 'Rare',
+      'adhan_chip_fajr': 'Fajr',
+      'adhan_chip_rare': 'Rare',
+      'adhan_size_mb': '{n} MB',
+      'adhan_choose': 'Choose',
+      'adhan_selected': 'Selected',
+      'adhan_installed': 'Saved on the phone',
+      'adhan_library_note':
+          'Recordings come from the Internet Archive and are downloaded only when chosen.',
+      'adhan_library_chosen': 'Adhan {name} chosen',
+      'adhan_library_err_network': 'Download failed. Check your connection.',
+      'adhan_library_err_unsupported': 'Needs Android 10 or newer.',
+      'adhan_library_err_install': 'Could not save the adhan on the phone.',
+      'adhan_library_empty': 'No adhans match this filter.',
       'import_adhan': 'Add an audio file',
       'pick_device_sound': 'Pick from the device',
       'preview_sound': 'Hear it',
@@ -1565,6 +1648,50 @@ class AppLocalizations {
       'delivery_test_hint':
           'اقفل الهاتف الآن وضعه جانباً. سُجِّل تنبيه حقيقي بنفس طريقة تنبيه الصلاة تماماً؛ فإن لم يُسمع والشاشة مطفأة فالمشكلة فيما فوق لا في الإعدادات.',
       'delivery_test_failed': 'تعذّر جدولة الاختبار.',
+      'delivery_headline_ok': 'التنبيهات تعمل',
+      'delivery_headline_missed': 'بعض التنبيهات لم تصل',
+      'delivery_missed_week': 'تنبيهات لم تصل خلال الأسبوع الماضي: {count}',
+      'delivery_missed_latest': 'آخر تنبيه فائت: {when}',
+      'delivery_last_fired': 'آخر تنبيه وصل: {when}',
+      'delivery_plan_size': 'التنبيهات المجهزة: {count}',
+      'delivery_plan_until': 'حتى تاريخ {date}',
+      'delivery_blocker_exact':
+          'الأذان قد يتأخر عن وقته لأن الهاتف لا يسمح بالتنبيه في الدقيقة.',
+      'delivery_blocker_background':
+          'الهاتف يمنع التطبيق والشاشة مطفأة، لذلك قد لا يُسمع الأذان.',
+      'delivery_blocker_throttled':
+          'الهاتف قلّل عمل التطبيق، وقد يتوقف الأذان إن لم تفتح التطبيق.',
+      'delivery_blocker_force_stopped':
+          'أغلق الهاتف التطبيق بالكامل، فأُلغيت تنبيهاته حتى فتحته. اسمح بالتشغيل التلقائي لتعود وحدها.',
+      'delivery_blocker_power_save':
+          'توفير الطاقة يعمل، وقد يمنع الأذان والهاتف نائم.',
+      'delivery_how_to': 'كيف تصلحها على هاتفك',
+      'delivery_steps_xiaomi':
+          '1. افتح الإعدادات ← التطبيقات ← الفجر ← التشغيل التلقائي، وفعّله.\n2. من شاشة التطبيق افتح البطارية واختر بلا قيود.\n3. لا تغلق الفجر من قائمة التطبيقات الحديثة.\n4. ارجع إلى هنا واضغط افحص الآن.',
+      'delivery_steps_huawei':
+          '1. افتح الإعدادات ← التطبيقات ← تشغيل التطبيقات ← الفجر (في الهواتف الأقدم: الإعدادات ← البطارية ← تشغيل التطبيقات).\n2. أوقف الإدارة التلقائية، ثم فعّل الخيارات الثلاثة.\n3. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_honor':
+          '1. افتح الإعدادات ← التطبيقات ← تشغيل التطبيقات ← الفجر.\n2. أوقف الإدارة التلقائية، وفعّل الخيارات الثلاثة: التشغيل التلقائي، والتشغيل الثانوي، والتشغيل في الخلفية.\n3. في قائمة التطبيقات الحديثة اسحب بطاقة الفجر إلى الأسفل لقفلها، ولا تغلقها.\n4. ارجع إلى هنا واضغط افحص الآن.',
+      'delivery_steps_oppo':
+          '1. افتح الإعدادات ← إدارة التطبيقات ← قائمة التطبيقات ← الفجر.\n2. فعّل التشغيل التلقائي والسماح بالعمل والشاشة مطفأة.\n3. من البطارية اختر عدم التحسين لهذا التطبيق.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_vivo':
+          '1. افتح الإعدادات ← البطارية ← إدارة استهلاك الطاقة في الخلفية.\n2. ابحث عن الفجر واختر اسمح.\n3. من شاشة التطبيق فعّل التشغيل التلقائي.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_samsung':
+          '1. افتح الإعدادات ← البطارية ← حدود استخدام التطبيق في الخلفية.\n2. افتح التطبيقات غير النائمة وأضف الفجر.\n3. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_oneplus':
+          '1. افتح الإعدادات ← البطارية ← تحسين البطارية.\n2. ابحث عن الفجر واختر لا تحسّن.\n3. من التطبيقات افتح التشغيل التلقائي وأضف الفجر.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_tecno':
+          '1. افتح مدير الهاتف أو الإعدادات ← البطارية.\n2. ضع استخدام بطارية الفجر على بلا قيود.\n3. اسمح بالتشغيل التلقائي للفجر.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_motorola':
+          '1. افتح الإعدادات ← التطبيقات ← الفجر ← البطارية.\n2. اختر بلا قيود.\n3. أوقف توفير الطاقة عن هذا التطبيق.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_nothing':
+          '1. افتح الإعدادات ← البطارية ← استخدام البطارية ← الفجر.\n2. اختر بلا قيود.\n3. اسمح للتطبيق بالعمل والشاشة مطفأة.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_asus':
+          '1. افتح الإعدادات ← البطارية ← إدارة الطاقة.\n2. فعّل التشغيل التلقائي للفجر.\n3. أوقف تحسين البطارية عن هذا التطبيق.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_meizu':
+          '1. افتح الإعدادات ← الأمان ← الأذونات ← التشغيل التلقائي.\n2. اسمح للفجر بالتشغيل التلقائي.\n3. من البطارية أوقف التوفير الذكي عن هذا التطبيق.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
+      'delivery_steps_generic':
+          '1. افتح الإعدادات ← التطبيقات ← الفجر.\n2. اسمح بالتشغيل التلقائي والعمل والشاشة مطفأة.\n3. من البطارية اختر بلا قيود أو لا تحسّن.\n4. لا تغلق الفجر من قائمة التطبيقات الحديثة.',
       'wird_not_due': 'لاحقاً اليوم',
       'download_queued': 'في انتظار دوره…',
       'tasbeeh_grand_total': 'الإجمالي الكلي',
@@ -1707,6 +1834,18 @@ class AppLocalizations {
       'recordings_forward_30': 'تقديم ٣٠ ثانية',
       'recordings_source_note':
           'التسجيلات تُبثّ من أرشيف الإنترنت وموقع mp3quran.',
+      // أئمة الحرمين الشريفين أسبوعًا بأسبوع.
+      'haramain_title': 'أئمة الحرمين هذا الأسبوع',
+      'haramain_each_prayer': 'إمام كل صلاة هذا الأسبوع',
+      'haramain_haram': 'المسجد الحرام',
+      'haramain_nabawi': 'المسجد النبوي',
+      'haramain_week_range': 'من {from} إلى {to} {year}هـ',
+      'haramain_updated': 'آخر تحديث: {time}',
+      'haramain_source': 'المصدر: صحيفة المدينة',
+      'haramain_stale': 'الجدول الجديد يصدر مساء السبت',
+      'haramain_unavailable':
+          'تعذّر تحميل جدول الأئمة. تحقّق من الاتصال ثم حاول مرة أخرى.',
+      'haramain_open_failed': 'تعذّر فتح الخبر.',
       'mute': 'كتم',
       'unmute': 'إلغاء الكتم',
       // التخزين وتوفير البيانات.
@@ -2027,6 +2166,33 @@ class AppLocalizations {
       'adhan_sound_custom': 'أذانك',
       'adhan_sound_custom_desc': 'ملف أضفته بنفسك',
       'adhan_sound_saved': 'تم حفظ الأذان.',
+      'adhan_library_entry': 'أصوات أذان من العالم',
+      'adhan_library_entry_desc': 'الحرمان ومصر والشام وغيرها',
+      'adhan_library_title': 'مكتبة الأذان',
+      'adhan_region_haramain': 'الحرمان الشريفان',
+      'adhan_region_egypt': 'مصر',
+      'adhan_region_levant': 'الشام وفلسطين',
+      'adhan_region_gulf': 'الخليج واليمن',
+      'adhan_region_maghreb': 'المغرب العربي',
+      'adhan_region_turkey': 'تركيا',
+      'adhan_region_asia': 'آسيا',
+      'adhan_region_africa': 'أفريقيا',
+      'adhan_filter_all': 'الكل',
+      'adhan_filter_fajr': 'للفجر',
+      'adhan_filter_rare': 'نادرة',
+      'adhan_chip_fajr': 'فجر',
+      'adhan_chip_rare': 'نادر',
+      'adhan_size_mb': '{n} ميغا',
+      'adhan_choose': 'اختيار',
+      'adhan_selected': 'المختار',
+      'adhan_installed': 'محفوظ على الهاتف',
+      'adhan_library_note':
+          'التسجيلات من أرشيف الإنترنت، تُنزَّل عند اختيارها فقط.',
+      'adhan_library_chosen': 'تم اختيار أذان {name}',
+      'adhan_library_err_network': 'تعذّر التنزيل. تحقّق من الاتصال.',
+      'adhan_library_err_unsupported': 'يحتاج أندرويد ١٠ أو أحدث.',
+      'adhan_library_err_install': 'تعذّر حفظ الأذان على الهاتف.',
+      'adhan_library_empty': 'لا توجد أذانات في هذا التصنيف.',
       'import_adhan': 'أضف ملف أذان',
       'pick_device_sound': 'اختر من أصوات الجهاز',
       'preview_sound': 'استمع له',

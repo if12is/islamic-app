@@ -34,7 +34,70 @@ class SecureHttpClient {
     // again, and a search sends the user's coordinates — so the fewer places
     // they go, the better. A busy server is reported as busy instead.
     'overpass-api.de',
+    // Al-Madina newspaper, which reposts the Haramain weekly imams
+    // announcement as plain text (its sitemaps and AMP article pages). The
+    // `www` matters: the bare domain answers 301, which this client does not
+    // follow. Nothing about the user is sent, only a GET for a public page.
+    'www.al-madina.com',
   };
+
+  /// Hosts allowed by their ending, where the exact name cannot be known.
+  ///
+  /// Only the Internet Archive's storage nodes. A download from
+  /// `archive.org/download/…` answers 302 to whichever node holds the file —
+  /// `ia801004.us.archive.org` or `dn720003.ca.archive.org` today, another
+  /// tomorrow — so a fixed name would break the first time the archive moved
+  /// an item. Every name under these endings belongs to the archive.
+  static const Set<String> allowedHostSuffixes = {
+    '.us.archive.org',
+    '.ca.archive.org',
+  };
+
+  static bool isAllowedHost(String host) =>
+      allowedHosts.contains(host) ||
+      allowedHostSuffixes.any((suffix) => host.endsWith(suffix));
+
+  /// The bytes at [url], following at most [maxRedirects] redirects — each
+  /// one checked against the same rules as the first request.
+  ///
+  /// The client itself follows none, so that a redirect cannot carry a
+  /// request somewhere the allowlist never agreed to. Following them here,
+  /// one at a time and through the guard, keeps that promise while letting a
+  /// download reach the node the archive sends it to.
+  static Future<List<int>> getBytes(
+    String url, {
+    int maxRedirects = 3,
+    Duration receiveTimeout = const Duration(seconds: 60),
+  }) async {
+    final dio = create();
+    var target = Uri.parse(url);
+    for (var hop = 0; hop <= maxRedirects; hop++) {
+      final response = await dio.getUri<List<int>>(
+        target,
+        options: Options(
+          responseType: ResponseType.bytes,
+          receiveTimeout: receiveTimeout,
+          headers: const {'Accept': '*/*'},
+          validateStatus: (status) => status != null && status < 400,
+        ),
+      );
+      final status = response.statusCode ?? 0;
+      if (status >= 300 && status < 400) {
+        final location = response.headers.value('location');
+        if (location == null) {
+          break;
+        }
+        target = target.resolve(location);
+        continue;
+      }
+      return response.data ?? const [];
+    }
+    throw DioException(
+      requestOptions: RequestOptions(path: url),
+      type: DioExceptionType.badResponse,
+      message: 'Too many redirects',
+    );
+  }
 
   static Dio create({String? baseUrl}) {
     final dio = Dio(
@@ -66,7 +129,7 @@ class SecureHttpClient {
               ),
             );
           }
-          if (!allowedHosts.contains(uri.host)) {
+          if (!isAllowedHost(uri.host)) {
             return handler.reject(
               DioException(
                 requestOptions: options,

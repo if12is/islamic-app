@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../../core/widgets/glass_container.dart';
 import '../../../../core/widgets/now_playing_strip.dart';
+import '../../../haramain/presentation/widgets/haramain_teaser_card.dart';
 import '../../data/broadcast_catalogue.dart';
 import '../../data/recordings_catalogue.dart';
 import '../../domain/broadcast.dart';
@@ -213,6 +214,7 @@ class _BroadcastsPageState extends ConsumerState<BroadcastsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const HaramainTeaserCard(),
           SectionHeader(title: context.tr('recordings_rare_section')),
           for (final collection in rare) _collectionCard(tokens, collection),
           const SizedBox(height: AppSpacing.lg),

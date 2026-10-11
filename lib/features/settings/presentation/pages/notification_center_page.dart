@@ -16,8 +16,71 @@ import '../../../../core/services/delivery_check.dart';
 import '../../../../core/services/friday_progress.dart';
 import '../../../../core/services/notification_scheduler.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/prayer_alarms.dart';
 import '../../../../core/services/prayer_calculation_service.dart';
 import '../../../../shared/providers/app_providers.dart';
+import 'adhan_library_page.dart';
+
+/// Per-brand how-to keys shown under the delivery card.
+const List<String> deliveryBrandStepKeys = [
+  'delivery_steps_xiaomi',
+  'delivery_steps_huawei',
+  'delivery_steps_honor',
+  'delivery_steps_oppo',
+  'delivery_steps_vivo',
+  'delivery_steps_samsung',
+  'delivery_steps_oneplus',
+  'delivery_steps_tecno',
+  'delivery_steps_motorola',
+  'delivery_steps_nothing',
+  'delivery_steps_asus',
+  'delivery_steps_meizu',
+  'delivery_steps_generic',
+];
+
+/// Which how-to to show for a phone maker, from [AlarmHealth.manufacturer].
+String deliveryStepsKeyFor(String manufacturer) {
+  final brand = manufacturer.toLowerCase();
+  bool has(List<String> names) => names.any((name) => brand.contains(name));
+
+  if (has(const ['xiaomi', 'redmi', 'poco'])) {
+    return 'delivery_steps_xiaomi';
+  }
+  if (has(const ['huawei'])) {
+    return 'delivery_steps_huawei';
+  }
+  if (has(const ['honor', 'hihonor'])) {
+    return 'delivery_steps_honor';
+  }
+  if (has(const ['oppo', 'realme'])) {
+    return 'delivery_steps_oppo';
+  }
+  if (has(const ['vivo', 'iqoo'])) {
+    return 'delivery_steps_vivo';
+  }
+  if (has(const ['samsung'])) {
+    return 'delivery_steps_samsung';
+  }
+  if (has(const ['oneplus'])) {
+    return 'delivery_steps_oneplus';
+  }
+  if (has(const ['tecno', 'infinix', 'itel'])) {
+    return 'delivery_steps_tecno';
+  }
+  if (has(const ['motorola'])) {
+    return 'delivery_steps_motorola';
+  }
+  if (has(const ['nothing'])) {
+    return 'delivery_steps_nothing';
+  }
+  if (has(const ['asus'])) {
+    return 'delivery_steps_asus';
+  }
+  if (has(const ['meizu'])) {
+    return 'delivery_steps_meizu';
+  }
+  return 'delivery_steps_generic';
+}
 
 /// One screen that owns every reminder the app can send.
 ///
@@ -41,6 +104,7 @@ class _NotificationCenterPageState
 
   /// What the platform says about background delivery, once asked.
   DeliveryReport? _delivery;
+  AlarmHealth? _health;
   bool _checking = false;
   DateTime? _testDueAt;
   Timer? _testTimer;
@@ -231,6 +295,7 @@ class _NotificationCenterPageState
   Widget _deliveryCard() {
     final colorScheme = Theme.of(context).colorScheme;
     final report = _delivery;
+    final health = _health;
 
     return _card(
       title: context.tr('delivery_title'),
@@ -254,6 +319,8 @@ class _NotificationCenterPageState
             ),
           )
         else ...[
+          if (health != null && health.available)
+            ..._healthReport(health, colorScheme),
           for (final condition in report.conditions)
             _deliveryRow(condition, colorScheme),
           if (report.vendorRestricts) ...[
@@ -329,6 +396,201 @@ class _NotificationCenterPageState
     );
   }
 
+  /// Honest state from the native alarm engine. Hidden on iOS and desktop.
+  List<Widget> _healthReport(AlarmHealth health, ColorScheme colorScheme) {
+    final language = Localizations.localeOf(context).languageCode;
+    final missed = health.missedRecently;
+    final hasMisses = missed.isNotEmpty;
+    final latestMiss =
+        hasMisses
+            ? missed.reduce((a, b) => a.due.isAfter(b.due) ? a : b)
+            : null;
+
+    return [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: (hasMisses
+                  ? colorScheme.errorContainer
+                  : colorScheme.primaryContainer)
+              .withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          hasMisses
+              ? context.tr('delivery_headline_missed')
+              : context.tr('delivery_headline_ok'),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      ),
+      if (hasMisses) ...[
+        const SizedBox(height: 12),
+        Text(
+          AppLocalizations.translate(
+            language,
+            'delivery_missed_week',
+            replacements: {
+              'count': localizeDigits(context, '${missed.length}'),
+            },
+          ),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        if (latestMiss != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            AppLocalizations.translate(
+              language,
+              'delivery_missed_latest',
+              replacements: {'when': _formatStamp(latestMiss.due)},
+            ),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ],
+      if (health.lastFiredAt != null) ...[
+        const SizedBox(height: 8),
+        Text(
+          AppLocalizations.translate(
+            language,
+            'delivery_last_fired',
+            replacements: {'when': _formatStamp(health.lastFiredAt!)},
+          ),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
+      const SizedBox(height: 8),
+      Text(
+        AppLocalizations.translate(
+          language,
+          'delivery_plan_size',
+          replacements: {
+            'count': localizeDigits(context, '${health.planSize}'),
+          },
+        ),
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      if (health.planEndsAt != null) ...[
+        const SizedBox(height: 6),
+        Text(
+          AppLocalizations.translate(
+            language,
+            'delivery_plan_until',
+            replacements: {'date': _formatDay(health.planEndsAt!)},
+          ),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
+      ..._healthBlockers(health, colorScheme),
+      const SizedBox(height: 12),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.tr('delivery_how_to'),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            for (final line in _brandStepsText(health.manufacturer).split('\n'))
+              if (line.trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(
+                        localizeDigits(context, line.trim()),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ),
+                ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+    ];
+  }
+
+  List<Widget> _healthBlockers(AlarmHealth health, ColorScheme colorScheme) {
+    final rows = <Widget>[];
+
+    void add(bool show, String message, Future<bool> Function() open) {
+      if (!show) {
+        return;
+      }
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.cancel, size: 18, color: colorScheme.error),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    tapTargetSize: MaterialTapTargetSize.padded,
+                  ),
+                  onPressed: () => _openHealthFix(open),
+                  child: Text(context.tr('delivery_fix')),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    add(
+      health.canScheduleExact == false,
+      context.tr('delivery_blocker_exact'),
+      DeliveryCheck.openNotificationSettings,
+    );
+    add(
+      health.backgroundRestricted == true,
+      context.tr('delivery_blocker_background'),
+      DeliveryCheck.requestBatteryExemption,
+    );
+    add(
+      health.throttled,
+      context.tr('delivery_blocker_throttled'),
+      DeliveryCheck.requestBatteryExemption,
+    );
+    add(
+      health.forceStopped == true,
+      context.tr('delivery_blocker_force_stopped'),
+      DeliveryCheck.openAutostartSettings,
+    );
+    add(
+      health.powerSaveMode == true,
+      context.tr('delivery_blocker_power_save'),
+      DeliveryCheck.requestBatteryExemption,
+    );
+    return rows;
+  }
+
   Widget _deliveryRow(DeliveryCondition condition, ColorScheme colorScheme) {
     final ok = condition.ok;
     final colour =
@@ -393,12 +655,55 @@ class _NotificationCenterPageState
 
   Future<void> _runDeliveryCheck() async {
     setState(() => _checking = true);
-    final report = await DeliveryCheck.run();
+    final reportFuture = DeliveryCheck.run();
+    final healthFuture = PrayerAlarms.health();
+    final report = await reportFuture;
+    final health = await healthFuture;
     if (mounted) {
       setState(() {
         _delivery = report;
+        _health = health;
         _checking = false;
       });
+    }
+  }
+
+  Future<void> _openHealthFix(Future<bool> Function() open) async {
+    final opened = await open();
+    if (!opened && mounted) {
+      _say(context.tr('delivery_screen_missing'));
+    }
+    await _runDeliveryCheck();
+  }
+
+  String _brandStepsText(String manufacturer) {
+    switch (deliveryStepsKeyFor(manufacturer)) {
+      case 'delivery_steps_xiaomi':
+        return context.tr('delivery_steps_xiaomi');
+      case 'delivery_steps_huawei':
+        return context.tr('delivery_steps_huawei');
+      case 'delivery_steps_honor':
+        return context.tr('delivery_steps_honor');
+      case 'delivery_steps_oppo':
+        return context.tr('delivery_steps_oppo');
+      case 'delivery_steps_vivo':
+        return context.tr('delivery_steps_vivo');
+      case 'delivery_steps_samsung':
+        return context.tr('delivery_steps_samsung');
+      case 'delivery_steps_oneplus':
+        return context.tr('delivery_steps_oneplus');
+      case 'delivery_steps_tecno':
+        return context.tr('delivery_steps_tecno');
+      case 'delivery_steps_motorola':
+        return context.tr('delivery_steps_motorola');
+      case 'delivery_steps_nothing':
+        return context.tr('delivery_steps_nothing');
+      case 'delivery_steps_asus':
+        return context.tr('delivery_steps_asus');
+      case 'delivery_steps_meizu':
+        return context.tr('delivery_steps_meizu');
+      default:
+        return context.tr('delivery_steps_generic');
     }
   }
 
@@ -713,6 +1018,7 @@ class _NotificationCenterPageState
         if (prefs.fajrAdhanSound != null)
           _soundPicker(
             selection: prefs.fajrAdhanSound!,
+            forFajr: true,
             onSelected:
                 (selection) => _apply(
                   () => ref
@@ -727,6 +1033,7 @@ class _NotificationCenterPageState
   Widget _soundPicker({
     required AdhanSoundSelection selection,
     required void Function(AdhanSoundSelection selection) onSelected,
+    bool forFajr = false,
   }) {
     return Column(
       children: [
@@ -792,6 +1099,40 @@ class _NotificationCenterPageState
                 ),
             ],
           ),
+        ),
+        // Next to the bundled sounds, not folded away: this is how most people
+        // find an adhan they grew up with. It gets the scope of the picker it
+        // sits in, so Fajr's copy saves to Fajr and the other to all prayers.
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          minVerticalPadding: 12,
+          leading: Icon(
+            Icons.public,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          title: Text(context.tr('adhan_library_entry')),
+          subtitle: Text(context.tr('adhan_library_entry_desc')),
+          trailing: const Icon(Icons.chevron_right),
+          onTap:
+              _busy
+                  ? null
+                  : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder:
+                          (_) => AdhanLibraryPage(
+                            current: selection,
+                            forFajr: forFajr,
+                            // Same steps as an imported file: make the channel
+                            // for the sound, then save and reschedule.
+                            onSelected: (choice) async {
+                              await NotificationService.ensureAdhanChannel(
+                                choice,
+                              );
+                              onSelected(choice);
+                            },
+                          ),
+                    ),
+                  ),
         ),
         const SizedBox(height: 8),
         // Folded away, because bringing your own adhan is the rare case and it
@@ -1455,6 +1796,12 @@ class _NotificationCenterPageState
       Localizations.localeOf(context).languageCode,
     );
   }
+
+  String _formatStamp(DateTime time) =>
+      localizeDigits(context, _formatWhen(time));
+
+  String _formatDay(DateTime time) =>
+      localizeDigits(context, '${time.day}/${time.month}');
 
   String _formatWhen(DateTime time) {
     final now = DateTime.now();

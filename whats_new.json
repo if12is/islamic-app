@@ -1,10 +1,16 @@
 {
   "ar": [
-    "الأذان وباقي التنبيهات بتوصل والتطبيق مقفول، على كل أجهزة أندرويد.",
-    "التنبيه يظهر على شاشة القفل في وقت الصلاة نفسه."
+    "التطبيق صار يجهّز تنبيهات ستة أسابيع بنفسه، فلا يتوقف الأذان إن لم تفتحه أياماً.",
+    "بعد إعادة تشغيل الهاتف أو تغيير الوقت أو السفر، تعود التنبيهات وحدها.",
+    "في مركز التنبيهات: هل فاتك تنبيه؟ ومتى وصل آخر تنبيه؟ مع خطوات هاتفك بالاسم لإصلاحه.",
+    "مكتبة أذان من العالم: الحرمان ومصر والأقصى والشام والمغرب وتركيا وآسيا، تُنزَّل عند اختيارها.",
+    "أئمة الحرمين هذا الأسبوع: إمام كل صلاة في المسجد الحرام والمسجد النبوي."
   ],
   "en": [
-    "The adhan and the other reminders arrive while the app is closed, on every Android device.",
-    "The alert shows on the lock screen at the prayer time itself."
+    "The app now prepares six weeks of alerts itself, so the adhan keeps coming even if you do not open it for days.",
+    "After a restart, a time change or travel, alerts come back on their own.",
+    "The notification centre now shows whether an alert was missed, when the last one arrived, and the steps for your phone.",
+    "An adhan library from around the world: the Haramain, Egypt, al-Aqsa, the Levant, the Maghreb, Turkey and Asia, downloaded when chosen.",
+    "This week's imams of the Haramain: who leads each prayer in Makkah and Madinah."
   ]
 }
