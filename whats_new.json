@@ -1,10 +1,16 @@
 {
   "ar": [
-    "جدول أئمة الحرمين يتحدّث كل أسبوع من مصدرين، فلا يبقى جدول الأسبوع الماضي ظاهراً.",
-    "صار مصدر الجدول مذكوراً باسمه أسفل الصفحة."
+    "جدول أسبوعي لأئمة الحرم المكي والمسجد النبوي لكل الصلوات.",
+    "الجدول يتحدّث من مصدرين، فلا يبقى أسبوع قديم ظاهراً.",
+    "مصدر الجدول مذكور باسمه أسفل الصفحة.",
+    "مكتبة أذان من الحرمين ومصر والأقصى وغيرها، تُحمَّل عند الاختيار.",
+    "الأذان يصل والبرنامج مغلق، من غير ما تفتح التطبيق كل يوم."
   ],
   "en": [
-    "The Haramain imams table now updates every week from two sources, so last week's table no longer lingers.",
-    "The page now names the source the table came from."
+    "A weekly table of who leads each prayer at the Two Holy Mosques.",
+    "The table updates from two sources, so last week's table no longer lingers.",
+    "The page now names the source the table came from.",
+    "An adhan library from the Haramain, Egypt, al-Aqsa and elsewhere — downloaded when you choose one.",
+    "The adhan still arrives with the app closed, without opening it every day."
   ]
 }
