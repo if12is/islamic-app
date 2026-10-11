@@ -415,6 +415,7 @@ class AppLocalizations {
       'haramain_week_range': 'From {from} to {to}, {year} AH',
       'haramain_updated': 'Last updated: {time}',
       'haramain_source': 'Source: Al-Madina newspaper',
+      'haramain_source_shahd': 'Source: Shahd Now',
       'haramain_stale': 'The new schedule is published on Saturday evening',
       'haramain_unavailable':
           'The imams schedule could not be loaded. Check your connection and try again.',
@@ -1842,6 +1843,7 @@ class AppLocalizations {
       'haramain_week_range': 'من {from} إلى {to} {year}هـ',
       'haramain_updated': 'آخر تحديث: {time}',
       'haramain_source': 'المصدر: صحيفة المدينة',
+      'haramain_source_shahd': 'المصدر: شاهد الآن',
       'haramain_stale': 'الجدول الجديد يصدر مساء السبت',
       'haramain_unavailable':
           'تعذّر تحميل جدول الأئمة. تحقّق من الاتصال ثم حاول مرة أخرى.',

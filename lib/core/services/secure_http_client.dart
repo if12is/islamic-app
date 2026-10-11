@@ -17,6 +17,8 @@ class SecureHttpClient {
     // this client, so leaving it out breaks every export.
     'everyayah.com',
     'api.github.com',
+    // The weekly Haramain imams post, read through its WordPress REST API.
+    'shahdnow.sa',
     // The Warsh mushaf, and every other riwayah whose text the reader can be
     // shown. Answers 200 directly with no redirect, so it needs no exception
     // to the rule below.

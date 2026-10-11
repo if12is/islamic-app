@@ -63,8 +63,28 @@ class HaramainScheduleParser {
     return _unescape(body);
   }
 
+  /// The plain text of a WordPress `content.rendered` body: paragraphs, line
+  /// breaks, list items and headings become newlines, every other tag
+  /// (images included) is dropped, and entities are decoded. Pure, and never
+  /// null: a body with no recognisable announcement simply fails [parse].
+  static String extractWordPressText(String html) {
+    final body = html
+        .replaceAll(RegExp(r'<(script|style)[^>]*>.*?</\1>', dotAll: true), '')
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(
+          RegExp(r'</(p|li|div|h[1-6]|ul|ol|tr)>', caseSensitive: false),
+          '\n',
+        )
+        .replaceAll(RegExp(r'<li[^>]*>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<[^>]+>'), '');
+    return _unescape(body);
+  }
+
   static String _unescape(String text) {
     return text
+        .replaceAllMapped(RegExp(r'&#[xX]([0-9a-fA-F]+);'), (m) {
+          return String.fromCharCode(int.parse(m.group(1)!, radix: 16));
+        })
         .replaceAllMapped(RegExp(r'&#(\d+);'), (m) {
           return String.fromCharCode(int.parse(m.group(1)!));
         })
@@ -155,13 +175,16 @@ class HaramainScheduleParser {
   _Dates? _parseDates(String text) {
     final flat = normalizeArabic(text);
     final match = RegExp(
-      r'(?:^| )من (?:يوم )?\S+ (\d{1,2}) (.+?) الي (?:يوم )?\S+ (\d{1,2}) (.+?) (\d{4})',
+      r'(?:^| )من (?:يوم )?\S+ (\d{1,2})(?: (.+?))?? الي (?:يوم )?\S+ (\d{1,2}) (.+?) (\d{4})',
     ).firstMatch(flat);
     if (match == null) {
       return null;
     }
-    final startMonth = _months[match.group(2)!.trim()];
+    // A week inside one month names the month once: «من الأحد 23 إلى السبت
+    // 29 ربيع الآخر», so the start borrows the end's month.
     final endMonth = _months[match.group(4)!.trim()];
+    final startName = match.group(2)?.trim();
+    final startMonth = startName == null ? endMonth : _months[startName];
     final endDay = int.parse(match.group(3)!);
     final year = int.parse(match.group(5)!);
     if (startMonth == null || endMonth == null) {

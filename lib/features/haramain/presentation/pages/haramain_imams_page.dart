@@ -261,6 +261,15 @@ class _SourceLink extends StatelessWidget {
 
   final String url;
 
+  /// The source is named after the host the week came from; a week stored
+  /// before Shahd Now was added has an Al-Madina link and keeps its name.
+  static String _sourceKey(String url) {
+    final host = Uri.tryParse(url)?.host ?? '';
+    return host.endsWith('shahdnow.sa')
+        ? 'haramain_source_shahd'
+        : 'haramain_source';
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -276,7 +285,7 @@ class _SourceLink extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  context.tr('haramain_source'),
+                  context.tr(_sourceKey(url)),
                   style: AppTextStyles.body(
                     context,
                     fontSize: 15,

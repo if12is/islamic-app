@@ -52,6 +52,12 @@ class HaramainWeek {
   /// the Gregorian day is what lets the app know when the week is over.
   final DateTime endsOn;
 
+  /// The Sunday the week starts on. Derived from [endsOn] rather than
+  /// converted from the published start date: «30 ربيع الآخر» does not exist
+  /// in a 29-day month, and the week is always seven days long.
+  DateTime get startsOn =>
+      DateTime.utc(endsOn.year, endsOn.month, endsOn.day - 6);
+
   /// When this week was last confirmed against the source.
   final DateTime fetchedAt;
   final String sourceUrl;

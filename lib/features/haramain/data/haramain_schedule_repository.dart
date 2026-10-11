@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,6 +49,18 @@ class HaramainScheduleRepository {
   static const String _newsSitemap =
       'https://www.al-madina.com/sitemaps/newsSitemap.xml';
 
+  /// Shahd Now's WordPress REST search for the weekly post, newest first.
+  /// Only the fields that are read are asked for, which keeps the answer to a
+  /// few kilobytes. A search is ordered by relevance unless told otherwise,
+  /// which could push this week's post past the first three.
+  static final String _shahdUrl =
+      Uri.https('shahdnow.sa', '/wp-json/wp/v2/posts', {
+        'search': 'الجدول الأسبوعي لأئمة الحرمين',
+        'orderby': 'date',
+        'per_page': '3',
+        '_fields': 'id,date_gmt,link,title,content',
+      }).toString();
+
   final Future<String> Function(String url) _fetchText;
   final DateTime Function() _clock;
   final HaramainScheduleParser _parser;
@@ -83,51 +97,115 @@ class HaramainScheduleRepository {
     // next page opening try again straight away.
     await prefs.setInt(checkedKey, now.toUtc().millisecondsSinceEpoch);
 
+    // Two independent sources, Shahd Now first: it posts every week, while
+    // Al-Madina skips some. Each is wrapped on its own so one being down (or
+    // redesigned) never stops the other. Al-Madina is only asked when Shahd
+    // Now brought nothing, nothing newer than what is stored, or a week that
+    // is itself already over (so a fresher one may exist elsewhere).
+    var errored = false;
+    HaramainWeek? found;
     try {
-      final deep = cached == null || cached.hasEndedAt(now);
-      final post = await _discover(now, deep: deep);
-      if (post == null) {
-        AppLogger.info('Haramain: no weekly post listed');
-        return HaramainRefreshResult(
-          week: cached,
-          attempted: true,
-          failed: cached == null,
-        );
-      }
-
-      final cachedId = _idOf(cached?.sourceUrl);
-      if (cached != null && cachedId != null && post.id <= cachedId) {
-        // Nothing newer: the cached week is confirmed as current.
-        final confirmed = cached.copyWith(fetchedAt: now.toUtc());
-        await prefs.setString(weekKey, HaramainWeekCodec.encode(confirmed));
-        return HaramainRefreshResult(week: confirmed, attempted: true);
-      }
-
-      final html = await _fetchText(post.ampUrl);
-      final text = HaramainScheduleParser.extractBodyText(html);
-      final week =
-          text == null
-              ? null
-              : _parser.parse(
-                text,
-                sourceUrl: post.articleUrl,
-                fetchedAt: now.toUtc(),
-              );
-      if (week == null) {
-        AppLogger.warning('Haramain: post ${post.id} could not be parsed');
-        return HaramainRefreshResult(
-          week: cached,
-          attempted: true,
-          failed: true,
-        );
-      }
-
-      await prefs.setString(weekKey, HaramainWeekCodec.encode(week));
-      return HaramainRefreshResult(week: week, attempted: true);
+      found = await _fromShahd(now);
     } on Object catch (error) {
-      AppLogger.warning('Haramain: refresh failed (${error.runtimeType})');
+      errored = true;
+      AppLogger.warning('Haramain: Shahd Now failed (${error.runtimeType})');
+    }
+
+    if (found == null || !_isNewer(found, cached) || found.hasEndedAt(now)) {
+      try {
+        final fromMadina = await _fromMadina(now, cached);
+        if (fromMadina != null &&
+            (found == null || fromMadina.endsOn.isAfter(found.endsOn))) {
+          found = fromMadina;
+        }
+      } on Object catch (error) {
+        errored = true;
+        AppLogger.warning('Haramain: Al-Madina failed (${error.runtimeType})');
+      }
+    }
+
+    if (found != null && _isNewer(found, cached)) {
+      await prefs.setString(weekKey, HaramainWeekCodec.encode(found));
+      return HaramainRefreshResult(week: found, attempted: true);
+    }
+
+    if (cached == null || errored) {
+      AppLogger.info('Haramain: no new week found');
       return HaramainRefreshResult(week: cached, attempted: true, failed: true);
     }
+    // Nothing newer, and every source answered: the cached week is confirmed
+    // as current. A same-week repost is deliberately ignored; the stored one
+    // was already read successfully.
+    final confirmed = cached.copyWith(fetchedAt: now.toUtc());
+    await prefs.setString(weekKey, HaramainWeekCodec.encode(confirmed));
+    return HaramainRefreshResult(week: confirmed, attempted: true);
+  }
+
+  /// Post ids of two sites are not comparable, so "newer" is the week itself.
+  static bool _isNewer(HaramainWeek candidate, HaramainWeek? cached) =>
+      cached == null || candidate.startsOn.isAfter(cached.startsOn);
+
+  /// The newest week among Shahd Now's search hits, or null when none of
+  /// them parses as a weekly announcement. Throws when the site cannot be
+  /// reached or answers something that is not the expected JSON.
+  Future<HaramainWeek?> _fromShahd(DateTime now) async {
+    final decoded = jsonDecode(await _fetchText(_shahdUrl));
+    if (decoded is! List) {
+      throw const FormatException('Shahd Now: expected a JSON array');
+    }
+    HaramainWeek? best;
+    for (final post in decoded) {
+      if (post is! Map) {
+        continue;
+      }
+      final content = post['content'];
+      final html = content is Map ? content['rendered'] : null;
+      final link = post['link'];
+      if (html is! String || link is! String) {
+        continue;
+      }
+      final week = _parser.parse(
+        HaramainScheduleParser.extractWordPressText(html),
+        sourceUrl: link,
+        fetchedAt: now.toUtc(),
+      );
+      if (week != null && (best == null || week.endsOn.isAfter(best.endsOn))) {
+        best = week;
+      }
+    }
+    return best;
+  }
+
+  /// The week of Al-Madina's newest weekly post, or null when there is no
+  /// such post, or it is no newer than the stored one (compared by post id
+  /// when the stored week came from Al-Madina too, which saves the download).
+  Future<HaramainWeek?> _fromMadina(DateTime now, HaramainWeek? cached) async {
+    final deep = cached == null || cached.hasEndedAt(now);
+    final post = await _discover(now, deep: deep);
+    if (post == null) {
+      AppLogger.info('Haramain: no weekly post listed');
+      return null;
+    }
+    final cachedId = _idOf(cached?.sourceUrl);
+    if (cachedId != null && post.id <= cachedId) {
+      return null;
+    }
+
+    final html = await _fetchText(post.ampUrl);
+    final text = HaramainScheduleParser.extractBodyText(html);
+    final week =
+        text == null
+            ? null
+            : _parser.parse(
+              text,
+              sourceUrl: post.articleUrl,
+              fetchedAt: now.toUtc(),
+            );
+    if (week == null) {
+      // Unlike "nothing listed", this is a source that is broken.
+      throw FormatException('Al-Madina post ${post.id} could not be parsed');
+    }
+    return week;
   }
 
   /// Newest weekly post: the two-day news sitemap first, then, only when the
@@ -170,7 +248,7 @@ class HaramainScheduleRepository {
       url,
       options: Options(
         responseType: ResponseType.plain,
-        headers: const {'Accept': 'text/html,application/xml'},
+        headers: const {'Accept': 'text/html,application/xml,application/json'},
       ),
     );
     return response.data ?? '';

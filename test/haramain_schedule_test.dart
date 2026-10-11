@@ -522,7 +522,10 @@ void main() {
 
       final result = await repository.refresh();
       expect(result.failed, isFalse);
-      expect(asked, [newsUrl, ampUrl]);
+      // Shahd Now is asked first; here it answers nothing usable, so the
+      // search goes on to Al-Madina.
+      expect(asked.first, startsWith('https://shahdnow.sa/wp-json/'));
+      expect(asked.skip(1), [newsUrl, ampUrl]);
       expect(result.week!.sourceUrl, contains('1008801'));
 
       final cached = await repository.loadCached();
