@@ -192,6 +192,16 @@ void main() {
             'the countdown shrank to ${digits.height}px tall, which is '
             'smaller than the caption beneath it',
       );
+
+      // Location belongs under the until-prayer line, not above the hours.
+      expect(
+        tester.getTopLeft(find.text('٥٩')).dy,
+        lessThan(tester.getTopLeft(find.text('حتى العصر · ٤:٢٧ م')).dy),
+      );
+      expect(
+        tester.getTopLeft(find.text('حتى العصر · ٤:٢٧ م')).dy,
+        lessThan(tester.getTopLeft(find.text('دمنهور، البحيرة، مصر')).dy),
+      );
     });
 
     testWidgets('the arc gauge, in both directions', (tester) async {

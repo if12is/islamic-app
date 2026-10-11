@@ -1,11 +1,13 @@
 {
   "ar": [
-    "مربعات الرئيسية كلها بارتفاع واحد، ما عاد أحدها أطول من الثاني.",
+    "اسم المدينة تحت سطر حتى الفجر، مش فوق العدّاد.",
+    "مربعات الرئيسية كلها بارتفاع واحد.",
     "عداد الصلاة على سطرين: الساعات فوق، والدقائق تحت.",
     "أسماء الشريط كاملة: مواقيت الصلاة والورد اليومي تظهر من غير قص."
   ],
   "en": [
-    "Home tiles now share one height, so the grid looks even.",
+    "The city name now sits under the until-prayer line, not above the countdown.",
+    "Home tiles share one height, so the grid looks even.",
     "The prayer countdown sits on two lines: hours, then minutes.",
     "Navigation labels stay complete — Prayer times and Daily wird are no longer cut off."
   ]

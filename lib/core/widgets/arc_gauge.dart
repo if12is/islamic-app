@@ -70,7 +70,7 @@ class ArcGauge extends StatelessWidget {
   final IconData startIcon;
   final IconData endIcon;
 
-  /// A small line above the headline — the place the times are for.
+  /// A small line under the until-prayer caption — the place the times are for.
   final String? footnote;
 
   final double size;
@@ -147,18 +147,6 @@ class ArcGauge extends StatelessWidget {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (footnote != null)
-                                  Text(
-                                    footnote!,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.caption(
-                                      context,
-                                      color: tokens.inkFaint,
-                                      fontSize: 11.5,
-                                    ),
-                                  ),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child:
@@ -186,6 +174,18 @@ class ArcGauge extends StatelessWidget {
                                       context,
                                       color: tokens.inkMuted,
                                       fontSize: 13.5,
+                                    ),
+                                  ),
+                                if (footnote != null)
+                                  Text(
+                                    footnote!,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.caption(
+                                      context,
+                                      color: tokens.inkFaint,
+                                      fontSize: 11.5,
                                     ),
                                   ),
                               ],
