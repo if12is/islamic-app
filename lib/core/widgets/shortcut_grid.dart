@@ -85,9 +85,10 @@ class _Shortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final tight = AppDensity.of(context).isTight;
+    final density = AppDensity.of(context);
     final tint = item.highlighted ? tokens.brand : tokens.inkMuted;
-    final iconSize = tight ? 22.0 : 26.0;
+    final iconSize = density.shortcutIconSize;
+    final labelSize = density.shortcutLabelSize;
 
     return Semantics(
       button: true,
@@ -99,84 +100,99 @@ class _Shortcut extends StatelessWidget {
           child: InkWell(
             onTap: item.onTap,
             borderRadius: AppRadii.mdAll,
-            child: Container(
-              // The whole tile is the target, not the circle inside it.
-              constraints: BoxConstraints(minHeight: tight ? 84 : 96),
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.xs,
-                vertical: tight ? AppSpacing.sm : AppSpacing.md,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: AppRadii.mdAll,
-                border: Border.all(
-                  color: item.highlighted ? tokens.gold : tokens.line,
-                  width: item.highlighted ? 1.4 : 1,
+            child: SizedBox(
+              // One height for every tile. Growing with the words is what
+              // made a 1-line "الزكاة" sit next to a taller "الورد اليومي".
+              height: density.shortcutTileHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: AppRadii.mdAll,
+                  border: Border.all(
+                    color: item.highlighted ? tokens.gold : tokens.line,
+                    width: item.highlighted ? 1.4 : 1,
+                  ),
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.center,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: density.isTight ? AppSpacing.sm : AppSpacing.md,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (item.svg != null)
-                        AppIcon(item.svg!, size: iconSize, color: tint)
-                      else if (item.motif != null)
-                        SizedBox(
-                          width: iconSize + 2,
-                          height: iconSize + 2,
-                          child: CustomPaint(
-                            painter: MotifPainter(
-                              motif: item.motif!,
-                              color: tint,
-                            ),
-                          ),
-                        )
-                      else
-                        Icon(item.icon, size: iconSize, color: tint),
-                      if (item.badge != null)
-                        PositionedDirectional(
-                          end: -12,
-                          top: -8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              color: tokens.gold,
-                              borderRadius: AppRadii.pillAll,
-                            ),
-                            child: Text(
-                              item.badge!,
-                              style: TextStyle(
-                                fontFamily: AppTextStyles.bodyFamily,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: tokens.onGold,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.center,
+                        children: [
+                          if (item.svg != null)
+                            AppIcon(item.svg!, size: iconSize, color: tint)
+                          else if (item.motif != null)
+                            SizedBox(
+                              width: iconSize + 2,
+                              height: iconSize + 2,
+                              child: CustomPaint(
+                                painter: MotifPainter(
+                                  motif: item.motif!,
+                                  color: tint,
+                                ),
+                              ),
+                            )
+                          else
+                            Icon(item.icon, size: iconSize, color: tint),
+                          if (item.badge != null)
+                            PositionedDirectional(
+                              end: -12,
+                              top: -8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: tokens.gold,
+                                  borderRadius: AppRadii.pillAll,
+                                ),
+                                child: Text(
+                                  item.badge!,
+                                  style: TextStyle(
+                                    fontFamily: AppTextStyles.bodyFamily,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: tokens.onGold,
+                                  ),
+                                ),
                               ),
                             ),
+                        ],
+                      ),
+                      SizedBox(
+                        height: density.isTight ? AppSpacing.xs : AppSpacing.sm,
+                      ),
+                      SizedBox(
+                        height: density.shortcutLabelBoxHeight,
+                        width: double.infinity,
+                        child: Text(
+                          item.label,
+                          maxLines: AppDensity.shortcutLabelLines,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          strutStyle: StrutStyle(
+                            fontSize: labelSize,
+                            height: AppDensity.shortcutLabelHeight,
+                            forceStrutHeight: true,
+                          ),
+                          style: AppTextStyles.body(
+                            context,
+                            fontSize: labelSize,
+                            height: AppDensity.shortcutLabelHeight,
+                            fontWeight: FontWeight.w600,
+                            color: tokens.ink,
                           ),
                         ),
+                      ),
                     ],
                   ),
-                  SizedBox(height: tight ? AppSpacing.xs : AppSpacing.sm),
-                  Text(
-                    item.label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.body(
-                      context,
-                      fontSize: tight ? 12 : 13,
-                      height: 1.25,
-                      fontWeight: FontWeight.w600,
-                      color: tokens.ink,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

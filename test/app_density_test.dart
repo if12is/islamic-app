@@ -17,6 +17,23 @@ void main() {
       expect(AppDensity.fromWidth(430).textFactor, 1);
     });
 
+    test('a comfortable phone keeps the dashboard tile rhythm', () {
+      final density = AppDensity.fromWidth(390);
+
+      expect(density.shortcutTileHeight, 104);
+      expect(density.shortcutLabelBoxHeight, 13 * 1.25 * 2);
+      expect(density.navLabelSize, 11);
+      expect(density.navSlotHeight, greaterThanOrEqualTo(48));
+    });
+
+    test('a tight phone keeps a smaller but still even tile', () {
+      final density = AppDensity.fromWidth(320);
+
+      expect(density.shortcutTileHeight, 88);
+      expect(density.shortcutLabelBoxHeight, 12 * 1.25 * 2);
+      expect(density.navLabelSize, 10);
+    });
+
     test('the tightest phone we support shrinks type and gutters', () {
       final density = AppDensity.fromWidth(320);
 

@@ -141,7 +141,7 @@ class ArcGauge extends StatelessWidget {
                           Positioned(
                             // The countdown is words, not four digits, so it needs
                             // the width the clock time did not.
-                            top: width * 0.15,
+                            top: width * 0.10,
                             left: _stroke * 1.1,
                             right: _stroke * 1.1,
                             child: Column(
@@ -169,7 +169,7 @@ class ArcGauge extends StatelessWidget {
                                             style: AppTextStyles.body(
                                               context,
                                               fontSize: _Countdown.bigSize,
-                                              height: 1.35,
+                                              height: 1.2,
                                               fontWeight: FontWeight.w700,
                                               color: tokens.ink,
                                             ),
@@ -227,11 +227,12 @@ class ArcGauge extends StatelessWidget {
   }
 }
 
-/// "٢ ساعة ٥٩ دقيقة" — digits at full size, the words that name them small.
+/// Each counted part is its own row: "٣ ساعات" over "و ٤٥ دقيقة".
 ///
-/// The words sit on the digits' baseline rather than being centred against
-/// them, which is how a clock face sets a unit beside a number and what keeps
-/// the line from looking like two sizes of the same sentence.
+/// One baseline row of mixed sizes is what made the hours and minutes
+/// fight — digits at 27px, units at 15px, the "و" glued to the next number,
+/// and the whole sentence shrinking to fit the arc. Stacked, each quantity
+/// is a designed unit and the block stays readable on a large phone.
 ///
 /// All of it is Cairo. The digits used to be the Kufic display face at 38px
 /// and the words Cairo, so "ساعة و٢١ دقيقة" read as two fonts fighting in one
@@ -242,7 +243,7 @@ class _Countdown extends StatelessWidget {
   final List<DurationPart> parts;
 
   /// The counted things: digits, and the words that carry their own count.
-  static const double bigSize = 27;
+  static const double bigSize = 24;
 
   /// The units that name them.
   static const double smallSize = 15;
@@ -256,44 +257,79 @@ class _Countdown extends StatelessWidget {
     // has no word here at all and the gap does the joining.
     final conjunction = context.tr('and_prefix');
 
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < parts.length; i++)
+          _CountdownRow(
+            part: parts[i],
+            prefix: i > 0 ? conjunction : '',
+            tokens: tokens,
+          ),
+      ],
+    );
+  }
+}
+
+class _CountdownRow extends StatelessWidget {
+  const _CountdownRow({
+    required this.part,
+    required this.prefix,
+    required this.tokens,
+  });
+
+  final DurationPart part;
+  final String prefix;
+  final AppTokens tokens;
+
+  @override
+  Widget build(BuildContext context) {
+    final isBareWord = part.value == null;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
-        for (var i = 0; i < parts.length; i++) ...[
-          if (i > 0) const SizedBox(width: 9),
-          if (parts[i].value != null) ...[
-            Text(
-              '${i > 0 ? conjunction : ''}${parts[i].value}',
-              maxLines: 1,
-              style: AppTextStyles.body(
-                context,
-                fontSize: bigSize,
-                height: 1.35,
-                fontWeight: FontWeight.w700,
-                color: tokens.ink,
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
+        if (prefix.isNotEmpty)
           Text(
-            parts[i].value == null && i > 0
-                ? '$conjunction${parts[i].unit}'
-                : parts[i].unit,
+            prefix,
             maxLines: 1,
             style: AppTextStyles.body(
               context,
-              // A dual like "ساعتان" is the number as well as the word, so it
-              // is set at the size a number gets.
-              fontSize: parts[i].value == null ? bigSize : smallSize,
-              height: 1.35,
-              fontWeight:
-                  parts[i].value == null ? FontWeight.w700 : FontWeight.w600,
-              color: parts[i].value == null ? tokens.ink : tokens.inkMuted,
+              fontSize: isBareWord ? _Countdown.bigSize : _Countdown.smallSize,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+              color: tokens.inkMuted,
             ),
           ),
+        if (part.value != null) ...[
+          Text(
+            part.value!,
+            maxLines: 1,
+            style: AppTextStyles.body(
+              context,
+              fontSize: _Countdown.bigSize,
+              height: 1.2,
+              fontWeight: FontWeight.w700,
+              color: tokens.ink,
+            ),
+          ),
+          const SizedBox(width: 5),
         ],
+        Text(
+          part.unit,
+          maxLines: 1,
+          style: AppTextStyles.body(
+            context,
+            // A dual like "ساعتان" is the number as well as the word, so it
+            // is set at the size a number gets.
+            fontSize: isBareWord ? _Countdown.bigSize : _Countdown.smallSize,
+            height: 1.2,
+            fontWeight: isBareWord ? FontWeight.w700 : FontWeight.w600,
+            color: isBareWord ? tokens.ink : tokens.inkMuted,
+          ),
+        ),
       ],
     );
   }

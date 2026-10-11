@@ -74,7 +74,7 @@ class GlassNavBar extends StatelessWidget {
                   // something hovering above it.
                   SeasonalNavFlourish(event: SeasonalDecorScope.of(context)),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+                    padding: const EdgeInsets.fromLTRB(6, 4, 6, 10),
                     child: Row(
                       children: [
                         for (var i = 0; i < items.length; i++)
@@ -83,7 +83,10 @@ class GlassNavBar extends StatelessWidget {
                                 i == centre
                                     // The raised button is drawn above; this keeps its
                                     // slot in the row so the spacing stays even.
-                                    ? const SizedBox(height: 50)
+                                    ? SizedBox(
+                                      height:
+                                          AppDensity.of(context).navSlotHeight,
+                                    )
                                     : _FlatDestination(
                                       item: items[i],
                                       isSelected:
@@ -129,6 +132,9 @@ class _FlatDestination extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
+    final density = AppDensity.of(context);
+    final labelSize = density.navLabelSize;
+
     return Semantics(
       button: true,
       selected: isSelected,
@@ -137,7 +143,7 @@ class _FlatDestination extends StatelessWidget {
         onTap: onTap,
         radius: 28,
         child: SizedBox(
-          height: 50,
+          height: density.navSlotHeight,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -146,28 +152,30 @@ class _FlatDestination extends StatelessWidget {
                 size: 21,
                 color: isSelected ? tokens.brand : tokens.inkMuted,
               ),
-              const SizedBox(height: 3),
-              // The bar carried no labels and a dot instead, which asked the
-              // reader to have already learned what each glyph opens. Four
-              // words fit, and a nav bar that has to be learned is a nav bar
-              // people guess at. FittedBox keeps "مواقيت الصلاة" on a 320
-              // phone instead of clipping it to "موافقيت".
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: AppTextStyles.bodyFamily,
-                      fontSize: 10,
-                      height: 1.1,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? tokens.brand : tokens.inkMuted,
-                    ),
+              const SizedBox(height: 2),
+              // Two reserved lines at a readable size. FittedBox on one line
+              // is what turned "مواقيت الصلاة" and "الورد اليومي" into a
+              // smudge that read as chopped. Short names sit on the first
+              // line; long ones wrap — same slot, same type.
+              SizedBox(
+                height: density.navLabelBoxHeight,
+                width: double.infinity,
+                child: Text(
+                  item.label,
+                  maxLines: AppDensity.navLabelLines,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  strutStyle: StrutStyle(
+                    fontSize: labelSize,
+                    height: AppDensity.navLabelHeight,
+                    forceStrutHeight: true,
+                  ),
+                  style: TextStyle(
+                    fontFamily: AppTextStyles.bodyFamily,
+                    fontSize: labelSize,
+                    height: AppDensity.navLabelHeight,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? tokens.brand : tokens.inkMuted,
                   ),
                 ),
               ),

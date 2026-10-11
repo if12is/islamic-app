@@ -26,26 +26,23 @@ class ShellThemeButton extends ConsumerWidget {
     final mode = ref.watch(themeModeProvider);
     final isDark = mode == ThemeMode.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      child: IconButton(
-        tooltip: context.tr(isDark ? 'theme_to_light' : 'theme_to_dark'),
-        onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
-        icon: AnimatedSwitcher(
-          duration: AppMotion.base,
-          // Rotate rather than fade: the two glyphs are a sun and a moon, and
-          // a crossfade between them is a smudge.
-          transitionBuilder:
-              (child, animation) => RotationTransition(
-                turns: Tween<double>(begin: 0.6, end: 1).animate(animation),
-                child: FadeTransition(opacity: animation, child: child),
-              ),
-          child: Icon(
-            isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-            key: ValueKey(isDark),
-            size: 22,
-            color: tokens.ink,
-          ),
+    return IconButton(
+      tooltip: context.tr(isDark ? 'theme_to_light' : 'theme_to_dark'),
+      onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
+      icon: AnimatedSwitcher(
+        duration: AppMotion.base,
+        // Rotate rather than fade: the two glyphs are a sun and a moon, and
+        // a crossfade between them is a smudge.
+        transitionBuilder:
+            (child, animation) => RotationTransition(
+              turns: Tween<double>(begin: 0.6, end: 1).animate(animation),
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+        child: Icon(
+          isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          key: ValueKey(isDark),
+          size: 22,
+          color: tokens.ink,
         ),
       ),
     );
@@ -63,46 +60,43 @@ class ShellProfileButton extends ConsumerWidget {
     final profile = ref.watch(userProfileProvider);
     final initial = _initialOf(profile.name);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-      child: Tooltip(
-        message: context.tr('profile'),
-        child: InkWell(
-          // Pushed, not a tab. Settings stopped being a destination in the
-          // bar — it was reachable three ways and the wird none — so it opens
-          // over whatever screen asked for it and closes back to it.
-          onTap:
-              () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const SettingsPage()),
-              ),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              // The same wash as every icon tile, so the header belongs to
-              // the same set as the cards under it.
-              color: tokens.brand.withValues(alpha: 0.11),
-              borderRadius: BorderRadius.circular(12),
+    return Tooltip(
+      message: context.tr('profile'),
+      child: InkWell(
+        // Pushed, not a tab. Settings stopped being a destination in the
+        // bar — it was reachable three ways and the wird none — so it opens
+        // over whatever screen asked for it and closes back to it.
+        onTap:
+            () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsPage()),
             ),
-            child:
-                initial.isEmpty
-                    ? Icon(
-                      Icons.person_outline_rounded,
-                      size: 19,
-                      color: tokens.brand,
-                    )
-                    : Text(
-                      initial,
-                      style: TextStyle(
-                        fontSize: 15,
-                        height: 1,
-                        fontWeight: FontWeight.w700,
-                        color: tokens.brand,
-                      ),
-                    ),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            // The same wash as every icon tile, so the header belongs to
+            // the same set as the cards under it.
+            color: tokens.brand.withValues(alpha: 0.11),
+            borderRadius: BorderRadius.circular(12),
           ),
+          child:
+              initial.isEmpty
+                  ? Icon(
+                    Icons.person_outline_rounded,
+                    size: 19,
+                    color: tokens.brand,
+                  )
+                  : Text(
+                    initial,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1,
+                      fontWeight: FontWeight.w700,
+                      color: tokens.brand,
+                    ),
+                  ),
         ),
       ),
     );

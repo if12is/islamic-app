@@ -8,6 +8,7 @@ import 'package:islamic_app/core/widgets/app_section.dart';
 import 'package:islamic_app/core/widgets/arc_gauge.dart';
 import 'package:islamic_app/core/widgets/ayah_block.dart';
 import 'package:islamic_app/core/widgets/shortcut_grid.dart';
+import 'package:islamic_app/features/home/presentation/widgets/glass_nav_bar.dart';
 import 'package:islamic_app/features/quran/data/services/quran_local_service.dart';
 import 'package:islamic_app/features/quran/presentation/widgets/surah_cover_art.dart';
 
@@ -386,6 +387,149 @@ void main() {
               .map((card) => tester.getSize(find.byWidget(card)).height)
               .toSet();
       expect(heights.length, 1, reason: 'cards ended up ragged: $heights');
+    });
+
+    testWidgets('shortcut tiles share one height on a large phone', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        host(
+          ShortcutGrid(
+            items: [
+              for (final label in [
+                'الزكاة',
+                'الورد اليومي',
+                'اتجاه القبلة',
+                'أي آية هذه؟',
+                'الإعدادات',
+                'الراديو',
+              ])
+                ShortcutItem(icon: Icons.star, label: label, onTap: () {}),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+
+      final heights =
+          tester
+              .widgetList<SizedBox>(find.byType(SizedBox))
+              .map((box) => box.height)
+              .where((height) => height == 104)
+              .toList();
+      expect(
+        heights.length,
+        6,
+        reason: 'every shortcut tile should be the shared 104px height',
+      );
+    });
+
+    testWidgets('nav labels stay complete on a large phone', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        host(
+          GlassNavBar(
+            selectedIndex: 0,
+            onSelected: (_) {},
+            items: const [
+              GlassNavItem(
+                tabIndex: 3,
+                icon: Icons.task_alt_outlined,
+                selectedIcon: Icons.task_alt,
+                label: 'الورد اليومي',
+              ),
+              GlassNavItem(
+                tabIndex: 2,
+                icon: Icons.wb_twilight_outlined,
+                selectedIcon: Icons.wb_twilight,
+                label: 'الأذكار',
+              ),
+              GlassNavItem(
+                tabIndex: 0,
+                icon: Icons.home_outlined,
+                selectedIcon: Icons.home_filled,
+                label: 'الرئيسية',
+              ),
+              GlassNavItem(
+                tabIndex: 1,
+                icon: Icons.menu_book_outlined,
+                selectedIcon: Icons.menu_book,
+                label: 'القرآن',
+              ),
+              GlassNavItem(
+                tabIndex: 4,
+                icon: Icons.mosque_outlined,
+                selectedIcon: Icons.mosque,
+                label: 'مواقيت الصلاة',
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('مواقيت الصلاة'), findsOneWidget);
+      expect(find.text('الورد اليومي'), findsOneWidget);
+      expect(find.text('الأذكار'), findsOneWidget);
+      expect(find.text('القرآن'), findsOneWidget);
+    });
+
+    testWidgets('nav labels stay complete on a 320 phone', (tester) async {
+      await pumpTight(
+        tester,
+        host(
+          GlassNavBar(
+            selectedIndex: 0,
+            onSelected: (_) {},
+            items: const [
+              GlassNavItem(
+                tabIndex: 3,
+                icon: Icons.task_alt_outlined,
+                selectedIcon: Icons.task_alt,
+                label: 'الورد اليومي',
+              ),
+              GlassNavItem(
+                tabIndex: 2,
+                icon: Icons.wb_twilight_outlined,
+                selectedIcon: Icons.wb_twilight,
+                label: 'الأذكار',
+              ),
+              GlassNavItem(
+                tabIndex: 0,
+                icon: Icons.home_outlined,
+                selectedIcon: Icons.home_filled,
+                label: 'الرئيسية',
+              ),
+              GlassNavItem(
+                tabIndex: 1,
+                icon: Icons.menu_book_outlined,
+                selectedIcon: Icons.menu_book,
+                label: 'القرآن',
+              ),
+              GlassNavItem(
+                tabIndex: 4,
+                icon: Icons.mosque_outlined,
+                selectedIcon: Icons.mosque,
+                label: 'مواقيت الصلاة',
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('مواقيت الصلاة'), findsOneWidget);
+      expect(find.text('الورد اليومي'), findsOneWidget);
     });
 
     testWidgets('a hint pill with a long instruction', (tester) async {

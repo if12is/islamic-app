@@ -148,6 +148,11 @@ class AppScaffold extends StatelessWidget {
                     scrolledUnderElevation: 0,
                     centerTitle: true,
                     automaticallyImplyLeading: false,
+                    // Matching side widths keep the title optically centred.
+                    // A 64px theme button next to a 52px profile is what
+                    // shoved "صباح الخير" off the middle of the bar.
+                    leadingWidth: 56,
+                    titleSpacing: 0,
                     leading: leading ?? (showBack ? _BackButton(onBack) : null),
                     title:
                         titleWidget ??
@@ -165,7 +170,16 @@ class AppScaffold extends StatelessWidget {
                                 ),
                               ),
                             )),
-                    actions: actions,
+                    actions:
+                        actions == null
+                            ? null
+                            : [
+                              for (final action in actions!)
+                                SizedBox(
+                                  width: 56,
+                                  child: Center(child: action),
+                                ),
+                            ],
                   )
                   : null,
           body: SafeArea(bottom: false, child: body),

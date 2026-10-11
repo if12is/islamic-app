@@ -524,16 +524,15 @@ class _Greeting extends StatelessWidget {
             ? 'greeting_morning'
             : (hour < 18 ? 'greeting_afternoon' : 'greeting_evening');
 
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(
-        context.tr(key),
-        maxLines: 1,
-        style: AppTextStyles.display(
-          context,
-          fontSize: 17,
-          color: context.tokens.ink,
-        ),
+    return Text(
+      context.tr(key),
+      maxLines: 1,
+      textAlign: TextAlign.center,
+      style: AppTextStyles.display(
+        context,
+        fontSize: 18,
+        height: 1.2,
+        color: context.tokens.ink,
       ),
     );
   }
@@ -634,7 +633,7 @@ class _DashboardRail extends ConsumerWidget {
         ),
         ShortcutItem(
           icon: Icons.radio_outlined,
-          label: context.tr('broadcasts'),
+          label: context.tr('broadcasts_radio'),
           onTap: () => BroadcastsPage.open(context),
         ),
         ShortcutItem(
