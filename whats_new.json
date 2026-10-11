@@ -1,16 +1,10 @@
 {
   "ar": [
-    "جدول أسبوعي لأئمة الحرم المكي والمسجد النبوي لكل الصلوات.",
-    "الجدول يتحدّث من مصدرين، فلا يبقى أسبوع قديم ظاهراً.",
-    "مصدر الجدول مذكور باسمه أسفل الصفحة.",
-    "مكتبة أذان من الحرمين ومصر والأقصى وغيرها، تُحمَّل عند الاختيار.",
-    "الأذان يصل والبرنامج مغلق، من غير ما تفتح التطبيق كل يوم."
+    "الخط والمسافات تتكيّف مع أصغر الشاشات، حتى بحجم الخط العادي.",
+    "اختصارات الرئيسية وأسماء شريط التنقل تظهر كاملة من غير قص."
   ],
   "en": [
-    "A weekly table of who leads each prayer at the Two Holy Mosques.",
-    "The table updates from two sources, so last week's table no longer lingers.",
-    "The page now names the source the table came from.",
-    "An adhan library from the Haramain, Egypt, al-Aqsa and elsewhere — downloaded when you choose one.",
-    "The adhan still arrives with the app closed, without opening it every day."
+    "Text and spacing now fit smaller phones, even at the normal font size.",
+    "Home shortcuts and the navigation labels stay readable without being cut off."
   ]
 }

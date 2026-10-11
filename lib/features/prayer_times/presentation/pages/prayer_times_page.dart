@@ -280,7 +280,7 @@ class _PrayerTimesPageState extends ConsumerState<PrayerTimesPage> {
             color: tokens.brand,
             onRefresh: refreshAll,
             child: ListView(
-              padding: AppScaffold.scrollPadding,
+              padding: AppScaffold.scrollPaddingOf(context),
               children: [
                 Center(
                   child: ArcGauge(

@@ -431,7 +431,7 @@ class _HomeDashboardState extends ConsumerState<_HomeDashboard> {
                   : nextTime.difference(_currentTime);
 
           return ListView(
-            padding: AppScaffold.scrollPadding,
+            padding: AppScaffold.scrollPaddingOf(context),
             children: [
               Center(
                 child: ArcGauge(
@@ -524,12 +524,16 @@ class _Greeting extends StatelessWidget {
             ? 'greeting_morning'
             : (hour < 18 ? 'greeting_afternoon' : 'greeting_evening');
 
-    return Text(
-      context.tr(key),
-      style: AppTextStyles.display(
-        context,
-        fontSize: 17,
-        color: context.tokens.ink,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        context.tr(key),
+        maxLines: 1,
+        style: AppTextStyles.display(
+          context,
+          fontSize: 17,
+          color: context.tokens.ink,
+        ),
       ),
     );
   }

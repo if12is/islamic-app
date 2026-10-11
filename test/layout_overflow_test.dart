@@ -243,6 +243,7 @@ void main() {
                 'الورد اليومي',
                 'اتجاه القبلة',
                 'عداد التسبيح',
+                'أي آية هذه؟',
                 'التقويم الهجري',
                 'تعرّف على التلاوة',
               ])
@@ -255,6 +256,39 @@ void main() {
       // Nothing scrolls sideways and nothing is clipped, so every shortcut is
       // on screen — which is the whole reason the rail became a grid.
       expect(find.text('تعرّف على التلاوة'), findsOneWidget);
+      expect(find.text('أي آية هذه؟'), findsOneWidget);
+    });
+
+    testWidgets('the shortcuts grid at the normal size on a 320 phone', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        host(
+          ShortcutGrid(
+            items: [
+              for (final label in [
+                'آخر قراءة',
+                'الورد اليومي',
+                'اتجاه القبلة',
+                'عداد التسبيح',
+                'أي آية هذه؟',
+                'التقويم الهجري',
+                'إعدادات التسبيح',
+              ])
+                ShortcutItem(icon: Icons.star, label: label, onTap: () {}),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('الورد اليومي'), findsOneWidget);
+      expect(find.text('أي آية هذه؟'), findsOneWidget);
     });
 
     testWidgets('a section header carrying a pill selector', (tester) async {

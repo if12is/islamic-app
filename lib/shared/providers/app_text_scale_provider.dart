@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/theme/app_density.dart';
 import '../../core/utils/app_logger.dart';
 import 'app_providers.dart';
 
@@ -77,10 +78,15 @@ class AppTextScaleScope extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scale = ref.watch(appTextScaleProvider);
     final media = MediaQuery.of(context);
-    final combined = (media.textScaler.scale(1) * scale.factor).clamp(
+    // The user's choice and the OS setting never go below 1. The width
+    // factor can: a 320-wide phone at "normal" still needs the type a
+    // little smaller or the home grid wraps into unreadability.
+    final chosen = (media.textScaler.scale(1) * scale.factor).clamp(
       1.0,
       _ceiling,
     );
+    final combined = (chosen * AppDensity.fromWidth(media.size.width).textFactor)
+        .clamp(AppDensity.minTextFactor, _ceiling);
 
     return MediaQuery(
       data: media.copyWith(textScaler: TextScaler.linear(combined)),

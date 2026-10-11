@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../localization/app_localizations.dart';
+import '../theme/app_density.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/design_tokens.dart';
 import '../utils/duration_words.dart';
@@ -84,10 +85,11 @@ class ArcGauge extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final maxWidth = AppDensity.of(context).scale(size);
         final width =
             constraints.hasBoundedWidth
-                ? math.min(size, constraints.maxWidth)
-                : size;
+                ? math.min(maxWidth, constraints.maxWidth)
+                : maxWidth;
         return Semantics(
           // Read as one sentence. Left to itself a screen reader announces the
           // pieces in painting order — a stray "4:27", a place name, two

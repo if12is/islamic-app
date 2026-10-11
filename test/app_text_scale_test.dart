@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/core/constants/app_constants.dart';
+import 'package:islamic_app/core/theme/app_density.dart';
 import 'package:islamic_app/shared/providers/app_providers.dart';
 import 'package:islamic_app/shared/providers/app_text_scale_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,7 +17,10 @@ Future<double> scaleUnderScope(
     ProviderScope(
       child: MaterialApp(
         home: MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(deviceScale)),
+          data: MediaQueryData(
+            size: const Size(800, 600),
+            textScaler: TextScaler.linear(deviceScale),
+          ),
           child: AppTextScaleScope(
             child: Builder(
               builder: (context) {
@@ -118,6 +122,37 @@ void main() {
       await initializeThemeProvider();
 
       expect(await scaleUnderScope(tester, deviceScale: 0.8), 1.0);
+    });
+
+    testWidgets('a tight phone shrinks the normal size to fit', (tester) async {
+      SharedPreferences.setMockInitialValues({'app_text_scale': 'normal'});
+      await initializeThemeProvider();
+
+      late double seen;
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(320, 640),
+                textScaler: TextScaler.linear(1),
+              ),
+              child: AppTextScaleScope(
+                child: Builder(
+                  builder: (context) {
+                    seen = MediaQuery.of(context).textScaler.scale(1);
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(seen, lessThan(1));
+      expect(seen, AppDensity.minTextFactor);
     });
   });
 }

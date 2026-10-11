@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../localization/app_localizations.dart';
+import '../theme/app_density.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/design_tokens.dart';
 import 'seasonal_decor.dart';
@@ -111,6 +112,17 @@ class AppScaffold extends StatelessWidget {
     AppSpacing.navClearance,
   );
 
+  /// [scrollPadding] with side gutters that shrink on a narrow phone.
+  static EdgeInsets scrollPaddingOf(BuildContext context) {
+    final page = AppDensity.of(context).pagePadding;
+    return EdgeInsets.fromLTRB(
+      page,
+      AppSpacing.sm,
+      page,
+      AppSpacing.navClearance,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -141,12 +153,16 @@ class AppScaffold extends StatelessWidget {
                         titleWidget ??
                         (title == null
                             ? null
-                            : Text(
-                              context.tr(title!),
-                              style: AppTextStyles.display(
-                                context,
-                                fontSize: 18,
-                                color: tokens.ink,
+                            : FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                context.tr(title!),
+                                maxLines: 1,
+                                style: AppTextStyles.display(
+                                  context,
+                                  fontSize: 18,
+                                  color: tokens.ink,
+                                ),
                               ),
                             )),
                     actions: actions,

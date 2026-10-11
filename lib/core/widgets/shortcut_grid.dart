@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_density.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/design_tokens.dart';
 import 'islamic_icon.dart';
@@ -84,7 +85,9 @@ class _Shortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final tight = AppDensity.of(context).isTight;
     final tint = item.highlighted ? tokens.brand : tokens.inkMuted;
+    final iconSize = tight ? 22.0 : 26.0;
 
     return Semantics(
       button: true,
@@ -98,10 +101,10 @@ class _Shortcut extends StatelessWidget {
             borderRadius: AppRadii.mdAll,
             child: Container(
               // The whole tile is the target, not the circle inside it.
-              constraints: const BoxConstraints(minHeight: 96),
-              padding: const EdgeInsets.symmetric(
+              constraints: BoxConstraints(minHeight: tight ? 84 : 96),
+              padding: EdgeInsets.symmetric(
                 horizontal: AppSpacing.xs,
-                vertical: AppSpacing.md,
+                vertical: tight ? AppSpacing.sm : AppSpacing.md,
               ),
               decoration: BoxDecoration(
                 borderRadius: AppRadii.mdAll,
@@ -119,11 +122,11 @@ class _Shortcut extends StatelessWidget {
                     alignment: Alignment.center,
                     children: [
                       if (item.svg != null)
-                        AppIcon(item.svg!, size: 26, color: tint)
+                        AppIcon(item.svg!, size: iconSize, color: tint)
                       else if (item.motif != null)
                         SizedBox(
-                          width: 28,
-                          height: 28,
+                          width: iconSize + 2,
+                          height: iconSize + 2,
                           child: CustomPaint(
                             painter: MotifPainter(
                               motif: item.motif!,
@@ -132,7 +135,7 @@ class _Shortcut extends StatelessWidget {
                           ),
                         )
                       else
-                        Icon(item.icon, size: 26, color: tint),
+                        Icon(item.icon, size: iconSize, color: tint),
                       if (item.badge != null)
                         PositionedDirectional(
                           end: -12,
@@ -159,7 +162,7 @@ class _Shortcut extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(height: tight ? AppSpacing.xs : AppSpacing.sm),
                   Text(
                     item.label,
                     maxLines: 2,
@@ -167,7 +170,8 @@ class _Shortcut extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: AppTextStyles.body(
                       context,
-                      fontSize: 13,
+                      fontSize: tight ? 12 : 13,
+                      height: 1.25,
                       fontWeight: FontWeight.w600,
                       color: tokens.ink,
                     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_density.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/widgets/glass_container.dart';
@@ -52,10 +53,12 @@ class GlassNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final centre = items.length ~/ 2;
 
+    final inset = AppDensity.of(context).isTight ? 10.0 : 18.0;
+
     return SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(18, raise, 18, 10),
+        padding: EdgeInsets.fromLTRB(inset, raise, inset, 10),
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.topCenter,
@@ -147,21 +150,25 @@ class _FlatDestination extends StatelessWidget {
               // The bar carried no labels and a dot instead, which asked the
               // reader to have already learned what each glyph opens. Four
               // words fit, and a nav bar that has to be learned is a nav bar
-              // people guess at.
-              Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppTextStyles.bodyFamily,
-                  fontSize: 10,
-                  height: 1.1,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  // inkMuted, not inkFaint: this is the smallest type in the
-                  // app and it sits on frosted glass, so it takes the stronger
-                  // of the two secondary inks.
-                  color: isSelected ? tokens.brand : tokens.inkMuted,
+              // people guess at. FittedBox keeps "مواقيت الصلاة" on a 320
+              // phone instead of clipping it to "موافقيت".
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppTextStyles.bodyFamily,
+                      fontSize: 10,
+                      height: 1.1,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? tokens.brand : tokens.inkMuted,
+                    ),
+                  ),
                 ),
               ),
             ],
