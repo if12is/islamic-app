@@ -53,6 +53,19 @@ const nav = (slot) => ({ x: SLOT * (slot + 0.5), y: NAV_Y });
 const THEME_TOGGLE = { x: WIDTH - 26, y: 33 };
 const PROFILE = { x: 26, y: 33 };
 
+// The home screen's tiles, three by three under the arc, measured off a
+// shot at 390×844. They reach a tool in one tap, which survives the
+// Settings list being reordered far better than a row position does.
+const TILE = {
+  lastRead: { x: 314, y: 355 }, wird: { x: 195, y: 355 }, qibla: { x: 75, y: 355 },
+  tasbih: { x: 314, y: 470 }, whichAyah: { x: 195, y: 470 }, hijri: { x: 75, y: 470 },
+  zakat: { x: 314, y: 583 }, radio: { x: 195, y: 583 }, settings: { x: 75, y: 583 },
+};
+
+// Inside Broadcasts: the shelf switch, and the imams card heading that shelf.
+const RECORDINGS_TAB = { x: 98, y: 88 };
+const HARAMAIN_CARD = { x: 195, y: 166 };
+
 // The back arrow of a pushed page, which in Arabic points right.
 const BACK = { x: WIDTH - 26, y: 33 };
 
@@ -77,7 +90,9 @@ const SCREENS = [
   { name: 'azkar_cards', nav: 3, steps: [{ scroll: 560 }] },
   { name: 'quran_index', nav: 1, steps: [{ scroll: 420 }] },
   { name: 'prayer_tools', nav: 0, steps: [{ scroll: 1700 }] },
-  { name: 'prayer_log', nav: 0, steps: [{ scroll: 380 }] },
+  // The day's log sits under the times and the tools grid.
+  // One large wheel event is capped, so the way down is taken in steps.
+  { name: 'prayer_log', nav: 0, steps: [{ scroll: 400 }, { scroll: 400 }, { scroll: 400 }, { scroll: 400 }, { scroll: 400 }] },
 
   // The full player. Reached by starting a surah from the index and then
   // tapping the strip the shell puts above the nav bar.
@@ -91,8 +106,8 @@ const SCREENS = [
       // The reciter picker opens on a first-ever play; pick the first voice.
       { tap: { x: 195, y: 330 } },
       { wait: 4000 },
-      // The now-playing strip, just above the bar.
-      { tap: { x: 195, y: 736 } },
+      // The now-playing capsule, floating just above the bar.
+      { tap: { x: 195, y: 700 } },
       { wait: 3000 },
     ],
   },
@@ -101,7 +116,8 @@ const SCREENS = [
   {
     name: 'reader',
     nav: 1,
-    steps: [{ scroll: 420 }, { tap: { x: 200, y: 470 } }, { wait: 2500 }],
+    // A first visit opens a tour of the page over it; "skip" closes it.
+    steps: [{ scroll: 420 }, { tap: { x: 200, y: 470 } }, { wait: 2500 }, { tap: { x: 264, y: 516 } }, { wait: 1500 }],
   },
 
   // Settings itself, which is also the reference for where its rows sit.
@@ -121,31 +137,27 @@ const SCREENS = [
   {
     name: 'notification_center',
     nav: 2,
-    steps: [{ tap: PROFILE }, { wait: 2000 }, { scroll: 620 }, { tap: { x: 195, y: 495 } }, { wait: 2600 }],
+    // "Customise all" on the adhan card of Settings opens the centre.
+    steps: [{ tap: PROFILE }, { wait: 2000 }, { tap: { x: 87, y: 557 } }, { wait: 2600 }],
   },
+  { name: 'hijri_calendar', nav: 2, steps: [{ tap: TILE.hijri }, { wait: 2600 }] },
+  { name: 'zakat', nav: 2, steps: [{ tap: TILE.zakat }, { wait: 2600 }] },
+  { name: 'tasbih', nav: 2, steps: [{ tap: TILE.tasbih }, { wait: 2400 }] },
+  { name: 'which_ayah', nav: 2, steps: [{ tap: TILE.whichAyah }, { wait: 2400 }] },
+  { name: 'broadcasts', nav: 2, steps: [{ tap: TILE.radio }, { wait: 4500 }] },
+  // The rare-recitations shelf, with the Haramain imams card at its head.
   {
-    name: 'hijri_calendar',
+    name: 'rare_recitations',
     nav: 2,
-    steps: [{ tap: PROFILE }, { wait: 2000 }, { scroll: 620 }, { tap: { x: 195, y: 682 } }, { wait: 2600 }],
+    steps: [{ tap: TILE.radio }, { wait: 3500 }, { tap: RECORDINGS_TAB }, { wait: 5000 }],
   },
+  // The week's imams, opened from that card; read live from the source.
   {
-    name: 'zakat',
-    nav: 2,
-    steps: [{ tap: PROFILE }, { wait: 2000 }, { scroll: 620 }, { tap: { x: 195, y: 769 } }, { wait: 2600 }],
-  },
-  {
-    // Broadcasts is one row below Zakat, which puts it off the fold at 620.
-    // Two scrolls rather than one big one: the positions above were measured
-    // at 620, so keeping that step and adding to it keeps them usable.
-    name: 'broadcasts',
+    name: 'haramain_imams',
     nav: 2,
     steps: [
-      { tap: PROFILE },
-      { wait: 2000 },
-      { scroll: 620 },
-      { scroll: 200 },
-      { tap: { x: 195, y: 757 } },
-      { wait: 3200 },
+      { tap: TILE.radio }, { wait: 3500 }, { tap: RECORDINGS_TAB }, { wait: 5000 },
+      { tap: HARAMAIN_CARD }, { wait: 7000 },
     ],
   },
 

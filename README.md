@@ -102,8 +102,8 @@ Installation steps for both platforms are on the [website](https://if12is.github
 </p>
 <p align="center">
   <img src="docs/assets/cards/broadcasts.webp" width="180" alt="Broadcasts and radio">
-  <img src="docs/assets/cards/zakat.webp" width="180" alt="Zakat calculator">
-  <img src="docs/assets/cards/azkar_tasbeeh.webp" width="180" alt="Tasbih">
+  <img src="docs/assets/cards/rare_recitations.webp" width="180" alt="Rare recitations">
+  <img src="docs/assets/cards/haramain_imams.webp" width="180" alt="This week's imams of the Haramain">
   <img src="docs/assets/cards/home_dark.webp" width="180" alt="Dark theme">
 </p>
 
