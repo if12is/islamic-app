@@ -1,14 +1,12 @@
 {
   "ar": [
-    "اسم المدينة تحت سطر حتى الفجر، مش فوق العدّاد.",
-    "مربعات الرئيسية كلها بارتفاع واحد.",
-    "عداد الصلاة على سطرين: الساعات فوق، والدقائق تحت.",
-    "أسماء الشريط كاملة: مواقيت الصلاة والورد اليومي تظهر من غير قص."
+    "التطبيق صار يجهّز منبّهات يوم كامل مقدّماً، فلو فات تنبيه يكمل اللي بعده.",
+    "زر جديد في مركز التنبيهات ينسخ سجل التنبيهات لترسله لنا إن لم يصلك الأذان.",
+    "العدّاد واسم الصلاة والمدينة نزلوا داخل القوس وكبروا."
   ],
   "en": [
-    "The city name now sits under the until-prayer line, not above the countdown.",
-    "Home tiles share one height, so the grid looks even.",
-    "The prayer countdown sits on two lines: hours, then minutes.",
-    "Navigation labels stay complete — Prayer times and Daily wird are no longer cut off."
+    "The app now sets a full day of alarms ahead, so one missed alert no longer stops the rest.",
+    "A new button in the notification centre copies the alerts log for you to send us if the adhan does not arrive.",
+    "The countdown, prayer and city now sit lower inside the arc, in larger type."
   ]
 }
