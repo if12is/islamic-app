@@ -330,6 +330,47 @@ void main() {
       expect(health.missedRecently, hasLength(2));
     });
 
+    test('the copied log names a force-stop and how late an alarm fired', () {
+      final at = DateTime(2026, 10, 26, 4, 30).millisecondsSinceEpoch;
+      final log =
+          healthWith({
+            'brand': 'HONOR',
+            'model': 'HONOR 600',
+            'exits': jsonEncode([
+              {'t': at, 'r': 10, 's': 0, 'i': 400, 'd': 'stop by PowerGenie'},
+            ]),
+            'events': jsonEncode([
+              {
+                't': at,
+                'k': 'shown',
+                'd': '1001 due 10-26 04:30, fired 3s after',
+              },
+              {'t': at, 'k': 'arm', 'd': 'fired: 12 armed'},
+            ]),
+            'missed': jsonEncode([
+              {'id': 1002, 'due': at, 'reason': 'missed'},
+            ]),
+          }).logText;
+
+      expect(log, contains('HONOR 600'));
+      expect(
+        log,
+        contains(
+          '10-26 04:30 FORCE-STOPPED (importance 400) stop by PowerGenie',
+        ),
+      );
+      expect(log, contains('shown 1001 due 10-26 04:30, fired 3s after'));
+      expect(log, contains('arm fired: 12 armed'));
+      expect(log, contains('missed: 1'));
+      expect(log, contains('1002 due 10-26 04:30'));
+    });
+
+    test('a log with nothing recorded still reads', () {
+      final log = healthWith({'exits': 'not json'}).logText;
+      expect(log, contains('process exits'));
+      expect(log, contains('missed: 0'));
+    });
+
     test('unreadable history is empty rather than a crash', () {
       final health = healthWith({'delivered': 'not json', 'missed': '{}'});
       expect(health.delivered, isEmpty);

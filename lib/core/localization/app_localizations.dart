@@ -216,6 +216,9 @@ class AppLocalizations {
       'delivery_test_hint':
           'Lock the phone now and put it down. A real prayer alert is queued the same way a real one is; if it does not sound while the screen is off, the problem is above and not in the settings.',
       'delivery_test_failed': 'The test could not be scheduled.',
+      'delivery_copy_log': 'Copy the alerts log',
+      'delivery_log_copied':
+          'Log copied. Paste it in a message to the app developer.',
       'delivery_headline_ok': 'Alerts are working',
       'delivery_headline_missed': 'Some alerts did not arrive',
       'delivery_missed_week': '{count} alerts did not arrive in the past week',
@@ -1649,6 +1652,8 @@ class AppLocalizations {
       'delivery_test_hint':
           'اقفل الهاتف الآن وضعه جانباً. سُجِّل تنبيه حقيقي بنفس طريقة تنبيه الصلاة تماماً؛ فإن لم يُسمع والشاشة مطفأة فالمشكلة فيما فوق لا في الإعدادات.',
       'delivery_test_failed': 'تعذّر جدولة الاختبار.',
+      'delivery_copy_log': 'انسخ سجل التنبيهات',
+      'delivery_log_copied': 'نُسخ السجل. الصقه في رسالة لمطوّر التطبيق.',
       'delivery_headline_ok': 'التنبيهات تعمل',
       'delivery_headline_missed': 'بعض التنبيهات لم تصل',
       'delivery_missed_week': 'تنبيهات لم تصل خلال الأسبوع الماضي: {count}',

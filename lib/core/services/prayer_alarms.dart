@@ -76,15 +76,19 @@ class AlarmHealth {
     this.manufacturer = '',
     this.sdkInt = 0,
     this.available = false,
+    this.raw = const {},
   });
+
+  /// Everything the engine reported, as it came, for [logText].
+  final Map<Object?, Object?> raw;
 
   /// How many alerts are written down on the device, waiting their turn.
   final int planSize;
   final DateTime? planEndsAt;
   final DateTime? nextAt;
 
-  /// How many are handed to the alarm manager right now. Two is normal: the
-  /// engine arms the next pair and re-arms as each one fires.
+  /// How many are handed to the alarm manager right now: the next day's worth,
+  /// up to twelve, re-armed as each one fires.
   final int armed;
 
   final DateTime? lastFiredAt;
@@ -184,7 +188,129 @@ class AlarmHealth {
       forceStopped: map['forceStopped'] as bool?,
       manufacturer: map['manufacturer'] as String? ?? '',
       sdkInt: map['sdkInt'] as int? ?? 0,
+      raw: Map.unmodifiable(map),
     );
+  }
+
+  /// Android's names for why a process ended (ApplicationExitInfo.REASON_*).
+  static const Map<int, String> _exitReasons = {
+    0: 'unknown',
+    1: 'exit self',
+    2: 'signaled',
+    3: 'low memory',
+    4: 'crash',
+    5: 'native crash',
+    6: 'not responding',
+    7: 'failed to start',
+    8: 'permission change',
+    9: 'excessive resource use',
+    10: 'FORCE-STOPPED',
+    11: 'user stopped',
+    12: 'dependency died',
+    13: 'other',
+    14: 'frozen',
+    15: 'package state change',
+    16: 'package updated',
+  };
+
+  /// A plain-text account of the engine's state and recent history, for a
+  /// person to copy out of the app and send.
+  ///
+  /// It is the only window onto what a vendor's battery manager does to the
+  /// alarms on a phone nobody here holds: whether alarms were armed, whether
+  /// they fired and how late, and whether Android itself says the app was
+  /// force-stopped in between. In English and with Latin digits, because it
+  /// is read by whoever fixes the engine, not by the person sending it.
+  String get logText {
+    String stamp(int millis) {
+      final t = DateTime.fromMillisecondsSinceEpoch(millis);
+      String two(int n) => n.toString().padLeft(2, '0');
+      return '${two(t.month)}-${two(t.day)} ${two(t.hour)}:${two(t.minute)}';
+    }
+
+    List<Map<Object?, Object?>> entries(String key) {
+      final value = raw[key];
+      if (value is! String || value.isEmpty) {
+        return const [];
+      }
+      try {
+        final decoded = jsonDecode(value);
+        return decoded is List
+            ? [
+              for (final entry in decoded)
+                if (entry is Map) entry.cast<Object?, Object?>(),
+            ]
+            : const [];
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    int? millis(Object? value) => value is int && value > 0 ? value : null;
+
+    final out =
+        StringBuffer()
+          ..writeln(
+            'Fajr alarm log, ${stamp(DateTime.now().millisecondsSinceEpoch)}',
+          )
+          ..writeln(
+            'device: ${raw['brand'] ?? manufacturer} ${raw['model'] ?? ''}, '
+            'Android SDK $sdkInt, ${raw['display'] ?? ''}',
+          )
+          ..writeln(
+            'exact=$canScheduleExact battery-exempt=$ignoringBatteryOptimizations '
+            'power-save=$powerSaveMode restricted=$backgroundRestricted '
+            'bucket=$standbyBucket force-stopped=$forceStopped '
+            'notifications=${raw['notificationsEnabled']}',
+          )
+          ..writeln(
+            'plan: $planSize to come, armed ${raw['armed']}, '
+            'next ${millis(raw['nextAt']) == null ? '-' : stamp(raw['nextAt']! as int)}, '
+            'last shown ${millis(raw['lastFiredAt']) == null ? '-' : stamp(raw['lastFiredAt']! as int)}, '
+            'last armed by "$lastRecovery"'
+            '${millis(raw['lastRecoveryAt']) == null ? '' : ' at ${stamp(raw['lastRecoveryAt']! as int)}'}',
+          );
+    if (millis(raw['bootedAt']) case final booted?) {
+      out.writeln('phone started: ${stamp(booted)}');
+    }
+
+    out.writeln('\nprocess exits (newest first):');
+    for (final exit in entries('exits')) {
+      final at = millis(exit['t']);
+      final reason = exit['r'] as int? ?? -1;
+      out.writeln(
+        '  ${at == null ? '?' : stamp(at)} '
+        '${_exitReasons[reason] ?? 'reason $reason'} '
+        '(importance ${exit['i']})'
+        '${(exit['d'] as String? ?? '').isEmpty ? '' : ' ${exit['d']}'}',
+      );
+    }
+
+    out.writeln('\nengine events (oldest first):');
+    for (final event in entries('events')) {
+      final at = millis(event['t']);
+      out.writeln(
+        '  ${at == null ? '?' : stamp(at)} ${event['k']}'
+        '${event['d'] == null ? '' : ' ${event['d']}'}',
+      );
+    }
+
+    out.writeln('\nmissed: ${missed.length}');
+    for (final record in missed.reversed.take(30)) {
+      out.writeln(
+        '  ${record.id} due ${stamp(record.due.millisecondsSinceEpoch)}'
+        '${record.blocked ? ' (blocked)' : ''}',
+      );
+    }
+    out.writeln('\nshown: ${delivered.length}');
+    for (final record in delivered.reversed.take(30)) {
+      final shown = record.shown;
+      out.writeln(
+        '  ${record.id} due ${stamp(record.due.millisecondsSinceEpoch)}'
+        '${shown == null ? '' : ', shown ${stamp(shown.millisecondsSinceEpoch)}'}',
+      );
+    }
+    return out.toString();
   }
 }
 
@@ -195,7 +321,7 @@ class AlarmHealth {
 /// opening the app — so a week without opening it was a week of silence.
 ///
 /// So the plan is written to the device as data, six weeks of it, and the
-/// engine arms only the next two alarms. Each one that fires arms the next,
+/// engine arms only the next day of alarms. Each one that fires arms the next,
 /// and a reboot, an app update, a clock change or the app being opened arms
 /// them all again. A phone nobody touches keeps calling to prayer.
 ///

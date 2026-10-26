@@ -40,6 +40,7 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
                     deliver(app, intent.getIntExtra(AlarmEngine.EXTRA_ID, -1))
                 } else {
                     Log.i("PrayerAlarms", "Re-arming after $action")
+                    PrayerPlan.log(app, "system", action.substringAfterLast('.'))
                     AlarmEngine.arm(app, action)
                 }
             } finally {
@@ -52,10 +53,14 @@ class PrayerAlarmReceiver : BroadcastReceiver() {
         try {
             PrayerPlan.locked {
                 val item = if (id >= 0) PrayerPlan.item(context, id) else null
+                if (item == null) {
+                    PrayerPlan.log(context, "fire", "$id not in plan")
+                }
                 // Gone from the plan: already shown late, or cancelled because
                 // the thing it asked about was done. Either way, not again.
                 if (item != null && !PrayerPlan.deliveredKeys(context).contains(item.key)) {
-                    AlarmEngine.present(context, item)
+                    val lateBy = (System.currentTimeMillis() - item.at) / 1000
+                    AlarmEngine.present(context, item, "fired ${lateBy}s after")
                 }
                 if (item != null) {
                     PrayerPlan.remove(context, setOf(item.id))

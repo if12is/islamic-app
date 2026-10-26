@@ -15,10 +15,16 @@ import java.util.concurrent.Executors
 /**
  * Hands the next few alerts to Android's alarm manager, and nothing more.
  *
- * Two alarms are armed at a time, not the whole plan. Android holds a few
+ * A day of alarms is armed at a time, not the whole plan. Android holds a few
  * hundred alarms per app at most, vendors quietly thin out long queues, and
  * a queue of a week runs out after a week. A short queue that re-arms itself
  * each time one fires carries six weeks forward with nothing else running.
+ *
+ * Why a day and not two: the first release held two, and on an Honor 600 on
+ * Android 16, with every permission granted and auto-launch on, almost every
+ * alert of a week was missed. Two alarms are one bad night from an empty
+ * queue — both dropped, and nothing is left to arm the rest. With a day of
+ * them, each one that does fire re-arms the day after it.
  *
  * What it cannot survive is the app being force-stopped — by the user, or by
  * a vendor battery manager on Honor, Xiaomi, Oppo, Vivo or Samsung that does
@@ -27,16 +33,21 @@ import java.util.concurrent.Executors
  * does from inside can change that. The answer there is the phone's own
  * auto-start setting, which the notification centre walks the user through.
  *
- * The nearest alarm is an alarm clock: the one kind of alarm Android never
+ * Every armed alarm is an alarm clock: the one kind of alarm Android never
  * delays, never batches into a maintenance window, and wakes the device out
- * of doze for.
+ * of doze for — and the kind vendor battery managers leave alone, because
+ * cutting it would make the phone's own clock app miss a wake-up.
  */
 object AlarmEngine {
     private const val TAG = "PrayerAlarms"
 
-    /** How many alarms to hold at once. One would be enough if nothing ever
-     *  went wrong; the second covers an alarm dropped in a doze window. */
-    private const val ARM_AHEAD = 2
+    /** Alarms are held for this far ahead… */
+    private const val ARM_WINDOW_MS = 24 * 60 * 60 * 1000L
+
+    /** …but never more than this many, nor fewer than [ARM_MIN] while the
+     *  plan has them: a quiet day still keeps the next two armed. */
+    private const val ARM_MAX = 12
+    private const val ARM_MIN = 2
 
     /** An alert whose time passed while the phone was off is still worth
      *  showing this long after — a prayer ten minutes ago, not this morning's. */
@@ -104,6 +115,8 @@ object AlarmEngine {
         // off or dozing through it. Anything older is a miss, and recorded as
         // one so the app can say so instead of pretending it arrived.
         val overdue = plan.filter { it.at <= now }
+        var missedCount = 0
+        var lateCount = 0
         if (overdue.isNotEmpty()) {
             if (reason in clockChanges) {
                 // The clock moved, not time. A phone whose clock jumps a day
@@ -120,15 +133,24 @@ object AlarmEngine {
                 }
                 if (missed.isNotEmpty()) {
                     PrayerPlan.rememberMissed(context, missed)
+                    PrayerPlan.log(
+                        context,
+                        "missed",
+                        "${missed.size}, first due ${stamp(missed.first().at)}",
+                    )
                 }
+                missedCount = missed.size
+                lateCount = late.size
                 for (item in late) {
-                    present(context, item)
+                    present(context, item, "late ${(now - item.at) / 1000}s")
                 }
             }
             PrayerPlan.write(context, plan.filter { it.at > now })
         }
 
-        val upcoming = plan.filter { it.at > now }.take(ARM_AHEAD)
+        val future = plan.filter { it.at > now }
+        val inWindow = future.takeWhile { it.at - now <= ARM_WINDOW_MS }.take(ARM_MAX)
+        val upcoming = if (inWindow.size >= ARM_MIN) inWindow else future.take(ARM_MIN)
         val wanted = upcoming.map { it.id }.toSet()
 
         // Drop what is armed and no longer wanted, so a plan rewritten with
@@ -137,21 +159,19 @@ object AlarmEngine {
             manager.cancel(firePending(context, id))
         }
 
-        upcoming.forEachIndexed { index, item ->
+        var refused = 0
+        for (item in upcoming) {
             val operation = firePending(context, item.id)
             try {
-                if (index == 0) {
-                    manager.setAlarmClock(
-                        AlarmManager.AlarmClockInfo(item.at, AlarmNotifier.openAppPending(context)),
-                        operation,
-                    )
-                } else {
-                    manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, item.at, operation)
-                }
+                manager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(item.at, AlarmNotifier.openAppPending(context)),
+                    operation,
+                )
             } catch (error: SecurityException) {
                 // Exact alarms refused: still schedule, loosely, rather than
                 // leave the prayer with nothing at all behind it.
                 Log.w(TAG, "Exact alarm refused for ${item.id}: ${error.message}")
+                refused++
                 manager.setWindow(
                     AlarmManager.RTC_WAKEUP,
                     item.at,
@@ -162,8 +182,25 @@ object AlarmEngine {
         }
 
         PrayerPlan.rememberArming(context, wanted, reason)
-        Log.i(TAG, "Armed ${wanted.size} of ${plan.size} ($reason)")
+        PrayerPlan.log(
+            context,
+            "arm",
+            buildString {
+                append(reason)
+                append(": ").append(upcoming.size).append(" armed")
+                upcoming.firstOrNull()?.let { append(", next ").append(stamp(it.at)) }
+                upcoming.lastOrNull()?.let { append(", last ").append(stamp(it.at)) }
+                if (refused > 0) append(", exact refused ").append(refused)
+                if (lateCount > 0) append(", late ").append(lateCount)
+                if (missedCount > 0) append(", missed ").append(missedCount)
+            },
+        )
+        Log.i(TAG, "Armed ${wanted.size} of ${future.size} ($reason)")
     }
+
+    /** A local time a person can read in a log: `10-26 04:30`. */
+    fun stamp(millis: Long): String =
+        java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.US).format(java.util.Date(millis))
 
     /**
      * Show [item] and write down what became of it.
@@ -173,18 +210,24 @@ object AlarmEngine {
      * post without a word, and recording that as delivered would hide the
      * very failure the record is kept to reveal.
      */
-    fun present(context: Context, item: PlanItem) {
+    fun present(context: Context, item: PlanItem, how: String = "") {
         val posted = try {
             AlarmNotifier.show(context, item)
         } catch (error: Exception) {
             Log.e(TAG, "Could not show alert ${item.id}", error)
             false
         }
-        if (posted && AlarmNotifier.canReachUser(context, item.channel)) {
+        val reached = posted && AlarmNotifier.canReachUser(context, item.channel)
+        if (reached) {
             PrayerPlan.rememberDelivered(context, item, System.currentTimeMillis())
         } else {
             PrayerPlan.rememberMissed(context, listOf(item), reason = "blocked")
         }
+        PrayerPlan.log(
+            context,
+            if (reached) "shown" else if (posted) "blocked" else "show failed",
+            "${item.id} due ${stamp(item.at)}${if (how.isEmpty()) "" else ", $how"}",
+        )
     }
 
     /** Forget [ids]: both the plan entry and any alarm already armed for it. */
@@ -259,7 +302,42 @@ object AlarmEngine {
         report["manufacturer"] = Build.MANUFACTURER ?: ""
         report["sdkInt"] = Build.VERSION.SDK_INT
         report["bootedAt"] = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
+        report["exits"] = exitReasons(context)
+        report["brand"] = Build.BRAND ?: ""
+        report["model"] = Build.MODEL ?: ""
+        report["display"] = Build.DISPLAY ?: ""
         return report
+    }
+
+    /**
+     * Why Android ended this app's last processes, newest first, as JSON.
+     *
+     * The answer to "what is killing the adhan" on a given phone: reason 10
+     * (user requested) is a force-stop, which is what a vendor battery manager
+     * does too, and it takes every alarm with it; 3 is low memory, which
+     * leaves alarms in place. Android 11 and up keep this record themselves.
+     */
+    private fun exitReasons(context: Context): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return "[]"
+        val activity = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            ?: return "[]"
+        return try {
+            val array = org.json.JSONArray()
+            activity.getHistoricalProcessExitReasons(context.packageName, 0, 20).forEach { exit ->
+                array.put(
+                    org.json.JSONObject().apply {
+                        put("t", exit.timestamp)
+                        put("r", exit.reason)
+                        put("s", exit.status)
+                        put("i", exit.importance)
+                        put("d", exit.description ?: "")
+                    }
+                )
+            }
+            array.toString()
+        } catch (error: Exception) {
+            "[]"
+        }
     }
 
     /**

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
@@ -388,6 +389,22 @@ class _NotificationCenterPageState
               context.tr('delivery_test_hint'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (health != null && health.available) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: health.logText));
+                  if (mounted) {
+                    _say(context.tr('delivery_log_copied'));
+                  }
+                },
+                icon: const Icon(Icons.copy_all_outlined, size: 18),
+                label: Text(context.tr('delivery_copy_log')),
               ),
             ),
           ],

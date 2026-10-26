@@ -136,6 +136,10 @@ object PrayerPlan {
     private const val KEY_LAST_ARMED = "last_armed_at"
     private const val KEY_LAST_RECOVERY = "last_recovery"
     private const val KEY_WRITTEN_AT = "written_at"
+    private const val KEY_EVENTS = "events"
+
+    /** How many engine events to keep: about three days of a full plan. */
+    private const val EVENTS_KEPT = 200
 
     /** The first release kept the plan in preferences, under this key. */
     private const val LEGACY_KEY_ITEMS = "items"
@@ -299,7 +303,38 @@ object PrayerPlan {
         prefs(context).edit()
             .remove(KEY_DELIVERED)
             .remove(KEY_MISSED)
+            .remove(KEY_EVENTS)
             .apply()
+    }
+
+    /**
+     * Write down one thing the engine did: armed, fired, showed, recovered.
+     *
+     * The delivery record says that an alert was missed; this says where the
+     * chain broke — an alarm armed for 04:30 that fired at 09:12, or never
+     * fired and was found overdue when the app was next opened. Someone can
+     * copy it out of the app and send it, which is the only way to see what a
+     * vendor's battery manager does on a phone nobody here holds.
+     */
+    fun log(context: Context, kind: String, detail: String = "") = locked {
+        val events = try {
+            JSONArray(prefs(context).getString(KEY_EVENTS, "[]"))
+        } catch (error: Exception) {
+            JSONArray()
+        }
+        val start = (events.length() - (EVENTS_KEPT - 1)).coerceAtLeast(0)
+        val kept = JSONArray()
+        for (index in start until events.length()) {
+            kept.put(events.opt(index))
+        }
+        kept.put(
+            JSONObject().apply {
+                put("t", System.currentTimeMillis())
+                put("k", kind)
+                if (detail.isNotEmpty()) put("d", detail)
+            }
+        )
+        prefs(context).edit().putString(KEY_EVENTS, kept.toString()).apply()
     }
 
     /** Everything the diagnostics screen reads back out. */
@@ -319,6 +354,7 @@ object PrayerPlan {
             "lastRecoveryAt" to store.getLong("${KEY_LAST_RECOVERY}_at", 0L),
             "delivered" to store.getString(KEY_DELIVERED, "[]"),
             "missed" to store.getString(KEY_MISSED, "[]"),
+            "events" to store.getString(KEY_EVENTS, "[]"),
         )
     }
 
