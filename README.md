@@ -12,7 +12,7 @@ the whole Mushaf, azkar, and a daily wird. No ads, no account, and it works offl
 [iPhone IPA](https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr.ipa) ·
 [All releases](https://github.com/if12is/islamic-app/releases)
 
-![Version](https://img.shields.io/badge/version-1.6.4-0F6B4F)
+![Version](https://img.shields.io/badge/version-1.6.5-0F6B4F)
 ![Flutter](https://img.shields.io/badge/Flutter-stable-0A4A37)
 ![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS-AF7B21)
 ![Languages](https://img.shields.io/badge/languages-العربية%20%7C%20English-12261F)
@@ -193,4 +193,4 @@ If the adhan does not arrive on your phone, open **Settings → Notification cen
 
 ---
 
-<div align="center"><b>Made with care for the Muslim community</b> · Version 1.6.4</div>
+<div align="center"><b>Made with care for the Muslim community</b> · Version 1.6.5</div>

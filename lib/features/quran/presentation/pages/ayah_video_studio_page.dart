@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/widgets/app_scaffold.dart';
@@ -449,6 +450,16 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
     );
   }
 
+  static const double _actionHeight = 42;
+  static const _actionPadding = EdgeInsets.symmetric(
+    horizontal: AppSpacing.lg,
+  );
+  static const _actionText = TextStyle(
+    fontFamily: AppTheme.fontFamily,
+    fontWeight: FontWeight.w700,
+    fontSize: 14,
+  );
+
   Widget _controlBar(AppTokens tokens) {
     final progress = _progress;
 
@@ -527,23 +538,41 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
+          // The theme pads a filled button taller than an outlined one, and
+          // side by side that read as two sizes. One compact size for both.
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                flex: 2,
+              Flexible(
                 child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, _actionHeight),
+                    padding: _actionPadding,
+                    textStyle: _actionText,
+                  ),
                   onPressed:
                       _busy || _spec.reciterCode.isEmpty ? null : _exportVideo,
                   icon: const Icon(Icons.videocam_rounded, size: 18),
-                  label: Text(context.tr('video_create')),
+                  label: Text(
+                    context.tr('video_create'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(
+              Flexible(
                 child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, _actionHeight),
+                    padding: _actionPadding,
+                    textStyle: _actionText,
+                  ),
                   onPressed: _busy ? null : _exportImage,
                   icon: const Icon(Icons.image_outlined, size: 18),
-                  label: Text(context.tr('video_as_image')),
+                  label: Text(
+                    context.tr('video_as_image'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
               if (_busy) ...[
