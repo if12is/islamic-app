@@ -21,9 +21,12 @@ const OUT = process.env.OUT || './screens';
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
 
 // A phone at three times the density, which is what a store listing wants.
+// HEIGHT can be raised for a tall shot — the website scrolls one inside a
+// phone frame — but only screens reached by the nav bar alone are safe then:
+// every other tap below was measured at 844.
 const WIDTH = 390;
-const HEIGHT = 844;
-const SCALE = 3;
+const HEIGHT = Number(process.env.HEIGHT || 844);
+const SCALE = Number(process.env.SCALE || 3);
 
 // Flutter's SharedPreferences on the web is localStorage under this prefix.
 const PREFIX = 'flutter.';
