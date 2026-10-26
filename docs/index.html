@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الفجر — تطبيق الصلاة والقرآن</title>
+<meta name="description" content="الفجر: مواقيت تُحسب على جهازك، أذان يصل في وقته، المصحف كاملاً، الأذكار، والورد اليومي. بلا إعلانات ولا حساب، ويعمل بلا إنترنت.">
+<meta name="theme-color" content="#0A4A37">
+<meta property="og:title" content="الفجر — تطبيق الصلاة والقرآن">
+<meta property="og:description" content="مواقيت تُحسب على جهازك، أذان يصل في وقته، المصحف كاملاً، الأذكار، والورد اليومي.">
+<meta property="og:image" content="https://if12is.github.io/islamic-app/assets/cards/home.jpg">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="assets/brand/icon-192.png">
+<link rel="apple-touch-icon" href="assets/brand/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Reem+Kufi:wght@500;700&family=Amiri+Quran&display=swap">
+<style>
+/* The app's own tokens (lib/core/theme/design_tokens.dart), light and dark. */
+:root {
+  --ground: #F6F0E4;
+  --ground-alt: #EFE7D7;
+  --surface: #FFFCF6;
+  --raised: #FFFFFF;
+  --ink: #12261F;
+  --ink-muted: #3E5148;
+  --ink-faint: #5F6B63;
+  --line: #DED2BB;
+  --brand: #0F6B4F;
+  --brand-deep: #0A4A37;
+  --brand-soft: #D8E8E0;
+  --gold: #AF7B21;
+  --gold-bright: #D9A233;
+  --on-brand: #FFFFFF;
+  --arch: #B9CFC2;
+  --shadow: 0 18px 40px -18px rgba(10, 74, 55, .35);
+  --display: "Reem Kufi", "Cairo", system-ui, sans-serif;
+  --body: "Cairo", system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+  --quran: "Amiri Quran", "Amiri", serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0B1411;
+    --ground-alt: #0F1D18;
+    --surface: #14231D;
+    --raised: #1B2E27;
+    --ink: #EDE6D7;
+    --ink-muted: #B7C4BB;
+    --ink-faint: #84958B;
+    --line: #26362F;
+    --brand: #10B981;
+    --brand-deep: #064E3B;
+    --brand-soft: #16352B;
+    --gold: #E0AE4A;
+    --gold-bright: #F0C063;
+    --on-brand: #06251B;
+    --arch: #16352B;
+    --shadow: 0 18px 40px -18px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0B1411;
+  --ground-alt: #0F1D18;
+  --surface: #14231D;
+  --raised: #1B2E27;
+  --ink: #EDE6D7;
+  --ink-muted: #B7C4BB;
+  --ink-faint: #84958B;
+  --line: #26362F;
+  --brand: #10B981;
+  --brand-deep: #064E3B;
+  --brand-soft: #16352B;
+  --gold: #E0AE4A;
+  --gold-bright: #F0C063;
+  --on-brand: #06251B;
+  --arch: #16352B;
+  --shadow: 0 18px 40px -18px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--brand); }
+:focus-visible { outline: 3px solid var(--gold-bright); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.25; text-wrap: balance; margin: 0; }
+.wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+.eyebrow { font-weight: 700; color: var(--gold); font-size: 14px; letter-spacing: .02em; }
+
+/* Header */
+.top {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--ground) 82%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+.top .wrap { display: flex; align-items: center; gap: 16px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.brand img { width: 36px; height: 36px; }
+.brand b { font-family: var(--display); font-size: 24px; }
+.brand span { font-size: 11px; letter-spacing: .3em; color: var(--gold); font-weight: 700; }
+.nav { display: flex; gap: 20px; margin-inline-start: auto; }
+.nav a { color: var(--ink-muted); text-decoration: none; font-weight: 600; font-size: 15px; }
+.nav a:hover { color: var(--brand); }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer;
+}
+.cta-sm {
+  background: var(--brand); color: var(--on-brand); text-decoration: none; font-weight: 700;
+  padding: 8px 16px; border-radius: 12px; font-size: 15px;
+}
+@media (max-width: 760px) { .nav { display: none; } .top .wrap { gap: 10px; } .cta-sm { margin-inline-start: auto; } }
+
+/* Hero */
+.hero { position: relative; padding: 56px 0 0; overflow: hidden; }
+.hero .wrap { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }
+.hero h1 { font-size: clamp(44px, 7vw, 84px); color: var(--brand-deep); }
+:root[data-theme="dark"] .hero h1 { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero h1 { color: var(--ink); } }
+.hero .lead { font-size: clamp(18px, 2.2vw, 22px); color: var(--ink-muted); max-width: 34ch; margin: 14px 0 26px; }
+.verse {
+  font-family: var(--quran); font-size: 22px; color: var(--gold); margin: 0 0 18px;
+}
+.verse small { font-family: var(--body); font-size: 13px; color: var(--ink-faint); margin-inline-start: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
+  padding: 13px 22px; border-radius: 16px; font-weight: 700; font-size: 17px;
+  border: 1px solid transparent; transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-deep)); color: #fff; box-shadow: var(--shadow); }
+.btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.btn svg { width: 22px; height: 22px; flex: none; }
+.promises { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: var(--ink-muted); font-size: 15px; padding: 0; list-style: none; }
+.promises li::before { content: "✓"; color: var(--brand); font-weight: 800; margin-inline-end: 6px; }
+.version-chip {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 14px 4px 6px; font-size: 14px; color: var(--ink-muted); text-decoration: none;
+}
+.version-chip b { background: var(--gold); color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 12px; }
+
+/* The arc behind the phone, after the app's own prayer gauge. */
+.stage { position: relative; display: grid; place-items: center; min-height: 560px; }
+.stage::before {
+  content: ""; position: absolute; width: min(470px, 92%); aspect-ratio: 1;
+  border-radius: 50%; top: 4%;
+  background: conic-gradient(from 270deg, var(--gold-bright) 0deg, var(--brand) 70deg, var(--brand-deep) 180deg, transparent 180deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 22px), #000 calc(100% - 21px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 22px), #000 calc(100% - 21px));
+  opacity: .9;
+}
+.phone {
+  position: relative; width: min(280px, 72vw); aspect-ratio: 1170 / 2532;
+  border-radius: 44px; padding: 10px; background: #12261F;
+  box-shadow: 0 40px 80px -30px rgba(10, 74, 55, .55), 0 0 0 1px rgba(255,255,255,.06) inset;
+}
+.phone img { width: 100%; height: 100%; object-fit: cover; border-radius: 34px; }
+.phone.tilt { transform: rotate(-4deg); }
+.phone.small { position: absolute; width: min(170px, 40vw); inset-inline-start: 0; bottom: 30px; transform: rotate(6deg); }
+.arches { display: block; width: 100%; height: 120px; margin-top: 10px; color: var(--arch); }
+@media (max-width: 900px) {
+  .hero .wrap { grid-template-columns: 1fr; text-align: center; }
+  .hero .lead { margin-inline: auto; }
+  .actions, .promises { justify-content: center; }
+  .stage { min-height: 500px; }
+  .phone.small { inset-inline-start: 4%; }
+}
+
+/* Sections */
+section { padding: 84px 0; scroll-margin-top: 64px; }
+#download-ios { scroll-margin-top: 80px; }
+.head { max-width: 680px; margin-bottom: 36px; }
+.head h2 { font-size: clamp(32px, 4.4vw, 48px); margin-top: 6px; }
+.head p { color: var(--ink-muted); margin: 10px 0 0; font-size: 18px; }
+.band { background: var(--ground-alt); }
+
+/* Features */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.feature {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 22px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.feature .ic {
+  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--brand-soft); color: var(--brand);
+}
+.feature .ic svg { width: 24px; height: 24px; }
+.feature h3 { font-size: 22px; }
+.feature ul { margin: 0; padding-inline-start: 18px; color: var(--ink-muted); font-size: 15.5px; line-height: 1.8; }
+.feature.new { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); }
+.tag-new { align-self: flex-start; font-size: 12px; font-weight: 800; color: var(--gold); border: 1px solid currentColor; border-radius: 999px; padding: 0 10px; }
+
+/* Adhan reliability */
+.reliable { display: grid; grid-template-columns: .85fr 1.15fr; gap: 40px; align-items: center; }
+.reliable .steps { display: grid; gap: 12px; counter-reset: s; padding: 0; margin: 0; list-style: none; }
+.reliable .steps li {
+  counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+  padding: 14px 18px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px;
+}
+.reliable .steps li::before {
+  content: counter(s, arabic-indic); grid-row: span 2; width: 34px; height: 34px; border-radius: 10px;
+  background: var(--brand); color: var(--on-brand); display: grid; place-items: center; font-weight: 800;
+}
+.reliable .steps b { font-size: 17px; }
+.reliable .steps span { color: var(--ink-muted); font-size: 15.5px; }
+@media (max-width: 900px) { .reliable { grid-template-columns: 1fr; } .reliable .stage { min-height: 520px; } }
+
+/* Gallery */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.tab {
+  font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-muted);
+  padding: 8px 18px; border-radius: 999px;
+}
+.tab[aria-selected="true"] { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.strip {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 260px); gap: 16px;
+  overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 4px 18px; overscroll-behavior-x: contain;
+  scrollbar-color: var(--line) transparent;
+}
+.strip[hidden] { display: none; }
+.shot { scroll-snap-align: start; margin: 0; }
+.shot button {
+  all: unset; cursor: zoom-in; display: block; width: 100%; border-radius: 24px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow);
+}
+.shot img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; object-position: top; }
+.strip.screens .shot img { aspect-ratio: 1170 / 2532; }
+.shot figcaption { padding: 10px 4px 0; }
+.shot figcaption b { display: block; font-size: 16px; }
+.shot figcaption span { color: var(--ink-faint); font-size: 14px; line-height: 1.6; }
+.strip-nav { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+dialog.viewer {
+  border: 0; padding: 0; background: transparent; max-width: min(440px, 92vw); max-height: 92vh;
+}
+dialog.viewer::backdrop { background: rgba(6, 20, 15, .82); backdrop-filter: blur(4px); }
+dialog.viewer img { border-radius: 24px; max-height: 84vh; width: auto; margin-inline: auto; }
+dialog.viewer p { color: #EDE6D7; text-align: center; margin: 10px 0 0; font-weight: 600; }
+dialog.viewer .close { position: absolute; top: 8px; inset-inline-end: 8px; background: rgba(0,0,0,.45); color: #fff; border: 0; }
+
+/* Download */
+.downloads { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.dl {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 24px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.dl.main { border: 2px solid var(--brand); }
+.dl .platform { display: flex; align-items: center; gap: 12px; }
+.dl .platform svg { width: 40px; height: 40px; color: var(--brand); }
+.dl h3 { font-size: 24px; }
+.dl .meta { color: var(--ink-faint); font-size: 14px; font-variant-numeric: tabular-nums; }
+.dl p { margin: 0; color: var(--ink-muted); font-size: 15.5px; }
+.dl .btn { justify-content: center; margin-top: auto; }
+.howto { margin-top: 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.howto details { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px 18px; }
+.howto summary { cursor: pointer; font-weight: 700; }
+.howto ol { margin: 10px 0 0; padding-inline-start: 22px; color: var(--ink-muted); font-size: 15.5px; }
+.note { margin-top: 18px; color: var(--ink-faint); font-size: 14px; }
+
+/* Contact & footer */
+.contact {
+  display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, var(--brand-deep), #0F6B4F); color: #F6F0E4;
+  border-radius: 28px; padding: 32px;
+}
+.contact h2 { font-size: clamp(26px, 3.4vw, 36px); }
+.contact p { margin: 6px 0 0; color: #D8E8E0; }
+.contact .row { display: flex; flex-wrap: wrap; gap: 10px; }
+.contact .btn-ghost { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.25); }
+footer { padding: 36px 0 48px; color: var(--ink-faint); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+footer a { color: var(--ink-muted); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="الفجر">
+      <img src="assets/brand/icon-192.png" alt="" width="36" height="36">
+      <div><b>الفجر</b><br><span>FAJR</span></div>
+    </a>
+    <nav class="nav" aria-label="الأقسام">
+      <a href="#features">المميزات</a>
+      <a href="#adhan">الأذان في وقته</a>
+      <a href="#gallery">معرض الصور</a>
+      <a href="#download">التحميل</a>
+    </nav>
+    <button class="icon-btn" id="theme" type="button" aria-label="تبديل الوضع الليلي">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 14.5A8.5 8.5 0 0 1 9.5 3a8.5 8.5 0 1 0 11.5 11.5z"/></svg>
+    </button>
+    <a class="cta-sm" href="#download">حمّل التطبيق</a>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <div>
+      <a class="version-chip" href="#download"><b id="chip-version">١٫٦٫٤</b> <span id="chip-text">آخر إصدار — أذان يصل والتطبيق مغلق</span></a>
+      <p class="verse">﴿إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا﴾<small>الإسراء ٧٨</small></p>
+      <h1 id="hero-title">يومك يبدأ من هنا</h1>
+      <p class="lead">مواقيت تُحسب على جهازك، وأذان يصلك في دقيقته، والمصحف كاملاً، والأذكار، وورد يومي يتابعك. كل هذا بلا إنترنت.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="#download">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 9.4l1.7-2.9a.4.4 0 1 0-.7-.4l-1.7 3a10.4 10.4 0 0 0-9.6 0l-1.7-3a.4.4 0 0 0-.7.4l1.7 2.9A9.6 9.6 0 0 0 2 17h20a9.6 9.6 0 0 0-4.5-7.6zM7.5 14.2a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm9 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+          تحميل لأندرويد
+        </a>
+        <a class="btn btn-ghost" href="#download-ios">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9a4.7 4.7 0 0 0-3.7-2c-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9a5 5 0 0 0-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5a11 11 0 0 0 1.4-2.9c0-.1-2.7-1-2.7-4.1zM13.9 5c.7-.9 1.2-2 1-3.2-1 .1-2.2.7-2.9 1.6-.7.7-1.2 1.9-1.1 3.1 1.1.1 2.3-.6 3-1.5z"/></svg>
+          تحميل لآيفون
+        </a>
+      </div>
+      <ul class="promises">
+        <li>بلا إعلانات</li>
+        <li>بلا حساب</li>
+        <li>بلا تتبّع</li>
+        <li>يعمل بلا إنترنت</li>
+      </ul>
+    </div>
+    <div class="stage">
+      <div class="phone tilt"><img src="assets/screens/home.jpg" alt="الشاشة الرئيسية لتطبيق الفجر: قوس الصلاة القادمة والورد اليومي" width="585" height="1266" fetchpriority="high"></div>
+      <div class="phone small"><img src="assets/screens/home_dark.jpg" alt="الشاشة الرئيسية في الوضع الليلي" width="585" height="1266" loading="lazy"></div>
+    </div>
+  </div>
+  <svg class="arches" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true" fill="currentColor">
+    <path d="M0 120V70h110V120zM150 120V60a40 40 0 0 1 80 0v60zM270 120V50a60 60 0 0 1 120 0v70zM430 120V40a170 110 0 0 1 340 0v80zM810 120V50a60 60 0 0 1 120 0v70zM970 120V60a40 40 0 0 1 80 0v60zM1090 120V70h110v50z"/>
+  </svg>
+</section>
+
+<section id="features" class="band" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">ما في التطبيق</div>
+      <h2 id="features-title">كل ما حول صلاتك وقرآنك، في مكان واحد</h2>
+      <p>مبنيّ ليعمل حين لا يعمل غيره: المصحف والمواقيت والأذكار على جهازك، بلا اتصال وبلا حساب.</p>
+    </div>
+    <div class="grid">
+      <article class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></div>
+        <h3>مواقيت الصلاة</h3>
+        <ul>
+          <li>تُحسب على جهازك بحساب فلكي، لأي يوم قادم</li>
+          <li>ثمانية مذاهب حسابية، وضبط بالدقيقة لكل صلاة</li>
+          <li>سجّل كيف صلّيت: مسجد، جماعة، منفرد، قضاء</li>
+          <li>جدول شهري للطباعة، وإمساكية رمضان لمدينتك</li>
+          <li>القبلة، وأقرب المساجد، ووضع السفر</li>
+        </ul>
+      </article>
+      <article class="feature new">
+        <span class="tag-new">جديد</span>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></div>
+        <h3>تنبيهات تصل في وقتها</h3>
+        <ul>
+          <li>ستة أسابيع من التنبيهات مجهّزة على الجهاز</li>
+          <li>أذان أو تنبيه أو صامت لكل صلاة، وأذان خاص للفجر</li>
+          <li>تنبيه قبل الأذان وعند الإقامة</li>
+          <li>الصلاة القادمة بعدّاد ثابت في شريط الإشعارات</li>
+          <li>فحص «هل يصل الأذان فعلاً؟» بخطوات لكل هاتف</li>
+        </ul>
+      </article>
+      <article class="feature new">
+        <span class="tag-new">جديد</span>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg></div>
+        <h3>مكتبة أذان من العالم</h3>
+        <ul>
+          <li>سبعة وعشرون صوتاً: الحرمان ومصر والأقصى والشام</li>
+          <li>والخليج والمغرب العربي وتركيا وآسيا وإفريقيا</li>
+          <li>أصوات قديمة نادرة وأخرى حديثة</li>
+          <li>استمع قبل أن تختار، ويُنزَّل عند اختياره</li>
+        </ul>
+      </article>
+      <article class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/></svg></div>
+        <h3>المصحف كاملاً</h3>
+        <ul>
+          <li>١١٤ سورة بالرسم العثماني داخل التطبيق</li>
+          <li>بالسورة أو الجزء أو الحزب أو الصفحة</li>
+          <li>تلوين التجويد باثنتي عشرة قاعدة</li>
+          <li>تفسير لكل آية، ومشاركتها صورةً أو فيديو</li>
+          <li>تلاوة بالآية مع تظليل متزامن والشاشة مغلقة</li>
+        </ul>
+      </article>
+      <article class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></div>
+        <h3>أي آية هذه؟</h3>
+        <ul>
+          <li>اقرأ أو أسمِع التطبيق آية، فيعرّفك بها</li>
+          <li>التعرّف على الصوت يتم على جهازك</li>
+          <li>ويفتحها لك في المصحف مباشرة</li>
+        </ul>
+      </article>
+      <article class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1"/><path d="M6 18a6 6 0 0 1 12 0M2 21h20"/></svg></div>
+        <h3>الأذكار والتسبيح</h3>
+        <ul>
+          <li>حصن المسلم كاملاً: ١٣٦ باباً</li>
+          <li>أذكار الصباح والمساء مرتبطة بالشمس لا بساعة</li>
+          <li>سبحة تحفظ عدّك بين الجلسات</li>
+          <li>الرقية، وأسماء الله الحسنى، والصلاة على النبي ﷺ</li>
+        </ul>
+      </article>
+      <article class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg></div>
+        <h3>وردك اليومي وختمتك</h3>
+        <ul>
+          <li>ورد جاهز: صفحات، أذكار الصباح والمساء، تسبيح</li>
+          <li>أضف أي سورة أو جزء أو باب أذكار بضغطة</li>
+          <li>خطة ختمة تحسب ما عليك كل يوم</li>
+          <li>حفظ بمراجعة متباعدة، وسلسلة أيامك محفوظة</li>
+        </ul>
+      </article>
+      <article class="feature new">
+        <span class="tag-new">جديد</span>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 21h18M5 21V10l7-6 7 6v11M10 21v-5h4v5"/></svg></div>
+        <h3>أئمة الحرمين هذا الأسبوع</h3>
+        <ul>
+          <li>إمام كل صلاة في المسجد الحرام والمسجد النبوي</li>
+          <li>يتحدّث كل أسبوع من مصدرين تلقائياً</li>
+          <li>مع رفّ تلاوات نادرة لأئمة الحرمين</li>
+        </ul>
+      </article>
+      <article class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M17 2l-5 5-5-5M16 14h.01"/></svg></div>
+        <h3>البثوث والراديو</h3>
+        <ul>
+          <li>إذاعة القرآن الكريم من القاهرة وعشرات الإذاعات</li>
+          <li>قناتا القرآن والسنة مباشرة</li>
+          <li>تعمل في الخلفية والشاشة مغلقة</li>
+        </ul>
+      </article>
+      <article class="feature">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+        <h3>وأكثر</h3>
+        <ul>
+          <li>تقويم هجري بالأيام البيض والاثنين والخميس والأعياد</li>
+          <li>حاسبة زكاة بنصاب الذهب أو الفضة</li>
+          <li>ودجت على الشاشة الرئيسية للهاتف</li>
+          <li>وضع ليلي كامل، ونسخ احتياطي إلى ملف</li>
+          <li>العربية والإنجليزية</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="adhan" aria-labelledby="adhan-title">
+  <div class="wrap reliable">
+    <div class="stage">
+      <div class="phone"><img src="assets/screens/notification_center.jpg" alt="مركز التنبيهات في تطبيق الفجر" width="585" height="1266" loading="lazy"></div>
+    </div>
+    <div>
+      <div class="head">
+        <div class="eyebrow">الأذان في وقته</div>
+        <h2 id="adhan-title">يصلك الأذان ولو لم تفتح التطبيق أياماً</h2>
+        <p>كثير من الهواتف توقف التطبيقات المغلقة لتوفير البطارية، فيضيع الأذان. الفجر مبنيّ ليتجاوز ذلك.</p>
+      </div>
+      <ol class="steps">
+        <li><b>ستة أسابيع مجهّزة مسبقاً</b><span>تُكتب مواقيت التنبيهات على الجهاز، ولا تحتاج فتح التطبيق لتستمر.</span></li>
+        <li><b>منبّهات يوم كامل، من نوع منبّه الساعة</b><span>أعلى درجة يحترمها أندرويد. لو فات منبّه، يكمل الذي بعده ويعيد ترتيب الباقي.</span></li>
+        <li><b>تعود وحدها</b><span>بعد إعادة تشغيل الهاتف، أو تحديث التطبيق، أو تغيير الوقت، أو السفر.</span></li>
+        <li><b>الصلاة القادمة في شريط الإشعارات</b><span>عدّاد ثابت اختياري، ويمنع الهاتف من إغلاق التطبيق.</span></li>
+        <li><b>فحص صريح، وسجلّ ترسله لنا</b><span>يخبرك ما وصل وما فات، ويشرح الإعداد الناقص في هاتفك باسم الشركة المصنِّعة.</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="gallery" class="band" aria-labelledby="gallery-title">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">معرض الصور</div>
+      <h2 id="gallery-title">التطبيق كما ستراه</h2>
+      <p>لقطات حقيقية من التطبيق نفسه، لا رسوم تشبهه. اضغط على أي صورة لتكبيرها.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="نوع الصور">
+      <button class="tab" role="tab" aria-selected="true" aria-controls="strip-cards" id="tab-cards" type="button">بطاقات المميزات</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="strip-screens" id="tab-screens" type="button">لقطات الشاشة</button>
+    </div>
+    <div class="strip cards" id="strip-cards" role="tabpanel" aria-labelledby="tab-cards" tabindex="0"></div>
+    <div class="strip screens" id="strip-screens" role="tabpanel" aria-labelledby="tab-screens" tabindex="0" hidden></div>
+    <div class="strip-nav">
+      <button class="icon-btn" type="button" data-scroll="1" aria-label="السابق">→</button>
+      <button class="icon-btn" type="button" data-scroll="-1" aria-label="التالي">←</button>
+    </div>
+  </div>
+</section>
+
+<section id="download" aria-labelledby="download-title">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">التحميل</div>
+      <h2 id="download-title">حمّل الفجر مجاناً</h2>
+      <p>الإصدار <b id="dl-version">١٫٦٫٤</b><span id="dl-date"></span>. الروابط تشير دائماً إلى آخر إصدار.</p>
+    </div>
+    <div class="downloads">
+      <article class="dl main">
+        <div class="platform">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 9.4l1.7-2.9a.4.4 0 1 0-.7-.4l-1.7 3a10.4 10.4 0 0 0-9.6 0l-1.7-3a.4.4 0 0 0-.7.4l1.7 2.9A9.6 9.6 0 0 0 2 17h20a9.6 9.6 0 0 0-4.5-7.6zM7.5 14.2a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm9 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+          <div><h3>أندرويد</h3><div class="meta">لمعظم الهواتف (٦٤ بت) · <span id="size-arm64">APK</span></div></div>
+        </div>
+        <p>الاختيار الصحيح لأي هاتف من آخر ثماني سنوات تقريباً.</p>
+        <a class="btn btn-primary" href="https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr-latest-arm64-v8a.apk">تحميل لأندرويد</a>
+      </article>
+      <article class="dl">
+        <div class="platform">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 9.4l1.7-2.9a.4.4 0 1 0-.7-.4l-1.7 3a10.4 10.4 0 0 0-9.6 0l-1.7-3a.4.4 0 0 0-.7.4l1.7 2.9A9.6 9.6 0 0 0 2 17h20a9.6 9.6 0 0 0-4.5-7.6zM7.5 14.2a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm9 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+          <div><h3>أندرويد قديم</h3><div class="meta">للهواتف ٣٢ بت · <span id="size-v7a">APK</span></div></div>
+        </div>
+        <p>إن لم تتثبّت النسخة الأولى على هاتفك، فهذه له.</p>
+        <a class="btn btn-ghost" href="https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr-latest-armeabi-v7a.apk">تحميل النسخة ٣٢ بت</a>
+      </article>
+      <article class="dl" id="download-ios">
+        <div class="platform">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9a4.7 4.7 0 0 0-3.7-2c-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9a5 5 0 0 0-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5a11 11 0 0 0 1.4-2.9c0-.1-2.7-1-2.7-4.1zM13.9 5c.7-.9 1.2-2 1-3.2-1 .1-2.2.7-2.9 1.6-.7.7-1.2 1.9-1.1 3.1 1.1.1 2.3-.6 3-1.5z"/></svg>
+          <div><h3>آيفون</h3><div class="meta">ملف IPA · <span id="size-ipa">غير موقّع</span></div></div>
+        </div>
+        <p>ليس على متجر آبل بعد، فيُثبَّت بأداة مثل Sideloadly أو AltStore أو TrollStore.</p>
+        <a class="btn btn-ghost" href="https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr.ipa">تحميل لآيفون</a>
+      </article>
+    </div>
+    <div class="howto">
+      <details>
+        <summary>كيف أثبّته على أندرويد؟</summary>
+        <ol>
+          <li>اضغط «تحميل لأندرويد» وافتح الملف بعد اكتمال التنزيل.</li>
+          <li>إن طلب الهاتف ذلك، اسمح بـ«تثبيت التطبيقات من هذا المصدر».</li>
+          <li>اضغط «تثبيت»، ثم افتح الفجر مرة واحدة ليجهّز التنبيهات.</li>
+          <li>التحديثات القادمة تصلك من داخل التطبيق نفسه.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>كيف أثبّته على آيفون؟</summary>
+        <ol>
+          <li>نزّل الملف على حاسوبك، وثبّت Sideloadly أو AltStore عليه.</li>
+          <li>صِل الآيفون بالحاسوب واسحب ملف Fajr.ipa إلى الأداة.</li>
+          <li>سجّل الدخول بحساب آبل الخاص بك عند الطلب.</li>
+          <li>على الآيفون: الإعدادات ← عام ← إدارة الجهاز، ثم «وثوق».</li>
+        </ol>
+      </details>
+      <details>
+        <summary>لا يصلني الأذان على هاتفي</summary>
+        <ol>
+          <li>افتح الإعدادات ← مركز التنبيهات ← «افحص الآن».</li>
+          <li>اتبع الخطوات المكتوبة لهاتفك باسم شركته.</li>
+          <li>فعّل «الصلاة القادمة في شريط الإشعارات».</li>
+          <li>إن استمرّ، اضغط «انسخ سجل التنبيهات» وأرسله لنا.</li>
+        </ol>
+      </details>
+    </div>
+    <p class="note">الملفات مبنية آلياً من الشيفرة المصدرية على GitHub Actions، ومنشورة في <a href="https://github.com/if12is/islamic-app/releases/tag/apk-latest">صفحة الإصدارات</a>.</p>
+  </div>
+</section>
+
+<section aria-labelledby="contact-title" style="padding-top:0">
+  <div class="wrap">
+    <div class="contact">
+      <div>
+        <h2 id="contact-title">سؤال، اقتراح، أو أذان لم يصل؟</h2>
+        <p>راسلني مباشرة، أو افتح بلاغاً على GitHub.</p>
+      </div>
+      <div class="row">
+        <a class="btn btn-primary" href="mailto:ahmed.elsayed.dev1@gmail.com" style="background:#F6F0E4;color:#0A4A37">ahmed.elsayed.dev1@gmail.com</a>
+        <a class="btn btn-ghost" href="https://github.com/if12is/islamic-app/issues">بلاغ على GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>الفجر · بلا إعلانات، بلا تتبّع، ولا يخرج من جهازك شيء إلا حين تطلب.</span>
+    <span><a href="https://github.com/if12is/islamic-app">الشيفرة المصدرية على GitHub</a></span>
+  </div>
+</footer>
+
+<dialog class="viewer" id="viewer" aria-label="عرض الصورة">
+  <button class="icon-btn close" type="button" aria-label="إغلاق">✕</button>
+  <img alt="" id="viewer-img">
+  <p id="viewer-caption"></p>
+</dialog>
+
+<script>
+(() => {
+  // Gallery content: the store cards (with their own captions) and the raw screens.
+  const cards = [
+    ['home', 'يومك يبدأ من هنا', 'الصلاة القادمة، وردك، وكل ما تحتاجه في شاشة واحدة'],
+    ['prayer_times', 'مواقيت الصلاة', 'محسوبة على جهازك من موقعك، تعمل بلا إنترنت'],
+    ['notification_center', 'تنبيهات على مقاسك', 'أذان أو تنبيه أو صامت لكل صلاة، وقبل الأذان وبعد الإقامة'],
+    ['prayer_log', 'سجّل كيف صلّيتها', 'في المسجد، أو جماعةً، أو منفرداً، أو قضاءً'],
+    ['quran', 'المصحف كاملاً', 'بالسور والأجزاء والأحزاب والصفحات، مع خطة ختمة'],
+    ['reader', 'صفحة المصحف', 'الرسم العثماني بأدوات كل آية: تفسير، حفظ، مشاركة، تلاوة'],
+    ['quran_index', 'ابحث كيفما تحفظ', 'بالسورة، أو الجزء، أو الحزب، أو رقم الصفحة'],
+    ['azkar', 'الأذكار والتسبيح', 'حصن المسلم كاملاً، وسبحة تعدّ معك'],
+    ['azkar_tasbeeh', 'سبحة تحفظ عدّك', 'تكمل من حيث توقفت في كل جلسة'],
+    ['azkar_cards', 'أضفه لوردك بضغطة', 'من أي باب أذكار أو سورة أو جزء أو تسبيح'],
+    ['wird', 'وردك اليومي', 'أضف ما شئت إلى وردك، وتابعه كل يوم'],
+    ['prayer_tools', 'كل ما حول الصلاة', 'القبلة، جدول الشهر، أقرب المساجد، ووضع السفر'],
+    ['hijri_calendar', 'الأيام لها علامات', 'الاثنين والخميس، والأيام البيض، والأعياد'],
+    ['broadcasts', 'البثوث والراديو', 'إذاعة القرآن، وعشرات الإذاعات، وقناتا القرآن والسنة'],
+    ['zakat', 'حاسبة الزكاة', 'نصاب الذهب أو الفضة، على كل ما تملك'],
+    ['home_dark', 'ووضع ليلي كامل', 'كل شاشة لها وجهها الليلي، للفجر وقيام الليل'],
+  ];
+  const screens = [
+    ['home', 'الرئيسية'], ['home_dark', 'الرئيسية ليلاً'], ['prayer_times', 'مواقيت الصلاة'],
+    ['prayer_log', 'سجل الصلاة'], ['notification_center', 'مركز التنبيهات'], ['reader', 'صفحة المصحف'],
+    ['quran_index', 'فهرس المصحف'], ['quran_dark', 'المصحف ليلاً'], ['azkar', 'الأذكار'],
+    ['azkar_tasbeeh', 'السبحة'], ['wird', 'الورد اليومي'], ['prayer_tools', 'أدوات الصلاة'],
+    ['hijri_calendar', 'التقويم الهجري'], ['broadcasts', 'البثوث والراديو'], ['zakat', 'الزكاة'],
+  ];
+
+  const figure = (src, title, sub) => {
+    const f = document.createElement('figure');
+    f.className = 'shot';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'تكبير: ' + title);
+    const img = new Image();
+    img.src = src; img.alt = title + (sub ? ' — ' + sub : ''); img.loading = 'lazy'; img.decoding = 'async';
+    b.append(img);
+    b.addEventListener('click', () => open(src, sub ? title + ' — ' + sub : title));
+    const c = document.createElement('figcaption');
+    c.innerHTML = '<b></b>' + (sub ? '<span></span>' : '');
+    c.querySelector('b').textContent = title;
+    if (sub) c.querySelector('span').textContent = sub;
+    f.append(b, c);
+    return f;
+  };
+  const stripCards = document.getElementById('strip-cards');
+  const stripScreens = document.getElementById('strip-screens');
+  cards.forEach(([f, t, s]) => stripCards.append(figure('assets/cards/' + f + '.jpg', t, s)));
+  screens.forEach(([f, t]) => stripScreens.append(figure('assets/screens/' + f + '.jpg', t)));
+
+  // Tabs
+  const tabs = [...document.querySelectorAll('.tab')];
+  tabs.forEach((tab) => tab.addEventListener('click', () => {
+    tabs.forEach((t) => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', on);
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+  }));
+  document.querySelectorAll('[data-scroll]').forEach((btn) => btn.addEventListener('click', () => {
+    const strip = document.querySelector('.strip:not([hidden])');
+    strip.scrollBy({ left: Number(btn.dataset.scroll) * -strip.clientWidth * 0.8, behavior: 'smooth' });
+  }));
+
+  // Viewer
+  const viewer = document.getElementById('viewer');
+  const open = (src, caption) => {
+    document.getElementById('viewer-img').src = src;
+    document.getElementById('viewer-img').alt = caption;
+    document.getElementById('viewer-caption').textContent = caption;
+    viewer.showModal();
+  };
+  viewer.querySelector('.close').addEventListener('click', () => viewer.close());
+  viewer.addEventListener('click', (e) => { if (e.target === viewer) viewer.close(); });
+
+  // Theme toggle: follows the system until chosen, then remembers.
+  const root = document.documentElement;
+  try { const saved = localStorage.getItem('fajr-theme'); if (saved) root.dataset.theme = saved; } catch (_) {}
+  document.getElementById('theme').addEventListener('click', () => {
+    const dark = root.dataset.theme
+      ? root.dataset.theme === 'dark'
+      : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('fajr-theme', root.dataset.theme); } catch (_) {}
+  });
+
+  // The latest release, read live so the page never lies about the version.
+  const ar = (s) => String(s).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]).replace(/\./g, '٫');
+  const mb = (bytes) => ar((bytes / 1048576).toFixed(0)) + ' م.ب';
+  fetch('https://api.github.com/repos/if12is/islamic-app/releases/tags/apk-latest')
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((rel) => {
+      const m = /(\d+\.\d+\.\d+)/.exec(rel.name || '');
+      if (m) {
+        document.getElementById('chip-version').textContent = ar(m[1]);
+        document.getElementById('dl-version').textContent = ar(m[1]);
+      }
+      if (rel.published_at) {
+        const d = new Date(rel.published_at).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('dl-date').textContent = '، صدر في ' + d;
+      }
+      const size = (name, id) => {
+        const a = (rel.assets || []).find((x) => x.name === name);
+        if (a) document.getElementById(id).textContent = mb(a.size);
+      };
+      size('Fajr-latest-arm64-v8a.apk', 'size-arm64');
+      size('Fajr-latest-armeabi-v7a.apk', 'size-v7a');
+      size('Fajr.ipa', 'size-ipa');
+    })
+    .catch(() => {});
+})();
+</script>
+</body>
+</html>

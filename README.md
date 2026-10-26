@@ -1,396 +1,194 @@
-# Islamic App 🕌
+<div align="center">
 
-A comprehensive, production-ready Islamic mobile application with prayer times, Quran reading, Azkar (remembrances), and more. Built with Flutter following Clean Architecture principles and SOLID design patterns.
+<img src="docs/assets/brand/icon-192.png" width="96" alt="Fajr app icon">
+
+# الفجر · Fajr
+
+**يومك يبدأ من هنا** — prayer times computed on your device, an adhan that arrives on time,
+the whole Mushaf, azkar, and a daily wird. No ads, no account, and it works offline.
+
+[**Website & downloads**](https://if12is.github.io/islamic-app/) ·
+[Android APK](https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr-latest-arm64-v8a.apk) ·
+[iPhone IPA](https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr.ipa) ·
+[All releases](https://github.com/if12is/islamic-app/releases)
+
+![Version](https://img.shields.io/badge/version-1.6.4-0F6B4F)
+![Flutter](https://img.shields.io/badge/Flutter-stable-0A4A37)
+![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS-AF7B21)
+![Languages](https://img.shields.io/badge/languages-العربية%20%7C%20English-12261F)
+
+</div>
+
+<p align="center">
+  <img src="docs/assets/cards/home.jpg" width="200" alt="Home">
+  <img src="docs/assets/cards/prayer_times.jpg" width="200" alt="Prayer times">
+  <img src="docs/assets/cards/notification_center.jpg" width="200" alt="Notification centre">
+  <img src="docs/assets/cards/quran.jpg" width="200" alt="The Mushaf">
+</p>
+
+---
+
+## Download
+
+| Platform | File | Notes |
+|---|---|---|
+| **Android** (most phones) | [Fajr-latest-arm64-v8a.apk](https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr-latest-arm64-v8a.apk) | 64-bit. The right choice for almost any phone from the last eight years. |
+| Android (older, 32-bit) | [Fajr-latest-armeabi-v7a.apk](https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr-latest-armeabi-v7a.apk) | Use this only if the first one will not install. |
+| **iPhone** | [Fajr.ipa](https://github.com/if12is/islamic-app/releases/download/apk-latest/Fajr.ipa) | Unsigned. Install with Sideloadly, AltStore or TrollStore; not on the App Store yet. |
+
+The links always point at the newest build. Android updates are offered from inside the app.
+Installation steps for both platforms are on the [website](https://if12is.github.io/islamic-app/#download).
 
 ## Features
 
-- ✅ **Prayer Times**: Calculated on device (`adhan`) — works offline, for any date, with selectable methods
-- ✅ **Holy Quran**: The full Mushaf ships with the app — instant, offline, with page/juz/sajdah data
-- ✅ **Reader controls**: Font, size, line spacing, margins, reading themes, brightness lock, auto-scroll
-- ✅ **Verse tools**: Tafsir (5 editions, cached), bookmarks with tags and notes, share as text or image
-- ✅ **Index**: Surahs, juz, hizb, Mushaf pages, sajdah verses, and "go to" any exact reference
-- ✅ **Reflections**: A notes screen with search, ordering, and plain-text export
-- ✅ **Hijri calendar**: The Islamic month with its events, fasting days, each day's prayer times, and a full Ramadan imsakiya
-- ✅ **Memorisation**: Progressive masking, spaced review, and a "finish the verse" quiz
-- ✅ **Reciter library**: Seven reciters, per-surah downloads, and offline playback
-- ✅ **Backup**: Export everything to a JSON file and restore it on another device
-- ✅ **Recitation**: Verse-by-verse playback with synced highlight, background audio, adjustable speed, range repetition for memorisation, and a sleep timer
-- ✅ **Azkar**: The full Hisn al-Muslim — 136 chapters, 352 supplications with their virtues and references, bundled offline
-- ✅ **Khatmah plan & daily wird**: A plan that re-spreads what is left, a combined daily wird card, a reading streak, and a year heat map
-- ✅ **Home-screen widget**: Next prayer, countdown, today's timetable, and the Hijri date
-- ✅ **Qibla Direction**: Compass showing the direction to Kaaba from your location
-- ✅ **Hijri Calendar**: Islamic calendar dates integrated throughout the app
-- ✅ **Dark Mode**: Full support for light and dark themes
-- ✅ **RTL Arabic**: Complete right-to-left support for Arabic language using Cairo font
-- ✅ **Offline Access**: Cache offline data for prayer times and Quran verses
-- ✅ **Notifications**: Real scheduling seven days ahead — per-prayer alert modes, three bundled adhans (or import your own), a separate Fajr adhan, pre-adhan and iqama reminders, sun-anchored azkar, Friday/fasting/Hijri occasions, quiet hours, all from one notification centre
-- ✅ **Location Services**: Automatic location detection for accurate prayer times
+### Prayer times
+- Computed on the device by astronomical calculation (`adhan`), for any day ahead, with no connection.
+- Eight calculation methods, Hanafi Asr, high-latitude rules, and per-prayer adjustment to the minute.
+- Log each prayer as you prayed it: in the mosque, in congregation, alone, or made up.
+- A printable monthly timetable, a Ramadan imsakiya for your own city, the qibla compass, nearby mosques, and travel mode.
+- A home-screen widget with the next prayer, a countdown, and the Hijri date.
 
-## Latest Achievements (March 2026)
+### An adhan that arrives on time
+- **Six weeks of alerts written to the device.** A native alarm engine holds the plan, so alerts keep coming even if the app is not opened for days.
+- **A full day of alarm-clock alarms** armed at a time, the kind Android treats most strictly. One that fires re-arms the next day, so a dropped alarm does not end the chain.
+- Re-armed by itself after a reboot, an app update, a clock or time-zone change, or travel.
+- **Next prayer in the status bar** (opt-in): a live countdown that also keeps vendor battery managers from force-stopping the app.
+- Adhan, notification, vibrate or silent per prayer, a separate Fajr adhan, pre-adhan and iqama alerts, quiet hours.
+- **"Is the adhan actually arriving?"**: a delivery check that reports what arrived and what was missed, names the blocking setting, gives step-by-step fixes per phone brand (Honor, Huawei, Xiaomi, Samsung, Oppo, Vivo and more), and copies an alerts log to send.
 
-- ✅ Delivered Prayer Times flow end-to-end (entity, model, local datasource, repository, provider, and UI)
-- ✅ Implemented Quran reader improvements with Surah page enhancements and API service updates
-- ✅ Completed Azkar experience updates with categories view, details view, and improved navigation
-- ✅ Completed onboarding and splash experience polish for first-launch flow
-- ✅ Added startup sync and shared provider wiring for better app initialization
-- ✅ Refined design/theme system and app-wide loading/error handling components
-- ✅ Updated app branding assets (Android, iOS, and Web icons/manifest)
+### Adhan library
+- 27 voices from the Haramain, Egypt, al-Aqsa, the Levant, the Gulf, the Maghreb, Turkey, Asia and Africa: old and rare recordings beside modern ones.
+- Preview before choosing; each voice is downloaded only when picked.
 
-## Screenshots
+### The Mushaf
+- All 114 surahs in the Uthmani script, bundled with the app.
+- Index by surah, juz, hizb or page; tajweed colouring across twelve rules.
+- Tafsir on every verse, bookmarks with notes, sharing as an image, and export as video.
+- Verse-by-verse recitation with synchronised highlighting, background playback, range repetition and a sleep timer.
+- A khatmah plan that works out the daily portion, and spaced-repetition hifz with a finish-the-verse quiz.
+- **"Which ayah is this?"**: recite a verse and the app finds it, with speech recognition running on the device.
 
-> Coming soon...
+### Azkar and the daily wird
+- The complete Hisn al-Muslim: 136 chapters with their virtues and references.
+- Morning and evening azkar anchored to the sun, not to a fixed hour.
+- A tasbih counter that keeps its count, ruqyah, the 99 names, and salawat.
+- A daily wird with pages, azkar and tasbih; add any surah, juz or chapter in one tap, with a streak and a year heat map.
+
+### Haramain and broadcasts
+- **This week's imams of the Haramain**: who leads each prayer in Makkah and Madinah, refreshed weekly from two sources.
+- A shelf of rare recitations by the imams of the Haramain.
+- Quran radio from Cairo and dozens of stations, plus the Quran and Sunnah channels live.
+
+### And more
+- A Hijri calendar with the white days, Mondays and Thursdays, and the Eids marked.
+- A zakat calculator on the gold or silver nisab.
+- Arabic (RTL) and English, a full dark theme, and backup to a file.
+
+**Privacy:** no ads, no tracking, no account. Nothing leaves the device unless you ask it to.
+
+## Gallery
+
+<p align="center">
+  <img src="docs/assets/cards/reader.jpg" width="180" alt="Mushaf page">
+  <img src="docs/assets/cards/quran_index.jpg" width="180" alt="Quran index">
+  <img src="docs/assets/cards/azkar.jpg" width="180" alt="Azkar">
+  <img src="docs/assets/cards/azkar_cards.jpg" width="180" alt="Add to your wird">
+</p>
+<p align="center">
+  <img src="docs/assets/cards/wird.jpg" width="180" alt="Daily wird">
+  <img src="docs/assets/cards/prayer_log.jpg" width="180" alt="Prayer log">
+  <img src="docs/assets/cards/prayer_tools.jpg" width="180" alt="Prayer tools">
+  <img src="docs/assets/cards/hijri_calendar.jpg" width="180" alt="Hijri calendar">
+</p>
+<p align="center">
+  <img src="docs/assets/cards/broadcasts.jpg" width="180" alt="Broadcasts and radio">
+  <img src="docs/assets/cards/zakat.jpg" width="180" alt="Zakat calculator">
+  <img src="docs/assets/cards/azkar_tasbeeh.jpg" width="180" alt="Tasbih">
+  <img src="docs/assets/cards/home_dark.jpg" width="180" alt="Dark theme">
+</p>
+
+The full gallery, with every screen, is on the [website](https://if12is.github.io/islamic-app/#gallery).
+All images are real captures of the app (see [`ads/README.md`](ads/README.md) for how they are made).
 
 ## Architecture
 
-This project implements **Feature-First Clean Architecture** with strict separation of concerns:
+Feature-first Clean Architecture with Riverpod:
 
 ```
-├── Presentation Layer (UI & State)
-│   ├── Pages
-│   ├── Widgets
-│   └── Providers (Riverpod)
-│
-├── Domain Layer (Business Logic - No external dependencies)
-│   ├── Entities
-│   ├── Repositories (Abstract)
-│   └── Use Cases
-│
-└── Data Layer (Data Management)
-    ├── Models
-    ├── Data Sources (Remote/Local)
-    └── Repository Implementation
+lib/
+├── core/            # services, theme, localization, shared widgets
+│   └── services/    # prayer calculation, notification planner, alarm bridge, secure HTTP
+├── features/
+│   ├── home/         prayer_times/   quran/      azkar/
+│   ├── broadcasts/   haramain/       settings/   onboarding/
+│   └── <feature>/{domain,data,presentation}
+└── shared/          # app-wide providers and widgets
+
+android/app/src/main/kotlin/.../alarms/
+├── AlarmEngine.kt        # arms a day of alarm-clock alarms, records delivery
+├── PrayerPlan.kt         # the six-week plan on disk, history and event log
+├── PrayerAlarmReceiver.kt# shows each alert, re-arms; reboot/update/clock recovery
+├── NextPrayerService.kt  # the opt-in status-bar countdown (foreground service)
+└── AlarmChannel.kt       # the method channel Dart talks to
 ```
 
-### Key Principles
+- Domain is pure Dart; data sources return `Either<Failure, T>`.
+- All HTTP goes through `SecureHttpClient` (host allowlist); logging through `AppLogger`; strings through `context.tr`.
+- Prayer times and the Mushaf are local, so the core of the app never needs the network.
 
-- **Independent Layers**: Each layer can be tested and modified independently
-- **Dependency Injection**: Riverpod manages all dependencies
-- **Error Handling**: Functional approach using `Either<Failure, Success>`
-- **Immutability**: Entities use `Equatable` for value equality
-- **SOLID Principles**: Single responsibility, open/closed, proper abstraction
+More detail: [ARCHITECTURE.md](ARCHITECTURE.md) · [DEVELOPMENT.md](DEVELOPMENT.md) · [AGENTS.md](AGENTS.md).
 
-For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md)
+## Tech stack
 
-## Tech Stack
+Flutter (latest stable) · Riverpod · Material 3 · `adhan` · `hijri` · `quran` · Dio · Hive · SharedPreferences ·
+just_audio (+ background) · flutter_local_notifications with a native Kotlin alarm engine · home_widget ·
+geolocator · flutter_compass · sherpa_onnx (on-device speech) · ffmpeg_kit (verse video export) · ota_update.
 
-### Core
-- **Flutter**: Latest stable version
-- **Dart**: Programming language
+Fonts: Cairo (interface), Reem Kufi (display), Amiri Quran and Scheherazade New (Quran text).
 
-### State Management
-- **Flutter Riverpod**: Reactive dependency injection and state management
-- **Provider**: Peer dependency for Riverpod
-
-### Networking & Storage
-- **Dio**: HTTP client with interceptors
-- **Hive**: Local persistent storage for caching
-- **Shared Preferences**: Simple key-value storage
-
-### UI/Design
-- **Material Design 3**: Modern UI framework
-- **Cairo Font**: Arabic typography
-- **Animations**: Smooth transitions and micro-interactions
-
-### APIs
-- **Aladhan Prayer Times API**: Prayer times and Islamic calendar
-- **Quran.com API v4**: Quran verses and metadata
-- **Local JSON**: Azkar offline data
-
-### Utilities
-- **Equatable**: Value equality for entities
-- **Dartz**: Functional programming (Either/Option)
-- **Logger**: Structured logging
-- **Geolocator**: Location services
-- **Flutter Compass**: Compass functionality
-- **Just Audio**: Audio playback for Quran recitation
-- **Flutter Local Notifications**: Push notifications
-
-## Getting Started
-
-### Prerequisites
-- Flutter SDK: `>=3.19.0` (`brew install --cask flutter` on macOS, then `flutter doctor`)
-- Dart SDK: `>=3.7.0`
-- A device: Android emulator, iOS Simulator, Chrome, macOS, or a USB phone
-
-### Run while developing
+## Build and run
 
 ```bash
 git clone https://github.com/if12is/islamic-app.git
 cd islamic-app
 flutter pub get
-flutter devices
 flutter run
 ```
 
-- Hot reload: press `r` in the terminal where `flutter run` is active
-- Hot restart: press `R`
-- Web preview: `flutter run -d chrome`
-- Cursor: Run and Debug → **Islamic App** (see `.vscode/launch.json`)
+```bash
+flutter analyze   # static analysis
+flutter test      # the full suite (970+ tests)
+```
 
-See [QUICKSTART.md](QUICKSTART.md) for extra commands. Agent/project map: [AGENTS.md](AGENTS.md).
+### Releases (GitHub Actions)
 
-## GitHub APK workflow
+Every push to `master` builds the Android APKs and the iOS IPA and **replaces** the rolling
+[`apk-latest`](https://github.com/if12is/islamic-app/releases/tag/apk-latest) release.
 
-Every push to `master` builds a release APK and **replaces** the rolling GitHub Release [`apk-latest`](https://github.com/if12is/islamic-app/releases/tag/apk-latest) (the previous preview APK is deleted).
-
-| How you trigger it | Rolling `apk-latest` | Kept versioned release |
+| Trigger | `apk-latest` | Versioned release |
 |---|---|---|
-| `git push origin master` | replace previous | no |
-| commit message includes `[release]` | replace previous | yes |
-| `./scripts/release.sh 1.1.0+2` | replace previous | yes (`v1.1.0`) |
-| `git tag v1.1.0 && git push origin v1.1.0` | replace previous | yes |
-| Actions → Run workflow | `update_latest` checkbox | `create_versioned_release` checkbox |
-| commit message includes `[skip apk]` | skip | skip |
+| `git push origin master` | replaced | no |
+| commit message contains `[release]` | replaced | yes |
+| `./scripts/release.sh 1.6.5+41` or tag `v1.6.5` | replaced | yes |
+| commit message contains `[skip apk]` | skipped | skipped |
 
-```bash
-# Versioned release from the CLI (opt-in)
-./scripts/release.sh 1.1.0+2
+Before a user-visible push, update [`whats_new.json`](whats_new.json): the short Arabic and English lines the in-app update dialog shows.
+Workflow: [`.github/workflows/android-apk.yml`](.github/workflows/android-apk.yml).
 
-# Manual workflow (GitHub CLI)
-gh workflow run android-apk.yml -f update_latest=true -f create_versioned_release=false
-```
+### Website
 
-The CI APK is debug-signed for testing, not Play Store. Workflow: `.github/workflows/android-apk.yml`.
+The site lives in [`docs/`](docs/) and is served by GitHub Pages at
+**https://if12is.github.io/islamic-app/**. It reads the latest version and file sizes from the
+GitHub Releases API, so it never needs editing for a new build.
 
-## Project Structure
+## Contact
 
-```
-islamic_app/
-├── lib/
-│   ├── main.dart                    # App entry point
-│   ├── core/                        # Shared functionality
-│   │   ├── constants/               # App constants
-│   │   ├── localization/            # ar/en strings
-│   │   ├── routing/                 # go_router stub (HomePage is live nav)
-│   │   ├── services/                # Core services
-│   │   ├── theme/                   # Theme configuration
-│   │   └── utils/                   # Utilities & helpers
-│   ├── features/                    # Feature modules
-│   │   ├── onboarding/              # Onboarding screens
-│   │   ├── home/                    # Home dashboard
-│   │   ├── prayer_times/            # Prayer times feature
-│   │   ├── quran/                   # Quran reading
-│   │   ├── azkar/                   # Azkar & Tasbeeh
-│   │   └── settings/                # App settings
-│   └── shared/                      # Shared across features
-│       ├── providers/               # Global providers
-│       └── widgets/                 # Reusable widgets
-└── assets/
-    ├── data/                        # JSON data files
-    ├── fonts/                       # Custom fonts (Cairo)
-    ├── images/                      # Images
-    └── icons/                       # Icons
-```
-
-## Feature Implementation Status
-
-| Feature | Status | Details |
-|---------|--------|---------|
-| Prayer Times | ✅ 100% | Local/remote datasources, models, and UI complete |
-| Quran | ✅ 90% | API integration, caching service, and Surah reader implemented |
-| Azkar | ✅ 100% | Categories, details pages, data sync, and Tasbeeh counter complete |
-| Settings | ✅ 100% | Theme toggle, prayer method selector, and full app settings done |
-| Onboarding | ✅ 100% | Splash screens and new user onboarding flow complete |
-| Dark Mode | ✅ 100% | Full light/dark theme support |
-| RTL Arabic | ✅ 100% | Cairo font configured, RTL layout ready |
-| Notifications | ✅ 80% | Core notification service added, prayer alerts configured |
-| Qibla Compass | ⏳ 0% | Dependencies ready, implementation pending |
-
-## API Documentation
-
-### Aladhan Prayer Times API
-
-```
-GET https://api.aladhan.com/v1/timings?latitude={lat}&longitude={lng}&method={method}
-
-Parameters:
-- latitude (double): Geographic latitude
-- longitude (double): Geographic longitude
-- method (int): Calculation method (2=ISNA, 3=Muslim World League, 4=Umm Al-Qura, 5=Egyptian Authority)
-- date (optional, string): YYYY-MM-DD format
-
-Response: { "code": 200, "data": { "timings": {...}, "date": {...} } }
-```
-
-### Quran.com API
-
-```
-GET https://quran.com/api/v4/chapters
-GET https://quran.com/api/v4/chapters/{chapterId}/verses
-GET https://quran.com/api/v4/chapters/{chapterId}/info-en  (English info)
-
-Response: { "chapters": [...] } or { "verses": [...] }
-```
-
-## Caching Strategy
-
-- **Prayer Times**: 24-hour cache (updates if location changes)
-- **Quran Data**: 7-day cache (user-initiated refresh available)
-- **Azkar**: Static local JSON (always available offline)
-- **Settings**: Immediately persisted to SharedPreferences
-
-## Error Handling
-
-All operations that can fail return `Either<Failure, Success>`:
-
-```dart
-final result = await getPrayerTimesUseCase(...);
-
-result.fold(
-  (failure) => print('Error: ${failure.message}'),
-  (success) => print('Success: $success'),
-);
-```
-
-**Failure Types**:
-- `NetworkFailure`: No internet or connection timeout
-- `ServerFailure`: HTTP errors (4xx, 5xx)
-- `DataFailure`: JSON parsing errors
-- `CacheFailure`: Local storage errors
-- `NotFoundFailure`: Resource not found
-- `UnknownFailure`: Unexpected errors
-
-## Internationalization (i18n)
-
-The app supports:
-- **Arabic** (RTL) - Default/Primary language
-- **English** (LTR) - Secondary language
-
-Configure in `main.dart`:
-```dart
-supportedLocales: const [
-  Locale('ar', ''),  // Arabic
-  Locale('en', ''),  // English
-],
-locale: const Locale('ar', ''),  // Default
-```
-
-## Building for Production
-
-### Android
-```bash
-flutter build apk --release
-flutter build appbundle --release
-```
-
-### iOS
-```bash
-flutter build ios --release
-```
-
-### Web
-```bash
-flutter build web --release
-```
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed build instructions.
-
-## Testing
-
-```bash
-# Run all tests
-flutter test
-
-# Run with coverage
-flutter test --coverage
-
-# Run specific test file
-flutter test test/features/prayer_times/domain/usecases/
-```
-
-## Code Quality
-
-```bash
-# Analyze code
-flutter analyze
-
-# Format code
-dart format lib/
-
-# Check for issues
-dart fix --dry-run
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## Roadmap
-
-- [x] Complete Prayer Times UI with countdown timer
-- [x] Implement Quran reading screen with verse navigation
-- [x] Add prayer time notifications
-- [x] Salat reminder customization
-- [ ] Implement Qibla compass functionality
-- [ ] Add widget support
-- [ ] Implement user authentication
-- [ ] Add cloud sync for bookmarks
-- [ ] Offline Quran download support
-- [ ] Multiple recitation options for Quran
-- [ ] Hijri calendar view
-
-## Performance Optimization
-
-- **Lazy Loading**: Data only fetched when needed
-- **Caching**: Intelligent cache strategy to reduce API calls
-- **Offline First**: Works without internet when cached
-- **Efficient State Management**: Riverpod's fine-grained reactivity
-- **Widget Performance**: Widgets rebuilt only when data changes
-
-## Security Considerations
-
-- ✅ Sensitive data cached with Hive encryption (can be enabled)
-- ✅ API calls over HTTPS only
-- ✅ No storing of authentication tokens (currently no auth)
-- ⏳ Rate limiting on API calls (to implement)
-- ⏳ Input validation on all user inputs (to implement)
-
-## Accessibility
-
-- Material Design 3 compliance
-- Semantic widgets for screen readers
-- Sufficient color contrast ratios
-- Large touch targets (48x48 minimum)
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- **Aladhan**: Prayer times API
-- **Quran.com**: Quran API
-- **Flutter Team**: Amazing framework
-- **Islamic Academy**: Islamic content standards
-
-## Support
-
-For issues, questions, or suggestions:
-- 📧 Email: support@islamicapp.com
+- 📧 Email: [ahmed.elsayed.dev1@gmail.com](mailto:ahmed.elsayed.dev1@gmail.com)
 - 🐛 Issues: [GitHub Issues](https://github.com/if12is/islamic-app/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/if12is/islamic-app/discussions)
+- 🌐 Website: [if12is.github.io/islamic-app](https://if12is.github.io/islamic-app/)
 
-## FAQ
-
-**Q: Can I run this app offline?**
-A: Yes! Cached prayer times, Quran verses, and Azkar work offline.
-
-**Q: Which Islamic calculation method is best?**
-A: Different regions use different methods. The app supports multiple methods (ISNA, Muslim World League, Umm Al-Qura, Egyptian Authority). Choose based on your location.
-
-**Q: How often do prayer times update?**
-A: Prayer times are cached for 24 hours. You can manually refresh or they'll update if your location changes significantly.
-
-**Q: Is there Arabic language support?**
-A: Yes! The app fully supports Arabic with RTL layout and the Cairo font for beautiful typography.
+If the adhan does not arrive on your phone, open **Settings → Notification centre → "Copy the alerts log"** and attach it to your message.
 
 ---
 
-**Made with ❤️ for the Muslim community**
-
-Last Updated: April 2026 | Version: 1.1.0-beta
-
+<div align="center"><b>Made with care for the Muslim community</b> · Version 1.6.4</div>
