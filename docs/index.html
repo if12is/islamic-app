@@ -326,6 +326,11 @@ dialog.sheet::backdrop { background: rgba(6, 20, 15, .62); backdrop-filter: blur
   .callouts::before { content: "مرّر المؤشر على الهاتف"; display: block; font-size: 13px; color: var(--ink-faint); transition: opacity .3s; }
   .stop:hover .callouts::before { opacity: 0; }
 }
+/* Copy, device, callouts — mirrored on every other stop. The device keeps
+   the middle column either way. */
+.stop .copy { order: 1; }
+.stop .stage-tour { order: 2; }
+.stop .callouts { order: 3; }
 .stop:nth-child(even) .copy { order: 3; }
 .stop:nth-child(even) .callouts { order: 1; }
 @media (max-width: 960px) {
@@ -459,12 +464,12 @@ footer a { color: var(--ink-muted); }
     <div class="stage">
       <div class="device iphone long" tabindex="0" aria-label="الشاشة الرئيسية على آيفون، مرّر المؤشر لتتصفّحها">
         <span class="island"></span>
-        <div class="screen"><img src="assets/long/home.jpg" alt="الشاشة الرئيسية: قوس الصلاة القادمة، الاختصارات، الورد اليومي، المواقيت، وآية اليوم" width="540" height="2630" fetchpriority="high"></div>
+        <div class="screen"><img src="assets/long/home.webp" alt="الشاشة الرئيسية: قوس الصلاة القادمة، الاختصارات، الورد اليومي، المواقيت، وآية اليوم" width="780" height="3560" fetchpriority="high"></div>
         <span class="scroll-hint">مرّر المؤشر لتتصفّح ↓</span>
       </div>
       <div class="device android fit native-bar" aria-label="مشغّل التلاوة على هاتف أندرويد">
         <span class="punch"></span><span class="side"></span>
-        <div class="screen"><img src="assets/screens/player.jpg" alt="مشغّل التلاوة: سورة الفاتحة بصوت ماهر المعيقلي، مع التكرار ومؤقت النوم والسرعة" width="593" height="1280"></div>
+        <div class="screen"><img src="assets/screens/player.webp" alt="مشغّل التلاوة: سورة الفاتحة بصوت ماهر المعيقلي، مع التكرار ومؤقت النوم والسرعة" width="593" height="1280"></div>
       </div>
     </div>
   </div>
@@ -512,7 +517,7 @@ footer a { color: var(--ink-muted); }
         <div class="stage-tour">
           <div class="device iphone long" tabindex="0" aria-label="الشاشة الرئيسية، مرّر المؤشر لتتصفّحها">
             <span class="island"></span>
-            <div class="screen"><img src="assets/long/home.jpg" alt="الشاشة الرئيسية كاملة" width="540" height="2630" loading="lazy"></div>
+            <div class="screen"><img src="assets/long/home.webp" alt="الشاشة الرئيسية كاملة" width="780" height="3560" loading="lazy"></div>
             <span class="scroll-hint">مرّر لتتصفّح ↓</span>
           </div>
         </div>
@@ -533,7 +538,7 @@ footer a { color: var(--ink-muted); }
         <div class="stage-tour">
           <div class="device android long" tabindex="0" aria-label="فهرس المصحف، مرّر المؤشر لتتصفّحه">
             <span class="punch"></span><span class="side"></span>
-            <div class="screen"><img src="assets/long/quran.jpg" alt="شاشة المصحف: الروايات والأدوات وفهرس السور" width="540" height="2630" loading="lazy"></div>
+            <div class="screen"><img src="assets/long/quran.webp" alt="شاشة المصحف: الروايات والأدوات وفهرس السور" width="780" height="4000" loading="lazy"></div>
             <span class="scroll-hint">مرّر لتتصفّح ↓</span>
           </div>
         </div>
@@ -554,7 +559,7 @@ footer a { color: var(--ink-muted); }
         <div class="stage-tour">
           <div class="device iphone long" tabindex="0" aria-label="شاشة المواقيت، مرّر المؤشر لتتصفّحها">
             <span class="island"></span>
-            <div class="screen"><img src="assets/long/prayer_times.jpg" alt="شاشة مواقيت الصلاة وأدواتها وسجل اليوم" width="540" height="2630" loading="lazy"></div>
+            <div class="screen"><img src="assets/long/prayer_times.webp" alt="شاشة مواقيت الصلاة وأدواتها وسجل اليوم" width="780" height="3400" loading="lazy"></div>
             <span class="scroll-hint">مرّر لتتصفّح ↓</span>
           </div>
         </div>
@@ -575,7 +580,7 @@ footer a { color: var(--ink-muted); }
         <div class="stage-tour">
           <div class="device android long" tabindex="0" aria-label="شاشة الأذكار، مرّر المؤشر لتتصفّحها">
             <span class="punch"></span><span class="side"></span>
-            <div class="screen"><img src="assets/long/azkar.jpg" alt="شاشة الأذكار وأبوابها" width="540" height="2630" loading="lazy"></div>
+            <div class="screen"><img src="assets/long/azkar.webp" alt="شاشة الأذكار وأبوابها" width="780" height="4000" loading="lazy"></div>
             <span class="scroll-hint">مرّر لتتصفّح ↓</span>
           </div>
         </div>
@@ -596,7 +601,7 @@ footer a { color: var(--ink-muted); }
         <div class="stage-tour">
           <div class="device android fit native-bar" tabindex="0" aria-label="مشغّل التلاوة">
             <span class="punch"></span><span class="side"></span>
-            <div class="screen"><img src="assets/screens/player.jpg" alt="مشغّل التلاوة بصوت ماهر المعيقلي" width="593" height="1280" loading="lazy"></div>
+            <div class="screen"><img src="assets/screens/player.webp" alt="مشغّل التلاوة بصوت ماهر المعيقلي" width="593" height="1280" loading="lazy"></div>
           </div>
         </div>
         <ul class="callouts">
@@ -616,7 +621,7 @@ footer a { color: var(--ink-muted); }
         <div class="stage-tour">
           <div class="device iphone fit" tabindex="0" aria-label="مركز التنبيهات">
             <span class="island"></span>
-            <div class="screen"><img src="assets/screens/notification_center.jpg" alt="مركز التنبيهات" width="585" height="1266" loading="lazy"></div>
+            <div class="screen"><img src="assets/screens/notification_center.webp" alt="مركز التنبيهات" width="780" height="1688" loading="lazy"></div>
           </div>
         </div>
         <ul class="callouts">
@@ -761,7 +766,7 @@ footer a { color: var(--ink-muted); }
   /* Every feature of the app, one card per area, one line per feature.
      [name, simple explanation]. */
   const FEATURES = [
-    { id: 'prayer', title: 'مواقيت الصلاة', sub: 'محسوبة على جهازك لأي يوم، بلا إنترنت.', img: 'assets/screens/prayer_times.jpg', tint: '#D8E8E0', points: [
+    { id: 'prayer', title: 'مواقيت الصلاة', sub: 'محسوبة على جهازك لأي يوم، بلا إنترنت.', img: 'assets/screens/prayer_times.webp', tint: '#D8E8E0', points: [
       ['حساب على جهازك', 'المواقيت تُحسب فلكياً على هاتفك، فتعمل بلا إنترنت ولأي يوم قادم.'],
       ['ثمانية مذاهب حسابية', 'اختر طريقة الحساب المعتمدة في بلدك.'],
       ['العصر الحنفي', 'لمن يتبع المذهب الحنفي في وقت العصر.'],
@@ -775,14 +780,14 @@ footer a { color: var(--ink-muted); }
       ['إمساكية رمضان', 'السحور والإفطار بتوقيت مدينتك.'],
       ['ودجت الشاشة الرئيسية', 'الصلاة القادمة والعدّاد على شاشة هاتفك دون فتح التطبيق.'],
     ]},
-    { id: 'tools', title: 'القبلة والمساجد والسفر', sub: 'كل ما تحتاجه حول الصلاة أينما كنت.', img: 'assets/screens/prayer_tools.jpg', tint: '#F3E6CB', points: [
+    { id: 'tools', title: 'القبلة والمساجد والسفر', sub: 'كل ما تحتاجه حول الصلاة أينما كنت.', img: 'assets/screens/prayer_tools.webp', tint: '#F3E6CB', points: [
       ['بوصلة القبلة', 'اتجاه الكعبة من موقعك، مع معايرة البوصلة.'],
       ['أقرب المساجد', 'خريطة وقائمة بالمساجد حولك والمسافة إليها.'],
       ['وضع السفر', 'يقيس المسافة عن بلدك ويوضح أحكام القصر والجمع.'],
       ['موقعك', 'تلقائي من الهاتف، أو تختار مدينتك بنفسك.'],
       ['إعدادات الصلاة', 'كل خيارات الحساب في شاشة واحدة، مع معاينة فورية.'],
     ]},
-    { id: 'alerts', title: 'الأذان والتنبيهات', sub: 'يصلك في دقيقته، ولو لم تفتح التطبيق أياماً.', img: 'assets/screens/notification_center.jpg', tint: '#D8E8E0', isNew: true, points: [
+    { id: 'alerts', title: 'الأذان والتنبيهات', sub: 'يصلك في دقيقته، ولو لم تفتح التطبيق أياماً.', img: 'assets/screens/notification_center.webp', tint: '#D8E8E0', isNew: true, points: [
       ['طريقة لكل صلاة', 'أذان، أو تنبيه، أو اهتزاز، أو صامت.'],
       ['أذان خاص للفجر', 'اختر للفجر صوتاً غير باقي الصلوات.'],
       ['تنبيه قبل الأذان', 'ليتهيّأ قبل الصلاة بدقائق تختارها.'],
@@ -811,7 +816,7 @@ footer a { color: var(--ink-muted); }
       ['يُنزَّل عند الاختيار', 'لا يأخذ مساحة إلا الصوت الذي تختاره.'],
       ['أذانك الخاص', 'أو اختر ملف أذان من هاتفك.'],
     ]},
-    { id: 'mushaf', title: 'المصحف', sub: 'كاملاً بالرسم العثماني، بثلاث روايات.', img: 'assets/screens/reader.jpg', tint: '#D8E8E0', points: [
+    { id: 'mushaf', title: 'المصحف', sub: 'كاملاً بالرسم العثماني، بثلاث روايات.', img: 'assets/screens/reader.webp', tint: '#D8E8E0', points: [
       ['١١٤ سورة على جهازك', 'المصحف كاملاً داخل التطبيق، بلا إنترنت.'],
       ['حفص وورش وقالون', 'النص والقراءة تتبع الرواية التي تختارها.'],
       ['فهرس كامل', 'بالسورة، أو الجزء، أو الحزب، أو الصفحة، أو مواضع السجدة.'],
@@ -823,7 +828,7 @@ footer a { color: var(--ink-muted); }
       ['آخر قراءة', 'تعود حيث توقفت بضغطة من الرئيسية.'],
       ['إحصاءات القراءة', 'سلسلة أيامك، وخريطة سنتك، ومجموع ما قرأت.'],
     ]},
-    { id: 'listen', title: 'التلاوة والاستماع', sub: 'قرّاء متعددون، والشاشة مغلقة.', img: 'assets/screens/player.jpg', tint: '#F3E6CB', points: [
+    { id: 'listen', title: 'التلاوة والاستماع', sub: 'قرّاء متعددون، والشاشة مغلقة.', img: 'assets/screens/player.webp', tint: '#F3E6CB', points: [
       ['مكتبة القرّاء', 'سبعة قرّاء، اختر منهم من تحب.'],
       ['استماع بلا إنترنت', 'نزّل السور التي تريدها لتسمعها في أي مكان.'],
       ['تظليل متزامن', 'الآية المتلوّة تُظلَّل وأنت تتابع.'],
@@ -843,7 +848,7 @@ footer a { color: var(--ink-muted); }
       ['أي آية هذه؟', 'اقرأ أو أسمِع التطبيق آية، فيعرّفك بها ويفتحها في المصحف.'],
       ['على جهازك', 'التعرّف على الصوت يتم على هاتفك، ولا يُرسل صوتك لأي مكان.'],
     ]},
-    { id: 'azkar', title: 'الأذكار والأدعية', sub: 'حصن المسلم كاملاً، والسبحة، والرقية.', img: 'assets/screens/azkar.jpg', tint: '#F3E6CB', points: [
+    { id: 'azkar', title: 'الأذكار والأدعية', sub: 'حصن المسلم كاملاً، والسبحة، والرقية.', img: 'assets/screens/azkar.webp', tint: '#F3E6CB', points: [
       ['حصن المسلم كاملاً', '١٣٦ باباً و٣٥٢ دعاءً، بفضلها ومصدرها.'],
       ['أدعية حسب حالك', 'مكتبة مرتبة بالموقف الذي أنت فيه، لتجد الدعاء بسرعة.'],
       ['الصباح والمساء', 'تظهر في وقتها المرتبط بالشمس، لا بساعة ثابتة.'],
@@ -853,7 +858,7 @@ footer a { color: var(--ink-muted); }
       ['الصلاة على النبي ﷺ', 'صيغها، وعدّاد ليوم الجمعة.'],
       ['أضف إلى وردك', 'أي باب أذكار يصبح جزءاً من وردك اليومي.'],
     ]},
-    { id: 'wird', title: 'الورد اليومي والختمة', sub: 'يومك مع القرآن والذكر، بلا ضغط.', img: 'assets/screens/wird.jpg', tint: '#D8E8E0', points: [
+    { id: 'wird', title: 'الورد اليومي والختمة', sub: 'يومك مع القرآن والذكر، بلا ضغط.', img: 'assets/screens/wird.webp', tint: '#D8E8E0', points: [
       ['ورد جاهز', 'صفحات من القرآن، وأذكار الصباح والمساء، وتسبيح.'],
       ['أضف ما شئت', 'أي سورة، أو جزء، أو حزب، أو باب أذكار، أو تسبيح، بضغطة.'],
       ['يتجدد كل يوم', 'العدّ يبدأ من جديد بعد منتصف الليل.'],
@@ -862,7 +867,7 @@ footer a { color: var(--ink-muted); }
       ['تعيد التوزيع', 'إن فاتك يوم، تُوزَّع البقية على ما بقي من الأيام.'],
       ['يتعلّم وقتك', 'تذكير الورد ينتقل للساعة التي تقرأ فيها عادةً، إن أردت.'],
     ]},
-    { id: 'haramain', title: 'الحرمان والبث', sub: 'أئمة الحرمين كل أسبوع، والإذاعات والقنوات.', img: 'assets/screens/broadcasts.jpg', tint: '#F3E6CB', isNew: true, points: [
+    { id: 'haramain', title: 'الحرمان والبث', sub: 'أئمة الحرمين كل أسبوع، والإذاعات والقنوات.', img: 'assets/screens/broadcasts.webp', tint: '#F3E6CB', isNew: true, points: [
       ['أئمة الحرمين هذا الأسبوع', 'إمام كل صلاة في المسجد الحرام والمسجد النبوي.'],
       ['يتحدّث وحده', 'الجدول الجديد يصل كل أسبوع من مصدرين.'],
       ['تلاوات نادرة', 'رفّ لتلاوات قديمة ونادرة لأئمة الحرمين.'],
@@ -871,7 +876,7 @@ footer a { color: var(--ink-muted); }
       ['قناتا القرآن والسنة', 'بثّ مباشر من مكة والمدينة.'],
       ['في الخلفية', 'تستمر والشاشة مغلقة.'],
     ]},
-    { id: 'calendar', title: 'التقويم والزكاة', sub: 'الأيام الفاضلة معلَّمة، والزكاة محسوبة.', img: 'assets/screens/hijri_calendar.jpg', tint: '#D8E8E0', points: [
+    { id: 'calendar', title: 'التقويم والزكاة', sub: 'الأيام الفاضلة معلَّمة، والزكاة محسوبة.', img: 'assets/screens/hijri_calendar.webp', tint: '#D8E8E0', points: [
       ['التقويم الهجري', 'الشهر كاملاً مع ما يقابله بالميلادي.'],
       ['الأيام لها علامات', 'الاثنين والخميس، والأيام البيض، والأعياد.'],
       ['مواقيت كل يوم', 'اضغط على أي يوم لترى مواقيته.'],
@@ -879,7 +884,7 @@ footer a { color: var(--ink-muted); }
       ['حاسبة الزكاة', 'على نصاب الذهب أو الفضة.'],
       ['على كل ما تملك', 'النقود، والذهب، والفضة، والتجارة، والديون.'],
     ]},
-    { id: 'you', title: 'على مقاسك', sub: 'ليلي ونهاري، عربي وإنجليزي، وخصوصيتك محفوظة.', img: 'assets/screens/home_dark.jpg', tint: '#F3E6CB', points: [
+    { id: 'you', title: 'على مقاسك', sub: 'ليلي ونهاري، عربي وإنجليزي، وخصوصيتك محفوظة.', img: 'assets/screens/home_dark.webp', tint: '#F3E6CB', points: [
       ['وضع ليلي كامل', 'كل شاشة لها وجهها الليلي، للفجر وقيام الليل.'],
       ['العربية والإنجليزية', 'التطبيق كله باللغتين.'],
       ['أهلاً بالمواسم', 'واجهة خاصة لرمضان والمواسم المباركة.'],
@@ -1033,8 +1038,8 @@ footer a { color: var(--ink-muted); }
   };
   const stripCards = document.getElementById('strip-cards');
   const stripScreens = document.getElementById('strip-screens');
-  cards.forEach(([f, t, s]) => stripCards.append(figure('assets/cards/' + f + '.jpg', t, s)));
-  screens.forEach(([f, t]) => stripScreens.append(figure('assets/screens/' + f + '.jpg', t)));
+  cards.forEach(([f, t, s]) => stripCards.append(figure('assets/cards/' + f + '.webp', t, s)));
+  screens.forEach(([f, t]) => stripScreens.append(figure('assets/screens/' + f + '.webp', t)));
   const tabs = [...document.querySelectorAll('.tab')];
   tabs.forEach((tab) => tab.addEventListener('click', () => tabs.forEach((t) => {
     const on = t === tab;

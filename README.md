@@ -20,10 +20,10 @@ the whole Mushaf, azkar, and a daily wird. No ads, no account, and it works offl
 </div>
 
 <p align="center">
-  <img src="docs/assets/cards/home.jpg" width="200" alt="Home">
-  <img src="docs/assets/cards/prayer_times.jpg" width="200" alt="Prayer times">
-  <img src="docs/assets/cards/notification_center.jpg" width="200" alt="Notification centre">
-  <img src="docs/assets/cards/quran.jpg" width="200" alt="The Mushaf">
+  <img src="docs/assets/cards/home.webp" width="200" alt="Home">
+  <img src="docs/assets/cards/prayer_times.webp" width="200" alt="Prayer times">
+  <img src="docs/assets/cards/notification_center.webp" width="200" alt="Notification centre">
+  <img src="docs/assets/cards/quran.webp" width="200" alt="The Mushaf">
 </p>
 
 ---
@@ -89,22 +89,22 @@ Installation steps for both platforms are on the [website](https://if12is.github
 ## Gallery
 
 <p align="center">
-  <img src="docs/assets/cards/reader.jpg" width="180" alt="Mushaf page">
-  <img src="docs/assets/cards/quran_index.jpg" width="180" alt="Quran index">
-  <img src="docs/assets/cards/azkar.jpg" width="180" alt="Azkar">
-  <img src="docs/assets/cards/azkar_cards.jpg" width="180" alt="Add to your wird">
+  <img src="docs/assets/cards/reader.webp" width="180" alt="Mushaf page">
+  <img src="docs/assets/cards/quran_index.webp" width="180" alt="Quran index">
+  <img src="docs/assets/cards/azkar.webp" width="180" alt="Azkar">
+  <img src="docs/assets/cards/azkar_cards.webp" width="180" alt="Add to your wird">
 </p>
 <p align="center">
-  <img src="docs/assets/cards/wird.jpg" width="180" alt="Daily wird">
-  <img src="docs/assets/cards/prayer_log.jpg" width="180" alt="Prayer log">
-  <img src="docs/assets/cards/prayer_tools.jpg" width="180" alt="Prayer tools">
-  <img src="docs/assets/cards/hijri_calendar.jpg" width="180" alt="Hijri calendar">
+  <img src="docs/assets/cards/wird.webp" width="180" alt="Daily wird">
+  <img src="docs/assets/cards/prayer_log.webp" width="180" alt="Prayer log">
+  <img src="docs/assets/cards/prayer_tools.webp" width="180" alt="Prayer tools">
+  <img src="docs/assets/cards/hijri_calendar.webp" width="180" alt="Hijri calendar">
 </p>
 <p align="center">
-  <img src="docs/assets/cards/broadcasts.jpg" width="180" alt="Broadcasts and radio">
-  <img src="docs/assets/cards/zakat.jpg" width="180" alt="Zakat calculator">
-  <img src="docs/assets/cards/azkar_tasbeeh.jpg" width="180" alt="Tasbih">
-  <img src="docs/assets/cards/home_dark.jpg" width="180" alt="Dark theme">
+  <img src="docs/assets/cards/broadcasts.webp" width="180" alt="Broadcasts and radio">
+  <img src="docs/assets/cards/zakat.webp" width="180" alt="Zakat calculator">
+  <img src="docs/assets/cards/azkar_tasbeeh.webp" width="180" alt="Tasbih">
+  <img src="docs/assets/cards/home_dark.webp" width="180" alt="Dark theme">
 </p>
 
 The full gallery, with every screen, is on the [website](https://if12is.github.io/islamic-app/#gallery).
