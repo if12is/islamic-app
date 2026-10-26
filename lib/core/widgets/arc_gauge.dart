@@ -139,56 +139,77 @@ class ArcGauge extends StatelessWidget {
                             ),
                           ),
                           Positioned(
-                            // The countdown is words, not four digits, so it needs
-                            // the width the clock time did not.
-                            top: width * 0.10,
-                            left: _stroke * 1.1,
-                            right: _stroke * 1.1,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child:
-                                      headlineParts.isEmpty
-                                          ? Text(
-                                            headline,
-                                            maxLines: 1,
-                                            style: AppTextStyles.body(
-                                              context,
-                                              fontSize: _Countdown.bigSize,
-                                              height: 1.2,
-                                              fontWeight: FontWeight.w700,
-                                              color: tokens.ink,
-                                            ),
-                                          )
-                                          : _Countdown(parts: headlineParts),
+                            // The block sits in the bowl, not under the apex: the
+                            // bowl is where the room is. Its box is inset from
+                            // the stroke at the sides and top, and clear of the
+                            // knob's travel. Each line shrinks to the width of the
+                            // bowl on its own, so a long city name does not take
+                            // the countdown down with it; the outer fit only
+                            // steps in when a small phone leaves too little
+                            // height.
+                            top: width * 0.17,
+                            bottom: _stroke * 0.3,
+                            left: 0,
+                            right: 0,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: SizedBox(
+                                width: width * 0.6,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child:
+                                          headlineParts.isEmpty
+                                              ? Text(
+                                                headline,
+                                                maxLines: 1,
+                                                style: AppTextStyles.body(
+                                                  context,
+                                                  fontSize: _Countdown.bigSize,
+                                                  height: 1.2,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: tokens.ink,
+                                                ),
+                                              )
+                                              : _Countdown(
+                                                parts: headlineParts,
+                                              ),
+                                    ),
+                                    if (caption != null)
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          caption!,
+                                          maxLines: 1,
+                                          textAlign: TextAlign.center,
+                                          style: AppTextStyles.caption(
+                                            context,
+                                            color: tokens.inkMuted,
+                                            fontSize: 16,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ),
+                                    if (footnote != null)
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          footnote!,
+                                          maxLines: 1,
+                                          textAlign: TextAlign.center,
+                                          style: AppTextStyles.caption(
+                                            context,
+                                            color: tokens.inkFaint,
+                                            fontSize: 13,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                                if (caption != null)
-                                  Text(
-                                    caption!,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.caption(
-                                      context,
-                                      color: tokens.inkMuted,
-                                      fontSize: 13.5,
-                                    ),
-                                  ),
-                                if (footnote != null)
-                                  Text(
-                                    footnote!,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.caption(
-                                      context,
-                                      color: tokens.inkFaint,
-                                      fontSize: 11.5,
-                                    ),
-                                  ),
-                              ],
+                              ),
                             ),
                           ),
                         ],
@@ -243,10 +264,10 @@ class _Countdown extends StatelessWidget {
   final List<DurationPart> parts;
 
   /// The counted things: digits, and the words that carry their own count.
-  static const double bigSize = 24;
+  static const double bigSize = 30;
 
   /// The units that name them.
-  static const double smallSize = 15;
+  static const double smallSize = 18;
 
   @override
   Widget build(BuildContext context) {
