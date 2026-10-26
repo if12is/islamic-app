@@ -23,6 +23,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- The next prayer held in the status bar, when the user turns it on. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:label="الفجر"
@@ -93,6 +95,20 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- The next prayer and its countdown, held in the status bar while the
+             user has it switched on. A foreground service is also what keeps
+             vendor battery managers from force-stopping the app, which would
+             cancel every alarm. -->
+        <service
+            android:name=".alarms.NextPrayerService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows the next prayer time and a countdown to it, chosen by the user, so the prayer alarms keep being delivered." />
+        </service>
 
         <!-- Keeps recitation playing with the screen off, with lock-screen controls. -->
         <service

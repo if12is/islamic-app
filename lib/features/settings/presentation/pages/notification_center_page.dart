@@ -798,6 +798,23 @@ class _NotificationCenterPageState
           title: Text(context.tr('notif_master')),
           subtitle: Text(context.tr('notif_master_desc')),
         ),
+        // Android only: the status-bar countdown is the engine's service, and
+        // what keeps a battery manager from force-stopping the app.
+        if (PrayerAlarms.available && prefs.masterEnabled)
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: prefs.ongoingNextPrayer,
+            onChanged:
+                _busy
+                    ? null
+                    : (value) => _apply(
+                      () => ref
+                          .read(notificationPreferencesProvider.notifier)
+                          .update(prefs.copyWith(ongoingNextPrayer: value)),
+                    ),
+            title: Text(context.tr('next_prayer_ongoing_toggle')),
+            subtitle: Text(context.tr('next_prayer_ongoing_toggle_desc')),
+          ),
         const Divider(height: 24),
         _statusRow(
           icon:

@@ -78,7 +78,13 @@ class NotificationPreferences {
     this.prayerLogRemindersEnabled = true,
     this.prayerLogDelayMinutes = 30,
     this.prayerLogFollowUps = 2,
+    this.ongoingNextPrayer = false,
   });
+
+  /// Android: the next prayer and a countdown, held in the status bar. Also
+  /// what keeps a vendor battery manager from force-stopping the app and
+  /// with it every alarm. Off unless chosen: it is a notification that stays.
+  final bool ongoingNextPrayer;
 
   /// Master switch. When off, nothing is scheduled.
   final bool masterEnabled;
@@ -231,6 +237,7 @@ class NotificationPreferences {
     bool? prayerLogRemindersEnabled,
     int? prayerLogDelayMinutes,
     int? prayerLogFollowUps,
+    bool? ongoingNextPrayer,
   }) {
     return NotificationPreferences(
       masterEnabled: masterEnabled ?? this.masterEnabled,
@@ -275,6 +282,7 @@ class NotificationPreferences {
         0,
         maxPrayerLogFollowUps,
       ),
+      ongoingNextPrayer: ongoingNextPrayer ?? this.ongoingNextPrayer,
     );
   }
 
@@ -314,6 +322,7 @@ class NotificationPreferences {
     'prayerLogRemindersEnabled': prayerLogRemindersEnabled,
     'prayerLogDelayMinutes': prayerLogDelayMinutes,
     'prayerLogFollowUps': prayerLogFollowUps,
+    'ongoingNextPrayer': ongoingNextPrayer,
   };
 
   String encode() => jsonEncode(toJson());
@@ -389,6 +398,7 @@ class NotificationPreferences {
         2,
         max: maxPrayerLogFollowUps,
       ),
+      ongoingNextPrayer: json['ongoingNextPrayer'] == true,
     );
   }
 

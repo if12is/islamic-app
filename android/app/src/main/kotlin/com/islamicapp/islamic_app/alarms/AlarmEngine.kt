@@ -196,6 +196,12 @@ object AlarmEngine {
             },
         )
         Log.i(TAG, "Armed ${wanted.size} of ${future.size} ($reason)")
+
+        // Every event that re-arms the alarms is also one where the next
+        // prayer in the status bar may have moved, or its service been lost.
+        // An alarm firing is also one of the few moments Android lets a
+        // background app start a foreground service.
+        NextPrayer.sync(context)
     }
 
     /** A local time a person can read in a log: `10-26 04:30`. */

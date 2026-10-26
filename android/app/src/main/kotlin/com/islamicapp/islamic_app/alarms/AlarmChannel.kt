@@ -60,6 +60,14 @@ object AlarmChannel {
                 }
             }
 
+            "setNextPrayer" -> {
+                val raw = call.argument<String>("config") ?: "{}"
+                respond(result) {
+                    NextPrayer.configure(app, raw)
+                    true
+                }
+            }
+
             "diagnostics" -> respond(result) { AlarmEngine.diagnostics(app) }
 
             "clearHistory" -> respond(result) {

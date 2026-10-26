@@ -431,6 +431,27 @@ class PrayerAlarms {
 
   static Future<void> clearHistory() => _invoke('clearHistory');
 
+  /// Show or remove the next prayer in the status bar. [prayers] are written
+  /// to the device so the countdown moves on by itself, app closed or not.
+  static Future<void> setNextPrayer({
+    required bool enabled,
+    required String label,
+    required String channelName,
+    required List<({DateTime at, String title})> prayers,
+  }) {
+    return _invoke('setNextPrayer', {
+      'config': jsonEncode({
+        'enabled': enabled,
+        'label': label,
+        'channelName': channelName,
+        'entries': [
+          for (final prayer in prayers)
+            {'at': prayer.at.millisecondsSinceEpoch, 'title': prayer.title},
+        ],
+      }),
+    });
+  }
+
   static Future<AlarmHealth> health() async {
     if (!available) {
       return const AlarmHealth();

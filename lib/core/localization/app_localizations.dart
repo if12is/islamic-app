@@ -217,6 +217,11 @@ class AppLocalizations {
           'Lock the phone now and put it down. A real prayer alert is queued the same way a real one is; if it does not sound while the screen is off, the problem is above and not in the settings.',
       'delivery_test_failed': 'The test could not be scheduled.',
       'delivery_copy_log': 'Copy the alerts log',
+      'next_prayer_ongoing': 'Next prayer',
+      'next_prayer_ongoing_channel': 'Next prayer in the status bar',
+      'next_prayer_ongoing_toggle': 'Next prayer in the status bar',
+      'next_prayer_ongoing_toggle_desc':
+          'A countdown that stays in the notifications. It also stops the phone from closing the app, so the adhan keeps coming.',
       'delivery_log_copied':
           'Log copied. Paste it in a message to the app developer.',
       'delivery_headline_ok': 'Alerts are working',
@@ -1653,6 +1658,11 @@ class AppLocalizations {
           'اقفل الهاتف الآن وضعه جانباً. سُجِّل تنبيه حقيقي بنفس طريقة تنبيه الصلاة تماماً؛ فإن لم يُسمع والشاشة مطفأة فالمشكلة فيما فوق لا في الإعدادات.',
       'delivery_test_failed': 'تعذّر جدولة الاختبار.',
       'delivery_copy_log': 'انسخ سجل التنبيهات',
+      'next_prayer_ongoing': 'الصلاة القادمة',
+      'next_prayer_ongoing_channel': 'الصلاة القادمة في شريط الإشعارات',
+      'next_prayer_ongoing_toggle': 'الصلاة القادمة في شريط الإشعارات',
+      'next_prayer_ongoing_toggle_desc':
+          'عدّاد ثابت في الإشعارات، ويمنع الهاتف من إغلاق التطبيق فيصلك الأذان في وقته.',
       'delivery_log_copied': 'نُسخ السجل. الصقه في رسالة لمطوّر التطبيق.',
       'delivery_headline_ok': 'التنبيهات تعمل',
       'delivery_headline_missed': 'بعض التنبيهات لم تصل',

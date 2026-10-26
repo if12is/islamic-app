@@ -229,6 +229,42 @@ void main() {
     });
   });
 
+  group('The next prayer in the status bar', () {
+    final days = PrayerCalculationService.computeRange(
+      latitude: 30.0444,
+      longitude: 31.2357,
+      method: 5,
+      from: DateTime(2026, 10, 26),
+      days: 2,
+    );
+
+    test('lists the five prayers of each day, sunrise left out', () {
+      final prayers = NotificationPlanner.upcomingPrayers(days, 'ar');
+      expect(prayers, hasLength(10));
+      expect(prayers.first.title, startsWith('الفجر '));
+      expect(prayers.any((p) => p.title.contains('الشروق')), isFalse);
+      for (var i = 1; i < prayers.length; i++) {
+        expect(prayers[i].at.isAfter(prayers[i - 1].at), isTrue);
+      }
+    });
+
+    test('reads its own language and digits', () {
+      final prayers = NotificationPlanner.upcomingPrayers(days, 'en');
+      expect(prayers.first.title, matches(RegExp(r'^Fajr \d{1,2}:\d{2} ')));
+    });
+
+    test('is off unless chosen, and remembered once chosen', () {
+      expect(NotificationPreferences.defaults.ongoingNextPrayer, isFalse);
+      final chosen = NotificationPreferences.defaults.copyWith(
+        ongoingNextPrayer: true,
+      );
+      expect(
+        NotificationPreferences.fromJson(chosen.toJson()).ongoingNextPrayer,
+        isTrue,
+      );
+    });
+  });
+
   group('What the device admits about delivery', () {
     AlarmHealth healthWith(Map<String, Object?> extra) => AlarmHealth.fromMap({
       'planSize': 900,

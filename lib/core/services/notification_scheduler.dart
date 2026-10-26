@@ -763,6 +763,26 @@ class NotificationPlanner {
   static String _prayerName(String languageCode, String prayerId) =>
       AppLocalizations.translate(languageCode, prayerId);
 
+  /// The five prayers of [days], each as the line the status bar shows for
+  /// it — «العصر ٣:٠٢ م» — and its time. Every prayer, whatever its alert
+  /// mode: the countdown says what is next, not what will sound.
+  static List<({DateTime at, String title})> upcomingPrayers(
+    List<ComputedPrayerDay> days,
+    String languageCode,
+  ) {
+    return [
+      for (final day in days)
+        for (final prayer in day.prayers)
+          if (PrayerIds.obligatory.contains(prayer.id))
+            (
+              at: prayer.time,
+              title:
+                  '${_prayerName(languageCode, prayer.id)} '
+                  '${formatClock(prayer.time, languageCode)}',
+            ),
+    ];
+  }
+
   /// 12-hour clock with a localized suffix, in the locale's digits.
   static String formatClock(DateTime time, String languageCode) {
     final isPm = time.hour >= 12;
@@ -798,6 +818,52 @@ class NotificationScheduler {
   /// other's freshly scheduled alarms, leaving the user with nothing queued.
   static Future<ScheduleResult>? _inFlight;
 
+  /// The prayer times of the next [horizonDays], from the stored place and
+  /// method. Madhab, manual offsets, and the high-latitude rule move the
+  /// times, so reminders are built from the same settings the screens use.
+  static List<ComputedPrayerDay> _days(
+    SharedPreferences prefs,
+    int horizonDays,
+  ) {
+    return PrayerCalculationService.computeRange(
+      latitude:
+          prefs.getDouble(AppConstants.userLatitudeKey) ?? _fallbackLatitude,
+      longitude:
+          prefs.getDouble(AppConstants.userLongitudeKey) ?? _fallbackLongitude,
+      method: prefs.getInt(AppConstants.prayerMethodKey) ?? 3,
+      days: horizonDays,
+      settings: PrayerSettingsStore.read(prefs),
+    );
+  }
+
+  /// The next prayer in the status bar: switched on or off to match the
+  /// setting, with six weeks of prayers for the service to count down to.
+  static Future<void> _syncNextPrayer(
+    SharedPreferences prefs,
+    NotificationPreferences settings,
+  ) async {
+    if (!PrayerAlarms.available) {
+      return;
+    }
+    final enabled = settings.masterEnabled && settings.ongoingNextPrayer;
+    final languageCode = prefs.getString(AppConstants.localeKey) ?? 'ar';
+    await PrayerAlarms.setNextPrayer(
+      enabled: enabled,
+      label: AppLocalizations.translate(languageCode, 'next_prayer_ongoing'),
+      channelName: AppLocalizations.translate(
+        languageCode,
+        'next_prayer_ongoing_channel',
+      ),
+      prayers:
+          enabled
+              ? NotificationPlanner.upcomingPrayers(
+                _days(prefs, NotificationPlanner.engineHorizonDays),
+                languageCode,
+              )
+              : const [],
+    );
+  }
+
   /// Build the plan without scheduling it — used for the "what's next" preview.
   static Future<List<ScheduledNotification>> preview({
     SharedPreferences? preferences,
@@ -807,18 +873,7 @@ class NotificationScheduler {
   }) async {
     final prefs = preferences ?? await SharedPreferences.getInstance();
     final settings = overrides ?? readPreferences(prefs);
-
-    final days = PrayerCalculationService.computeRange(
-      latitude:
-          prefs.getDouble(AppConstants.userLatitudeKey) ?? _fallbackLatitude,
-      longitude:
-          prefs.getDouble(AppConstants.userLongitudeKey) ?? _fallbackLongitude,
-      method: prefs.getInt(AppConstants.prayerMethodKey) ?? 3,
-      days: horizonDays,
-      // Madhab, manual offsets, and the high-latitude rule move the times, so
-      // reminders must be built from the same settings the screens use.
-      settings: PrayerSettingsStore.read(prefs),
-    );
+    final days = _days(prefs, horizonDays);
 
     // The ayah of the day is written into the notification text, and the
     // mushaf it is written from is read synchronously from memory. Fetching
@@ -929,6 +984,8 @@ class NotificationScheduler {
 
       // The widget mirrors the same calculation, so refresh it here too.
       unawaited(WidgetService.refresh(preferences: prefs));
+
+      await _syncNextPrayer(prefs, settings);
 
       if (!settings.masterEnabled) {
         await NotificationService.cancelAllScheduled();
