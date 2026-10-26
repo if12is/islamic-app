@@ -212,7 +212,93 @@ main { padding-top: 92px; }
 .stage .device.iphone { --w: 270px; z-index: 2; transform: translateX(-46px) rotate(-3deg); }
 .stage .device.android { --w: 220px; position: absolute; inset-inline-start: 4%; top: 150px; z-index: 1; transform: rotate(6deg); }
 .stage .hint { position: absolute; bottom: -4px; inset-inline-end: 0; font-size: 13px; color: var(--ink-faint); display: flex; gap: 6px; align-items: center; }
-.arches { display: block; width: 100%; height: 110px; margin-top: 8px; color: var(--arch); }
+/* ---------- The seasonal skyline ----------
+   Five scenes share one skyline; each has its own sky behind it, and its
+   own ornaments in front. The palettes are the app's seasonal ones. */
+.strip-seasons {
+  --sky-ink: var(--arch); --orn: #F0B429;
+  position: relative; height: 190px; margin-top: 8px; overflow: hidden; isolation: isolate;
+  -webkit-mask: linear-gradient(transparent, #000 22%); mask: linear-gradient(transparent, #000 22%);
+}
+.strip-seasons .sky { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; z-index: -1; }
+.sky-mosque { background: transparent; }
+.sky-ramadan { background: linear-gradient(180deg, #10233F, #1D3B5C); }
+.sky-last-ten { background: radial-gradient(120% 140% at 50% 120%, #16264A, #080F22 70%); }
+.sky-fitr { background: linear-gradient(180deg, #07463F, #0E7C5A); }
+.sky-adha { background: linear-gradient(180deg, #2C1E10, #6B4A22); }
+.strip-seasons[data-scene="mosque"] .sky-mosque, .strip-seasons[data-scene="ramadan"] .sky-ramadan,
+.strip-seasons[data-scene="last-ten"] .sky-last-ten, .strip-seasons[data-scene="fitr"] .sky-fitr,
+.strip-seasons[data-scene="adha"] .sky-adha { opacity: 1; }
+.strip-seasons[data-scene="ramadan"] { --sky-ink: #0A182C; --orn: #F0B429; }
+.strip-seasons[data-scene="last-ten"] { --sky-ink: #050A17; --orn: #FFD166; }
+.strip-seasons[data-scene="fitr"] { --sky-ink: #05302B; --orn: #2DD4BF; }
+.strip-seasons[data-scene="adha"] { --sky-ink: #1E140A; --orn: #F3D8A8; }
+.skyline { position: absolute; inset: auto 0 0 0; width: 100%; height: 150px; color: var(--sky-ink); transition: color 1.2s ease; }
+.decor > * { position: absolute; opacity: 0; transition: opacity 1s ease; color: var(--orn); }
+.decor .crescent { width: 46px; top: 46px; inset-inline-end: 12%; filter: drop-shadow(0 0 14px color-mix(in srgb, var(--orn) 70%, transparent)); }
+.decor .stars, .decor .lanterns, .decor .confetti { inset: 0; }
+.decor .bunting { top: 0; left: 0; width: 100%; height: 60px; }
+.strip-seasons:is([data-scene="ramadan"], [data-scene="last-ten"]) .crescent,
+.strip-seasons:is([data-scene="ramadan"], [data-scene="last-ten"], [data-scene="fitr"], [data-scene="adha"]) .stars,
+.strip-seasons:is([data-scene="ramadan"], [data-scene="adha"]) .lanterns,
+.strip-seasons[data-scene="fitr"] .confetti,
+.strip-seasons[data-scene="adha"] .bunting { opacity: 1; }
+.strip-seasons[data-scene="adha"] .crescent { opacity: 0; }
+.strip-seasons[data-scene="adha"] .decor .flag { opacity: 1; }
+.star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #FCE8B2; animation: twinkle 3s ease-in-out infinite; }
+.strip-seasons[data-scene="last-ten"] .star { width: 4px; height: 4px; box-shadow: 0 0 8px #FFD166; }
+@keyframes twinkle { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.lantern { position: absolute; top: -4px; transform-origin: 50% 0; animation: sway 4s ease-in-out infinite; }
+.lantern svg { display: block; width: 26px; filter: drop-shadow(0 0 12px rgba(240, 180, 41, .65)); }
+@keyframes sway { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.confetti i { position: absolute; top: -12px; width: 7px; height: 11px; border-radius: 2px; animation: fall linear infinite; }
+@keyframes fall { to { transform: translateY(220px) rotate(540deg); } }
+.flag { position: absolute; top: 4px; width: 0; height: 0; border-inline: 9px solid transparent; border-top: 16px solid; animation: flutter 2.6s ease-in-out infinite; transform-origin: 50% 0; }
+@keyframes flutter { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.greeting {
+  position: absolute; z-index: 2; top: 54px; inset-inline-start: 50%; translate: 50% 0; margin: 0; text-align: center;
+  display: grid; gap: 2px; pointer-events: none; transition: color 1s ease;
+}
+.greeting b { font-family: var(--display); font-size: 30px; line-height: 1.2; color: var(--title); transition: color 1s ease; }
+.greeting span { font-size: 13.5px; color: var(--ink-muted); transition: color 1s ease; }
+.strip-seasons:not([data-scene="mosque"]) .greeting b { color: var(--orn); }
+.strip-seasons:not([data-scene="mosque"]) .greeting span { color: rgba(255,255,255,.82); }
+.strip-seasons[data-scene="mosque"] .greeting { top: 30px; }
+.scene-picker {
+  position: absolute; z-index: 3; bottom: 18px; left: 50%; translate: -50% 0; display: flex; gap: 4px; padding: 4px;
+  border-radius: 999px; background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--glass-edge, rgba(255,255,255,.5));
+}
+.scene-picker button { border: 0; background: transparent; color: var(--ink-muted); font-weight: 700; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.scene-picker button[aria-pressed="true"] { background: var(--brand); color: var(--on-brand); }
+@media (max-width: 600px) {
+  .strip-seasons { height: 170px; }
+  .greeting b { font-size: 24px; }
+  .scene-picker button { padding: 4px 7px; font-size: 11.5px; }
+  .decor .crescent { width: 34px; inset-inline-end: 6%; }
+}
+
+/* ---------- Seasons section: the intro films ---------- */
+.seasons-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; }
+.film {
+  margin: 0; border-radius: 26px; padding: 6px; background: linear-gradient(135deg, #F0B429, #8a6414 40%, #F0B429 70%, #b8861f);
+  box-shadow: 0 30px 60px -28px rgba(10, 30, 50, .6);
+}
+.film video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 21px; background: #111827; }
+.film figcaption { padding: 12px 10px 6px; color: #fff; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.film figcaption b { font-family: var(--display); font-size: 22px; }
+.film figcaption span { font-size: 14px; opacity: .85; }
+.film.ramadan { background: linear-gradient(135deg, #10233F, #1D3B5C); }
+.film.adha { background: linear-gradient(135deg, #2C1E10, #6B4A22); }
+.film { position: relative; }
+.film::after { content: ""; position: absolute; inset: 6px 6px auto 6px; aspect-ratio: 16 / 9; border-radius: 21px; box-shadow: 0 0 0 1.5px #F0B429 inset; pointer-events: none; }
+.palettes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.palette {
+  display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 10px; border-radius: 999px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); font-weight: 700; font-size: 14.5px; color: var(--ink);
+}
+.palette i { width: 30px; height: 18px; border-radius: 99px; flex: none; }
+.season-note { margin-top: 14px; color: var(--ink-faint); font-size: 14.5px; }
 @media (max-width: 960px) {
   .hero .wrap { grid-template-columns: 1fr; text-align: center; }
   .hero .lead { margin-inline: auto; }
@@ -273,6 +359,19 @@ main { padding-top: 92px; }
 .mic::after { animation-delay: 1.1s; }
 @keyframes ring { from { transform: scale(.8); opacity: .5; } to { transform: scale(1.5); opacity: 0; } }
 .mic svg { width: 40px; height: 40px; }
+.studio {
+  width: 92px; aspect-ratio: 9 / 16; border-radius: 14px; padding: 12px 8px 9px; display: flex; flex-direction: column; justify-content: space-between;
+  background: radial-gradient(100% 70% at 50% 0%, #1D5B48, #0A4A37 70%); box-shadow: 0 0 0 2px #D9A233, 0 18px 30px -14px rgba(10,74,55,.7);
+  transform: rotate(-4deg); transition: transform .5s;
+}
+.fcard:hover .studio { transform: rotate(0) scale(1.04); }
+.studio p { margin: auto 0; font-family: var(--quran); color: #FCE8B2; font-size: 15px; line-height: 1.9; text-align: center; }
+.studio .bar { display: flex; align-items: center; gap: 5px; direction: ltr; }
+.studio .play { width: 0; height: 0; border-block: 5px solid transparent; border-left: 8px solid #FCE8B2; }
+.studio .track { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,.25); position: relative; overflow: hidden; }
+.studio .track i { position: absolute; inset: 0 auto 0 0; width: 0; background: #F0B429; animation: playhead 4s linear infinite; }
+@keyframes playhead { to { width: 100%; } }
+.studio .size { font-size: 9px; font-weight: 800; color: #FCE8B2; }
 .ayah-art { font-family: var(--quran); font-size: 26px; color: var(--brand-deep); text-align: center; line-height: 2; padding: 0 18px; }
 :root[data-theme="dark"] .ayah-art { color: var(--ink); }
 .ayah-art .ok { color: var(--brand); } .ayah-art .near { color: var(--gold); } .ayah-art .miss { color: #C2453E; text-decoration: underline wavy; }
@@ -507,14 +606,55 @@ footer a { color: var(--ink-muted); }
       </div>
     </div>
   </div>
-  <svg class="arches" viewBox="0 0 1200 110" preserveAspectRatio="none" aria-hidden="true" fill="currentColor">
-    <path d="M0 110V64h110v46zM150 110V56a40 40 0 0 1 80 0v54zM270 110V48a60 60 0 0 1 120 0v62zM430 110V40a170 104 0 0 1 340 0v70zM810 110V48a60 60 0 0 1 120 0v62zM970 110V56a40 40 0 0 1 80 0v54zM1090 110V64h110v46z"/>
-  </svg>
+  <!-- The skyline wears the app's seasons in turn: plain domes, then Ramadan,
+       the last ten nights, and the two Eids, each in the palette the app
+       itself switches to (lib/core/services/seasonal_theme.dart). -->
+  <div class="strip-seasons" id="seasons-strip" data-scene="mosque" aria-roledescription="مشهد متغيّر" aria-label="زخارف المواسم في التطبيق">
+    <div class="sky sky-mosque"></div>
+    <div class="sky sky-ramadan"></div>
+    <div class="sky sky-last-ten"></div>
+    <div class="sky sky-fitr"></div>
+    <div class="sky sky-adha"></div>
+    <div class="decor" aria-hidden="true">
+      <svg class="crescent" viewBox="0 0 60 60"><path d="M38 4a26 26 0 1 0 18 44A22 22 0 1 1 38 4z" fill="currentColor"/></svg>
+      <div class="stars"></div>
+      <div class="lanterns"></div>
+      <div class="confetti"></div>
+      <svg class="bunting" viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 6 Q300 34 600 10 T1200 8" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".7"/></svg>
+    </div>
+    <svg class="skyline" viewBox="0 0 1200 160" preserveAspectRatio="xMidYMax slice" aria-hidden="true" fill="currentColor">
+      <rect x="0" y="146" width="1200" height="14"/>
+      <!-- the great mosque in the middle -->
+      <rect x="470" y="104" width="260" height="44"/>
+      <path d="M512 106a88 78 0 0 1 176 0z"/>
+      <rect x="598" y="10" width="4" height="22"/><circle cx="600" cy="8" r="5"/>
+      <path d="M430 148V44h20v104zM436 44l4-20 4 20zM426 72h28v6h-28z"/>
+      <path d="M750 148V44h20v104zM756 44l4-20 4 20zM746 72h28v6h-28z"/>
+      <path d="M436 24l4-14 4 14zM756 24l4-14 4 14z"/>
+      <!-- the smaller domes either side -->
+      <rect x="250" y="118" width="130" height="30"/><path d="M262 120a53 46 0 0 1 106 0z"/><rect x="313" y="60" width="4" height="16"/>
+      <rect x="820" y="118" width="130" height="30"/><path d="M832 120a53 46 0 0 1 106 0z"/><rect x="883" y="60" width="4" height="16"/>
+      <path d="M200 148V70h14v78zM203 70l4-16 4 16zM196 92h22v5h-22z"/>
+      <path d="M986 148V70h14v78zM989 70l4-16 4 16zM982 92h22v5h-22z"/>
+      <rect x="40" y="126" width="110" height="22"/><path d="M52 128a43 34 0 0 1 86 0z"/>
+      <rect x="1050" y="126" width="110" height="22"/><path d="M1062 128a43 34 0 0 1 86 0z"/>
+      <path d="M0 148v-26h30v26zM1170 148v-26h30v26z"/>
+    </svg>
+    <p class="greeting" aria-live="polite"><b data-greeting>بيوت الله</b><span data-greeting-sub>الفجر يلبس مواسمه: تابع المشهد</span></p>
+    <div class="scene-picker" role="group" aria-label="اختر المشهد">
+      <button type="button" data-pick="mosque" aria-pressed="true">مساجد</button>
+      <button type="button" data-pick="ramadan" aria-pressed="false">رمضان</button>
+      <button type="button" data-pick="last-ten" aria-pressed="false">العشر الأواخر</button>
+      <button type="button" data-pick="fitr" aria-pressed="false">الفطر</button>
+      <button type="button" data-pick="adha" aria-pressed="false">الأضحى</button>
+    </div>
+  </div>
 </section>
 
 <section class="band" style="padding:36px 0" aria-label="التطبيق بالأرقام">
   <div class="wrap stats">
     <div class="stat"><b>١١٤</b><span>سورة بالرسم العثماني</span></div>
+    <div class="stat"><b>٣</b><span>روايات: حفص وورش وقالون</span></div>
     <div class="stat"><b>١٣٦</b><span>باباً من حصن المسلم</span></div>
     <div class="stat"><b>٢٧</b><span>صوت أذان من العالم</span></div>
     <div class="stat"><b>١٢</b><span>قاعدة تجويد ملوّنة</span></div>
@@ -708,6 +848,33 @@ footer a { color: var(--ink-muted); }
   </div>
 </section>
 
+<section id="seasons" aria-labelledby="seasons-title" style="padding-top:0">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">المواسم</div>
+      <h2 id="seasons-title">التطبيق يلبس مواسمه</h2>
+      <p>في رمضان، والعشر الأواخر، وعيد الفطر، وعيد الأضحى تتغير ألوان التطبيق وزخارفه وحده: فوانيس تتمايل، ونجوم تتلألأ، وقصاصات العيد. وتستقبلك مقدّمة قصيرة مرة واحدة في اليوم.</p>
+    </div>
+    <div class="seasons-grid">
+      <figure class="film ramadan">
+        <video src="assets/seasons/ramadan.mp4" poster="assets/seasons/ramadan.webp" muted loop playsinline preload="none" aria-label="مقدّمة رمضان: هلال وفوانيس ومدفع الإفطار"></video>
+        <figcaption><b>رمضان كريم</b><span>شهر القرآن: وردك ومواقيتك وقيامك في مكان واحد</span></figcaption>
+      </figure>
+      <figure class="film adha">
+        <video src="assets/seasons/eid_adha.mp4" poster="assets/seasons/eid_adha.webp" muted loop playsinline preload="none" aria-label="مقدّمة عيد الأضحى: هلال وفوانيس وأضحية"></video>
+        <figcaption><b>عيد أضحى مبارك</b><span>أيام التشريق: ذكرٌ وتكبيرٌ وشكر</span></figcaption>
+      </figure>
+    </div>
+    <div class="palettes" role="group" aria-label="ألوان المواسم">
+      <button class="palette" type="button" data-pick="ramadan"><i style="background:linear-gradient(90deg,#10233F,#F0B429)"></i>رمضان</button>
+      <button class="palette" type="button" data-pick="last-ten"><i style="background:linear-gradient(90deg,#080F22,#FFD166)"></i>العشر الأواخر</button>
+      <button class="palette" type="button" data-pick="fitr"><i style="background:linear-gradient(90deg,#07463F,#2DD4BF)"></i>عيد الفطر</button>
+      <button class="palette" type="button" data-pick="adha"><i style="background:linear-gradient(90deg,#2C1E10,#E3A857)"></i>عيد الأضحى</button>
+    </div>
+    <p class="season-note">اضغط على أي لون ليلبسه المشهد أعلى الصفحة. والمقدّمة تُتخطّى بلمسة، وتُطفأ من الإعدادات.</p>
+  </div>
+</section>
+
 <section id="gallery" class="band" aria-labelledby="gallery-title">
   <div class="wrap">
     <div class="head">
@@ -890,7 +1057,7 @@ footer a { color: var(--ink-muted); }
     ]},
     { id: 'mushaf', title: 'المصحف', sub: 'كاملاً بالرسم العثماني، بثلاث روايات.', img: 'assets/screens/reader.webp', tint: '#D8E8E0', points: [
       ['١١٤ سورة على جهازك', 'المصحف كاملاً داخل التطبيق، بلا إنترنت.'],
-      ['حفص وورش وقالون', 'النص والقراءة تتبع الرواية التي تختارها.'],
+      ['ثلاث روايات', 'حفص عن عاصم، وورش وقالون عن نافع: النص والتلاوة يتبعان الرواية التي تختارها.'],
       ['فهرس كامل', 'بالسورة، أو الجزء، أو الحزب، أو الصفحة، أو مواضع السجدة.'],
       ['بحث بالصوت', 'قل اسم السورة أو اكتبه.'],
       ['تلوين التجويد', 'اثنتا عشرة قاعدة ملوّنة، مع مفتاح للألوان.'],
@@ -899,6 +1066,16 @@ footer a { color: var(--ink-muted); }
       ['راحة القراءة', 'الخط، والحجم، والتباعد، وألوان الصفحة، وقفل السطوع، والتمرير التلقائي.'],
       ['آخر قراءة', 'تعود حيث توقفت بضغطة من الرئيسية.'],
       ['إحصاءات القراءة', 'سلسلة أيامك، وخريطة سنتك، ومجموع ما قرأت.'],
+    ]},
+    { id: 'export', title: 'التصدير والمشاركة', sub: 'آية صورةً، أو فيديو بصوت القارئ، وإمساكية رمضان لمدينتك.', art: 'studio', tint: '#F3E6CB', isNew: true, points: [
+      ['الآية صورةً', 'شارك أي آية في صورة مزخرفة بالرسم العثماني.'],
+      ['فيديو بصوت القارئ', 'اختر السورة، ومن آية إلى آية، والقارئ، فيصنع لك فيديو تظهر فيه الآيات مع التلاوة.'],
+      ['ثلاثة مقاسات', 'طولي للقصص والحالات، أو مربّع، أو عرضي.'],
+      ['بطاقة بدل الفيديو', 'المقطع نفسه في صورة واحدة، إن أردت.'],
+      ['معاينة كما ستُصدَّر', 'ما تراه على الشاشة هو الملف نفسه مصغّراً، فلا مفاجآت.'],
+      ['إمساكية رمضان صورةً', 'ملصق بقوس وفوانيس وجدول ذهبي، بمواقيت مدينتك أنت.'],
+      ['الجدول الشهري', 'شاركه صورةً أو نصاً، أو اطبعه.'],
+      ['ملاحظاتك نصاً', 'صدّر تأملاتك وعلاماتك نصاً تملكه.'],
     ]},
     { id: 'listen', title: 'التلاوة والاستماع', sub: 'قرّاء متعددون، والشاشة مغلقة.', img: 'assets/screens/player.webp', tint: '#F3E6CB', points: [
       ['مكتبة القرّاء', 'سبعة قرّاء، اختر منهم من تحب.'],
@@ -960,7 +1137,8 @@ footer a { color: var(--ink-muted); }
     { id: 'you', title: 'على مقاسك', sub: 'ليلي ونهاري، عربي وإنجليزي، وخصوصيتك محفوظة.', img: 'assets/screens/home_dark.webp', tint: '#F3E6CB', points: [
       ['وضع ليلي كامل', 'كل شاشة لها وجهها الليلي، للفجر وقيام الليل.'],
       ['العربية والإنجليزية', 'التطبيق كله باللغتين.'],
-      ['أهلاً بالمواسم', 'واجهة خاصة لرمضان والمواسم المباركة.'],
+      ['ثوب لكل موسم', 'في رمضان والعشر الأواخر والعيدين تتغير الألوان والزخارف وحدها.'],
+      ['مقدّمة الموسم', 'مقطع قصير مرة في اليوم في رمضان والعيد، يُتخطّى بلمسة ويُطفأ من الإعدادات.'],
       ['نسخ احتياطي', 'احفظ علاماتك وملاحظاتك ووردك في ملف، واسترجعها على هاتف آخر.'],
       ['إدارة المساحة', 'كم يأخذ كل شيء، وما الذي يضيع إن حذفته.'],
       ['تحديث من الداخل', 'التحديث الجديد يصلك في التطبيق، مع ما الجديد فيه.'],
@@ -981,6 +1159,12 @@ footer a { color: var(--ink-muted); }
         const bar = el('i'); bar.style.animationDelay = (i * -0.11) + 's'; bar.style.animationDuration = (1 + d) + 's'; w.append(bar);
       });
       box.append(w);
+    } else if (kind === 'studio') {
+      // A verse being cut into a video: the frame, the text, the playhead.
+      const s = el('div', 'studio');
+      s.innerHTML = '<p>إِنَّ قُرْآنَ ٱلْفَجْرِ كَانَ مَشْهُودًا</p>'
+        + '<div class="bar"><span class="play"></span><span class="track"><i></i></span><span class="size">٩:١٦</span></div>';
+      box.append(s);
     } else if (kind === 'ayah') {
       const p = el('p', 'ayah-art');
       p.innerHTML = '<span class="ok">ٱلْحَمْدُ</span> <span class="ok">لِلَّهِ</span> <span class="near">رَبِّ</span> <span class="miss">ٱلْعَٰلَمِينَ</span>';
@@ -1078,6 +1262,72 @@ footer a { color: var(--ink-muted); }
     capFill.style.width = (t / 38 * 100) + '%';
     setInterval(tick, 1000);
   }
+
+  /* ---- The seasonal skyline: built once, then cycled ---- */
+  const strip = document.getElementById('seasons-strip');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SCENES = {
+    mosque: ['بيوت الله', 'الفجر يلبس مواسمه: تابع المشهد'],
+    ramadan: ['رمضان كريم', 'شهر القرآن: وردك ومواقيتك وقيامك في مكان واحد'],
+    'last-ten': ['العشر الأواخر', 'ليلة القدر تُلتمس في الأوتار'],
+    fitr: ['عيد فطر مبارك', 'تقبّل الله منا ومنكم صالح الأعمال'],
+    adha: ['عيد أضحى مبارك', 'أيام التشريق: ذكرٌ وتكبيرٌ وشكر'],
+  };
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const stars = strip.querySelector('.stars');
+  for (let i = 0; i < 34; i++) {
+    const s = el('i', 'star');
+    s.style.cssText = `left:${rand(2, 98)}%;top:${rand(6, 52)}%;animation-delay:${rand(-3, 0)}s;animation-duration:${rand(2, 4.5)}s`;
+    stars.append(s);
+  }
+  const LANTERN = '<svg viewBox="0 0 26 64"><line x1="13" y1="0" x2="13" y2="18" stroke="#F0B429" stroke-width="1.2"/><path d="M7 18h12l3 6v20l-3 6H7l-3-6V24z" fill="#F0B429"/><path d="M8.5 24h9v20h-9z" fill="#FCE8B2"/><path d="M10 50h6l-3 8z" fill="#C98A18"/></svg>';
+  const lanterns = strip.querySelector('.lanterns');
+  [[6, 1], [17, 1.35], [29, .9], [71, 1.2], [83, .95], [94, 1.3]].forEach(([x, s], i) => {
+    const l = el('div', 'lantern'); l.innerHTML = LANTERN;
+    l.style.cssText = `left:${x}%;scale:${s};animation-delay:${-i * .7}s`;
+    lanterns.append(l);
+  });
+  const confetti = strip.querySelector('.confetti');
+  const COLORS = ['#2DD4BF', '#F0B429', '#FCE8B2', '#10B981', '#ffffff', '#74E7D2'];
+  for (let i = 0; i < 40; i++) {
+    const c = el('i');
+    c.style.cssText = `left:${rand(0, 100)}%;background:${COLORS[i % COLORS.length]};animation-duration:${rand(3.5, 7)}s;animation-delay:${rand(-7, 0)}s;rotate:${rand(0, 90)}deg`;
+    confetti.append(c);
+  }
+  const bunting = strip.querySelector('.decor');
+  const FLAGS = ['#F3D8A8', '#E3A857', '#C58A46', '#FCE8B2'];
+  for (let i = 0; i < 26; i++) {
+    const f = el('i', 'flag');
+    const x = (i + .5) / 26 * 100;
+    f.style.cssText = `left:${x}%;top:${8 + Math.sin(x / 100 * Math.PI) * 12}px;border-top-color:${FLAGS[i % 4]};animation-delay:${-i * .2}s`;
+    f.dataset.flag = '';
+    bunting.append(f);
+  }
+  const ORDER = Object.keys(SCENES);
+  let sceneIndex = 0, timer = null;
+  const pickers = [...document.querySelectorAll('[data-pick]')];
+  const show = (name) => {
+    strip.dataset.scene = name;
+    sceneIndex = ORDER.indexOf(name);
+    strip.querySelector('[data-greeting]').textContent = SCENES[name][0];
+    strip.querySelector('[data-greeting-sub]').textContent = SCENES[name][1];
+    pickers.forEach((b) => b.setAttribute('aria-pressed', b.dataset.pick === name ? 'true' : 'false'));
+  };
+  const cycle = () => { if (!reduce) timer = setInterval(() => show(ORDER[(sceneIndex + 1) % ORDER.length]), 6000); };
+  pickers.forEach((b) => b.addEventListener('click', () => {
+    clearInterval(timer); show(b.dataset.pick); cycle();
+    if (b.classList.contains('palette')) strip.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  }));
+  strip.addEventListener('mouseenter', () => clearInterval(timer));
+  strip.addEventListener('mouseleave', () => { clearInterval(timer); cycle(); });
+  cycle();
+
+  /* ---- The intro films play only while on screen ---- */
+  const films = new IntersectionObserver((entries) => entries.forEach((e) => {
+    const v = e.target;
+    if (e.isIntersecting && !reduce) { v.play().catch(() => {}); } else { v.pause(); }
+  }), { threshold: .35 });
+  document.querySelectorAll('.film video').forEach((v) => films.observe(v));
 
   /* ---- Gallery ---- */
   const cards = [

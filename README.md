@@ -82,6 +82,8 @@ Installation steps for both platforms are on the [website](https://if12is.github
 ### And more
 - A Hijri calendar with the white days, Mondays and Thursdays, and the Eids marked.
 - A zakat calculator on the gold or silver nisab.
+- **Seasons**: through Ramadan, the last ten nights, Eid al-Fitr and Eid al-Adha the app changes its own colours and ornaments (lanterns, stars, confetti), with a short intro film once a day that can be skipped or switched off.
+- **Export and share**: any verse as an image; a video of a verse range in the reciter's voice, portrait, square or landscape; the Ramadan imsakiya as a poster for your own city; the monthly timetable as an image or text.
 - Arabic (RTL) and English, a full dark theme, and backup to a file.
 
 **Privacy:** no ads, no tracking, no account. Nothing leaves the device unless you ask it to.
