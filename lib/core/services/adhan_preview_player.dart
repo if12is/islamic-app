@@ -42,6 +42,8 @@ class AdhanPreviewPlayer {
     'rifat': 'assets/audio/adhan_rifat.mp3',
     'mustafa_ismail': 'assets/audio/adhan_mustafa_ismail.mp3',
     'fajr_abu_rahiq': 'assets/audio/adhan_fajr_abu_rahiq.mp3',
+    'nasraldeen_tobar': 'assets/audio/adhan_nasraldeen_tobar.mp3',
+    'nasraldeen_tobar_fajr': 'assets/audio/adhan_nasraldeen_tobar_fajr.mp3',
   };
 
   static Stream<PlayerState> get stateStream => _player.playerStateStream;
