@@ -18,6 +18,8 @@ void main() {
     'assets/audio/adhan_rifat.mp3': 300000,
     'assets/audio/adhan_mustafa_ismail.mp3': 600000,
     'assets/audio/adhan_fajr_abu_rahiq.mp3': 2000000,
+    'assets/audio/adhan_nasraldeen_tobar.mp3': 2500000,
+    'assets/audio/adhan_nasraldeen_tobar_fajr.mp3': 2800000,
   };
 
   for (final entry in minimumBytes.entries) {

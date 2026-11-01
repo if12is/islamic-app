@@ -126,11 +126,18 @@ class NotificationService {
       nameKey: 'adhan_sound_fajr_abu_rahiq',
       credit: 'islamweb.net',
     ),
-    // Nasr al-Din Tobar is not listed. The two recordings (regular, and Fajr
-    // with «الصلاة خير من النوم») are copyrighted, and no redistributable
-    // source was found — see android/adhan_sounds.md. The name keys
-    // adhan_sound_nasraldeen_tobar and adhan_sound_nasraldeen_tobar_fajr are
-    // reserved so the owner can drop the files in and add the entries.
+    AdhanSound(
+      id: 'nasraldeen_tobar',
+      rawResource: 'adhan_nasraldeen_tobar',
+      nameKey: 'adhan_sound_nasraldeen_tobar',
+      credit: 'soundcloud.com',
+    ),
+    AdhanSound(
+      id: 'nasraldeen_tobar_fajr',
+      rawResource: 'adhan_nasraldeen_tobar_fajr',
+      nameKey: 'adhan_sound_nasraldeen_tobar_fajr',
+      credit: 'archive.org',
+    ),
   ];
 
   static AdhanSound adhanSoundById(String id) => adhanSounds.firstWhere(
