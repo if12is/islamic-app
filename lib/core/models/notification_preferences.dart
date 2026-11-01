@@ -57,6 +57,8 @@ class NotificationPreferences {
     this.morningAzkarOffsetMinutes = 30,
     this.eveningAzkarEnabled = false,
     this.eveningAzkarOffsetMinutes = 30,
+    this.rizqDuasEnabled = false,
+    this.rizqDuasHour = 7,
     this.dailyAyahEnabled = false,
     this.dailyAyahHour = 9,
     this.dailyAyahMinute = 0,
@@ -105,6 +107,10 @@ class NotificationPreferences {
   /// Evening azkar, anchored to Asr.
   final bool eveningAzkarEnabled;
   final int eveningAzkarOffsetMinutes;
+
+  /// Rizq (provision) duas, at a fixed hour in the morning.
+  final bool rizqDuasEnabled;
+  final int rizqDuasHour;
 
   /// Verse of the day at a fixed time.
   final bool dailyAyahEnabled;
@@ -215,6 +221,8 @@ class NotificationPreferences {
     int? morningAzkarOffsetMinutes,
     bool? eveningAzkarEnabled,
     int? eveningAzkarOffsetMinutes,
+    bool? rizqDuasEnabled,
+    int? rizqDuasHour,
     bool? dailyAyahEnabled,
     int? dailyAyahHour,
     int? dailyAyahMinute,
@@ -250,6 +258,8 @@ class NotificationPreferences {
       eveningAzkarEnabled: eveningAzkarEnabled ?? this.eveningAzkarEnabled,
       eveningAzkarOffsetMinutes:
           eveningAzkarOffsetMinutes ?? this.eveningAzkarOffsetMinutes,
+      rizqDuasEnabled: rizqDuasEnabled ?? this.rizqDuasEnabled,
+      rizqDuasHour: rizqDuasHour ?? this.rizqDuasHour,
       dailyAyahEnabled: dailyAyahEnabled ?? this.dailyAyahEnabled,
       dailyAyahHour: dailyAyahHour ?? this.dailyAyahHour,
       dailyAyahMinute: dailyAyahMinute ?? this.dailyAyahMinute,
@@ -301,6 +311,8 @@ class NotificationPreferences {
     'morningAzkarOffsetMinutes': morningAzkarOffsetMinutes,
     'eveningAzkarEnabled': eveningAzkarEnabled,
     'eveningAzkarOffsetMinutes': eveningAzkarOffsetMinutes,
+    'rizqDuasEnabled': rizqDuasEnabled,
+    'rizqDuasHour': rizqDuasHour,
     'dailyAyahEnabled': dailyAyahEnabled,
     'dailyAyahHour': dailyAyahHour,
     'dailyAyahMinute': dailyAyahMinute,
@@ -364,6 +376,8 @@ class NotificationPreferences {
         30,
         max: 180,
       ),
+      rizqDuasEnabled: json['rizqDuasEnabled'] == true,
+      rizqDuasHour: intOr('rizqDuasHour', 7, max: 23),
       dailyAyahEnabled: json['dailyAyahEnabled'] == true,
       dailyAyahHour: intOr('dailyAyahHour', 9, max: 23),
       dailyAyahMinute: intOr('dailyAyahMinute', 0, max: 59),

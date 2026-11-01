@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/azkar/presentation/pages/azkar_page.dart';
+import '../../features/azkar/presentation/pages/rizq_duas_page.dart';
 import '../../features/azkar/presentation/pages/salawat_page.dart';
 import '../../features/prayer_times/data/prayer_log_store.dart';
 import '../../features/prayer_times/presentation/pages/hijri_calendar_page.dart';
@@ -183,6 +184,8 @@ class NotificationRouter {
         return const HijriCalendarPage();
       case 'azkar':
         return const AzkarPage();
+      case 'rizq':
+        return const RizqDuasPage();
       case 'salawat':
         return const SalawatPage();
       case 'quran':

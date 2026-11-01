@@ -178,6 +178,7 @@ void main() {
         // The share poster is composed at a fixed pixel size; the viewer's
         // font setting must not change what lands in the image.
         'lib/features/quran/presentation/widgets/weekly_report_card.dart',
+        'lib/features/azkar/presentation/widgets/azkar_share_card.dart',
         // These two are the size control itself. Each button is drawn at the
         // size it sets, so it can be judged by looking rather than by trying
         // — and scaling a sample by the very setting it is a sample of would

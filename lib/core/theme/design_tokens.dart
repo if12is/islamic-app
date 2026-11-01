@@ -382,6 +382,88 @@ class AppTokens extends ThemeExtension<AppTokens> {
   }
 }
 
+/// Fixed colours for an exported morning or evening azkar card.
+///
+/// The PNG someone sends has no theme. These live here so a share card does
+/// not grow new colour literals of its own, and so a later palette tune does
+/// not quietly restyle an image that has already left the phone.
+@immutable
+class AzkarSharePalette {
+  const AzkarSharePalette({
+    required this.background,
+    required this.backgroundAlt,
+    required this.ink,
+    required this.muted,
+    required this.accent,
+    required this.onAccent,
+    required this.badge,
+    required this.heart,
+    required this.star,
+  });
+
+  final Color background;
+  final Color backgroundAlt;
+  final Color ink;
+  final Color muted;
+  final Color accent;
+  final Color onAccent;
+  final Color badge;
+  final Color heart;
+  final Color star;
+
+  /// Warm light gray, the quiet status card.
+  static const mist = AzkarSharePalette(
+    background: Color(0xFFE6E4E0),
+    backgroundAlt: Color(0xFFF4F2EE),
+    ink: Color(0xFF2C312F),
+    muted: Color(0xFF6A706C),
+    accent: Color(0xFF8A7340),
+    onAccent: Color(0xFF2C312F),
+    badge: Color(0xFFF7F6F3),
+    heart: Color(0xFFC23B4A),
+    star: Color(0xFFC6A15A),
+  );
+
+  /// Deep green field, gold as the only accent.
+  static const garden = AzkarSharePalette(
+    background: Color(0xFF0E3B2E),
+    backgroundAlt: Color(0xFF145744),
+    ink: Color(0xFFF6F1E4),
+    muted: Color(0xFFD5E4DA),
+    accent: Color(0xFFE4C36A),
+    onAccent: Color(0xFF0E3B2E),
+    badge: Color(0xFF1C5C46),
+    heart: Color(0xFFE4C36A),
+    star: Color(0xFFF6F1E4),
+  );
+
+  /// Night sky. Stars sit in the header, not across the text.
+  static const night = AzkarSharePalette(
+    background: Color(0xFF10141B),
+    backgroundAlt: Color(0xFF1A2230),
+    ink: Color(0xFFF4EEE4),
+    muted: Color(0xFFB7C0CC),
+    accent: Color(0xFFE8C872),
+    onAccent: Color(0xFF10141B),
+    badge: Color(0xFF10141B),
+    heart: Color(0xFFE8C872),
+    star: Color(0xFFF4EEE4),
+  );
+
+  /// A manuscript page: paper, a double rule, ink.
+  static const parchment = AzkarSharePalette(
+    background: Color(0xFFF3E6CF),
+    backgroundAlt: Color(0xFFEAD7B8),
+    ink: Color(0xFF3A2A16),
+    muted: Color(0xFF7A6244),
+    accent: Color(0xFF8C5A1E),
+    onAccent: Color(0xFFF3E6CF),
+    badge: Color(0xFFF8F1E3),
+    heart: Color(0xFF8C5A1E),
+    star: Color(0xFFC4A15A),
+  );
+}
+
 /// `context.tokens` — the only way screens should reach a colour.
 extension AppTokensX on BuildContext {
   AppTokens get tokens =>

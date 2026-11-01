@@ -9,6 +9,27 @@ and resource names may only use lowercase `a-z`, `0-9`, and `_`.
 `adhan_fajr_abu_rahiq.mp3` — أذان الفجر، الشيخ إبراهيم جبر أبو رحيق (islamweb.net)
 
 Supplied by the app owner. Source metadata (ID3 tags) credits islamweb.net.
+Those tags also carry a 2006 copyright notice. They are not a licence to
+download further recordings from islamweb.net and ship them.
+
+## Nasr al-Din Tobar — not bundled
+
+Two sounds were requested, on the same pattern as the files above:
+
+- id `nasraldeen_tobar`, raw `adhan_nasraldeen_tobar` — the adhan without
+  «الصلاة خير من النوم»
+- id `nasraldeen_tobar_fajr`, raw `adhan_nasraldeen_tobar_fajr` — Fajr, with
+  that phrase
+
+They are not in `NotificationService.adhanSounds`. Copies in circulation
+(islamweb, SoundCloud, video rips, unlicensed archive uploads) do not state
+a licence that allows redistributing them inside the app, and this repo has
+no script that fetches them. Listing the ids without the files fails the
+preview test and would offer a sound the notification channel cannot play.
+The localized names `adhan_sound_nasraldeen_tobar` and
+`adhan_sound_nasraldeen_tobar_fajr` are already in both languages. When the
+owner supplies the two mp3s, drop each file in `res/raw/` and `assets/audio/`,
+then add the `AdhanSound` entries and the matching preview paths.
 
 To add another adhan:
 

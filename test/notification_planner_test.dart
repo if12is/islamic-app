@@ -759,6 +759,40 @@ void main() {
       expect(restored.fridaySalawatEnabled, isTrue);
     });
 
+    test('schedules a morning provision dua when it is turned on', () {
+      final plan = NotificationPlanner.build(
+        prefs: NotificationPreferences.defaults.copyWith(
+          masterEnabled: true,
+          preAdhanMinutes: 0,
+          prayerLogRemindersEnabled: false,
+          kahfRemindersEnabled: false,
+          fridaySalawatEnabled: false,
+          rizqDuasEnabled: true,
+          rizqDuasHour: 7,
+        ),
+        days: daysFrom(start, days: 1),
+        now: now,
+        languageCode: 'ar',
+      );
+
+      final rizq = plan.where((item) => item.payload == 'rizq:duas');
+      expect(rizq, hasLength(1));
+      expect(rizq.single.id, 4200);
+      expect(rizq.single.time.hour, 7);
+      expect(rizq.single.title, 'دعاء الرزق');
+      expect(rizq.single.body, isNot(contains('notif_')));
+    });
+
+    test('keeps the provision reminder across a round trip', () {
+      final restored = NotificationPreferences.decode(
+        NotificationPreferences.defaults
+            .copyWith(rizqDuasEnabled: true, rizqDuasHour: 6)
+            .encode(),
+      );
+      expect(restored.rizqDuasEnabled, isTrue);
+      expect(restored.rizqDuasHour, 6);
+    });
+
     test('quiet hours wrap past midnight', () {
       const prefs = NotificationPreferences(
         quietHoursEnabled: true,
@@ -780,19 +814,22 @@ void main() {
   });
 
   group('Delivery while the app is closed', () {
-    test('prayer alerts use the alarm clock, which the system does not drop', () {
-      expect(
-        NotificationService.scheduleModeFor(NotificationKind.prayer, true),
-        AndroidScheduleMode.alarmClock,
-      );
-      expect(
-        NotificationService.scheduleModeFor(NotificationKind.preAdhan, true),
-        AndroidScheduleMode.alarmClock,
-      );
-      expect(
-        NotificationService.scheduleModeFor(NotificationKind.azkar, false),
-        AndroidScheduleMode.alarmClock,
-      );
-    });
+    test(
+      'prayer alerts use the alarm clock, which the system does not drop',
+      () {
+        expect(
+          NotificationService.scheduleModeFor(NotificationKind.prayer, true),
+          AndroidScheduleMode.alarmClock,
+        );
+        expect(
+          NotificationService.scheduleModeFor(NotificationKind.preAdhan, true),
+          AndroidScheduleMode.alarmClock,
+        );
+        expect(
+          NotificationService.scheduleModeFor(NotificationKind.azkar, false),
+          AndroidScheduleMode.alarmClock,
+        );
+      },
+    );
   });
 }
