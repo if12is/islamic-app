@@ -10,6 +10,8 @@ import '../../../../core/widgets/arabic_text_block.dart';
 import '../../data/azkar_progress_store.dart';
 import '../../data/models/azkar_models.dart';
 import '../../data/tasbeeh_link.dart';
+import '../../domain/azkar_share_copy.dart';
+import 'azkar_share_page.dart';
 
 class AzkarDetailsPage extends StatefulWidget {
   final AzkarCategory category;
@@ -97,6 +99,11 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
       return const AppScaffold(body: Center(child: CustomLoader()));
     }
 
+    final period = AzkarShareCopy.fromCategory(
+      id: widget.category.id,
+      nameAr: widget.category.nameAr,
+    );
+
     return AppScaffold(
       showBack: true,
       titleWidget: Text(
@@ -108,6 +115,17 @@ class _AzkarDetailsPageState extends State<AzkarDetailsPage> {
         style: AppTextStyles.display(context, fontSize: 18),
       ),
       actions: [
+        if (period != null)
+          IconButton(
+            tooltip: context.tr('azkar_share_open'),
+            onPressed:
+                () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AzkarSharePage(period: period),
+                  ),
+                ),
+            icon: const Icon(Icons.ios_share, size: 20),
+          ),
         IconButton(
           icon: const Icon(Icons.refresh, size: 20),
           onPressed: _resetAll,

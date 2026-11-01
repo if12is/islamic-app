@@ -6,7 +6,7 @@ publish_to: 'none'
 # APK as an upgrade. This value decides only what a locally built APK reports,
 # and it is kept near the published build so a local build does not announce
 # every release as an update to itself. The name is what people read.
-version: 1.6.5+41
+version: 1.6.6+42
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
@@ -75,6 +75,7 @@ flutter:
     - assets/icons/
     - assets/audio/
     - assets/video/
+    - assets/fonts/ReadexPro-OFL.txt
   fonts:
     - family: Cairo
       fonts:
@@ -90,6 +91,10 @@ flutter:
     - family: ReemKufi
       fonts:
         - asset: assets/fonts/ReemKufi.ttf
+    # Thin variable naskh for shared azkar cards only (SIL OFL 1.1).
+    - family: ReadexPro
+      fonts:
+        - asset: assets/fonts/ReadexPro-Variable.ttf
 
 # Regenerate the sources first: python3 scripts/brand_assets.py
 # Then fan them out:      dart run flutter_launcher_icons

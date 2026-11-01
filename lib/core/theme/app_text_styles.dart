@@ -20,6 +20,12 @@ class AppTextStyles {
   /// Body face.
   static const String bodyFamily = AppTheme.fontFamily;
 
+  /// Thin naskh used only on the shareable morning and evening cards.
+  ///
+  /// Readex Pro is a variable naskh (SIL OFL). It is not a replacement for
+  /// Cairo, Reem Kufi, or the Mushaf face.
+  static const String shareFamily = 'ReadexPro';
+
   /// Quranic text: bigger, airier, and in the Mushaf face.
   static TextStyle quran(
     BuildContext context, {

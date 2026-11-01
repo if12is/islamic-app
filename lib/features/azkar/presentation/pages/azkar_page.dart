@@ -26,6 +26,9 @@ import 'all_azkar_categories_page.dart';
 import 'azkar_details_page.dart';
 import 'divine_names_page.dart';
 import 'dua_library_page.dart';
+import '../../domain/azkar_share_copy.dart';
+import 'azkar_share_page.dart';
+import 'rizq_duas_page.dart';
 import 'ruqyah_page.dart';
 import 'salawat_page.dart';
 
@@ -167,6 +170,19 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     setState(() => _nowAzkar = snapshot);
   }
 
+  void _openShare(AzkarCategory category) {
+    final period = AzkarShareCopy.fromCategory(
+      id: category.id,
+      nameAr: category.nameAr,
+    );
+    if (period == null) {
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => AzkarSharePage(period: period)),
+    );
+  }
+
   void _navigateToDetails(AzkarCategory category) {
     if (category.azkar.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -276,6 +292,16 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.md),
+        _shortcut(
+          icon: Icons.volunteer_activism_outlined,
+          label: context.tr('rizq_duas_entry'),
+          subtitle: context.tr('rizq_duas_entry_desc'),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const RizqDuasPage()),
+              ),
+        ),
       ],
     );
   }
@@ -283,6 +309,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
   Widget _shortcut({
     required IconData icon,
     required String label,
+    String? subtitle,
     required VoidCallback onTap,
   }) {
     final tokens = context.tokens;
@@ -298,11 +325,23 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
           Icon(icon, size: 20, color: tokens.gold),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.body(context, fontSize: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body(context, fontSize: 14),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption(context),
+                  ),
+              ],
             ),
           ),
         ],
@@ -432,6 +471,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                   count: morning.azkar.length.toString(),
                   icon: Icons.wb_twilight,
                   onTap: () => _navigateToDetails(morning),
+                  onShare: () => _openShare(morning),
                   category: morning,
                 ),
               ),
@@ -447,6 +487,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
                   count: evening.azkar.length.toString(),
                   icon: Icons.nights_stay_outlined,
                   onTap: () => _navigateToDetails(evening),
+                  onShare: () => _openShare(evening),
                   category: evening,
                 ),
               ),
@@ -496,6 +537,7 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
     required String count,
     required IconData icon,
     required VoidCallback onTap,
+    VoidCallback? onShare,
     AzkarCategory? category,
   }) {
     return AppCard(
@@ -539,6 +581,27 @@ class _AzkarPageState extends ConsumerState<AzkarPage> {
               ),
             ),
           ],
+          if (onShare != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                onPressed: onShare,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+                child: FittedBox(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.ios_share, size: 18),
+                      const SizedBox(width: 6),
+                      Text(context.tr('azkar_share_open')),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

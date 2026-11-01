@@ -76,6 +76,7 @@ class NotificationPlanner {
   static const int _iqamaIdBase = 3000;
   static const int _morningAzkarIdBase = 4000;
   static const int _eveningAzkarIdBase = 4100;
+  static const int _rizqDuasIdBase = 4200;
   static const int _dailyAyahIdBase = 5000;
   static const int _wirdIdBase = 6000;
   static const int _eventIdBase = 7000;
@@ -351,6 +352,41 @@ class NotificationPlanner {
             actions: [
               NotificationActionSpec(
                 id: 'open_azkar',
+                label: AppLocalizations.translate(languageCode, 'open'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Rizq (provision) duas at a fixed hour in the morning.
+      if (prefs.rizqDuasEnabled) {
+        final time = DateTime(
+          day.date.year,
+          day.date.month,
+          day.date.day,
+          prefs.rizqDuasHour,
+        );
+        _add(
+          items,
+          now,
+          ScheduledNotification(
+            id: _rizqDuasIdBase + dayIndex,
+            kind: NotificationKind.azkar,
+            time: time,
+            mode: _quietAware(prefs, time),
+            title: AppLocalizations.translate(
+              languageCode,
+              'notif_rizq_duas_title',
+            ),
+            body: AppLocalizations.translate(
+              languageCode,
+              'notif_rizq_duas_body',
+            ),
+            payload: 'rizq:duas',
+            actions: [
+              NotificationActionSpec(
+                id: 'open_rizq',
                 label: AppLocalizations.translate(languageCode, 'open'),
               ),
             ],

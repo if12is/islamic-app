@@ -1502,6 +1502,46 @@ class _NotificationCenterPageState
                       .update(prefs.copyWith(eveningAzkarOffsetMinutes: value)),
                 ),
           ),
+        const Divider(height: 24),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          value: prefs.rizqDuasEnabled,
+          onChanged:
+              _busy
+                  ? null
+                  : (value) => _apply(
+                    () => ref
+                        .read(notificationPreferencesProvider.notifier)
+                        .update(prefs.copyWith(rizqDuasEnabled: value)),
+                  ),
+          title: Text(context.tr('rizq_duas_reminder')),
+          subtitle: Text(context.tr('rizq_duas_reminder_desc')),
+        ),
+        if (prefs.rizqDuasEnabled)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed:
+                  _busy
+                      ? null
+                      : () => _pickTime(
+                        hour: prefs.rizqDuasHour,
+                        minute: 0,
+                        onPicked:
+                            (hour, minute) => _apply(
+                              () => ref
+                                  .read(
+                                    notificationPreferencesProvider.notifier,
+                                  )
+                                  .update(prefs.copyWith(rizqDuasHour: hour)),
+                            ),
+                      ),
+              icon: const Icon(Icons.schedule, size: 18),
+              label: Text(
+                '${context.tr('change_time')} · ${_formatHourMinute(prefs.rizqDuasHour, 0)}',
+              ),
+            ),
+          ),
       ],
     );
   }
