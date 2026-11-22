@@ -1,0 +1,27 @@
+name: Bug report / بلاغ عن مشكلة
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / ماذا حدث؟
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / خطوات تكرار المشكلة
+  - type: input
+    id: device
+    attributes:
+      label: Phone, Android/iOS version, app version
+      placeholder: e.g. Xiaomi Redmi Note 12, Android 14, Fajr 1.6.7
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Alerts log (for adhan problems)
+      description: Settings → Notification centre → "Copy the alerts log", then paste here.
+      render: text

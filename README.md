@@ -183,6 +183,21 @@ The site lives in [`docs/`](docs/) and is served by GitHub Pages at
 **https://if12is.github.io/islamic-app/**. It reads the latest version and file sizes from the
 GitHub Releases API, so it never needs editing for a new build.
 
+## Contributing
+
+Fajr is open source and welcomes contributors. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), then pick an issue labelled
+[`good first issue`](https://github.com/if12is/islamic-app/labels/good%20first%20issue) or
+[`help wanted`](https://github.com/if12is/islamic-app/labels/help%20wanted).
+The biggest open goal is an **on-device Quran recitation (tasmee') model**: today the recitation check uses general-purpose
+Whisper models that were never trained on tajwid.
+
+التطبيق مفتوح المصدر ويرحّب بالمساهمة في الكود والترجمة وبيانات التلاوة لنموذج التسميع.
+
+## License
+
+The source code is licensed under the [GNU GPL v3.0 or later](LICENSE). Fonts, icons and adhan recordings keep their own
+licenses and rights; see [`NOTICE.md`](NOTICE.md).
+
 ## Contact
 
 - 📧 Email: [ahmed.elsayed.dev1@gmail.com](mailto:ahmed.elsayed.dev1@gmail.com)

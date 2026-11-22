@@ -1,0 +1,19 @@
+name: Feature request / اقتراح ميزة
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help with? / ما الفائدة؟
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / الحل المقترح
+  - type: textarea
+    id: source
+    attributes:
+      label: Source (for religious content)
+      description: If the request adds Quran, hadith or azkar text, name the source.
