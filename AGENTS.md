@@ -235,6 +235,13 @@ as `https://tilawa.dev/v1/`. `TilawaServer` then serves that folder and the page
 File names and sizes in `TilawaStore.files` must match the published ones; update them when bumping
 `@tilawa/core`/`onnxruntime-web` (the `ortVersion` constant too).
 Android still needs the OS `RECORD_AUDIO` grant, which `TilawaEngine.start` obtains through `record`.
+How slips are shown was tuned on real recitations (Alafasy/Husary/Minshawy An-Nas, spliced and with noise):
+`host.js` uses `confirm: delay 2000 ms` and `minConfidence 0.75` (confirming on the next word, or a lower floor, gave
+false mistakes under noise), and `PassageProgress` colours words from the engine's *span* only for locked positions
+at confidence >= 0.7, turns a word green only two words behind the span end, shows only *confirmed* mistakes, and
+shows words the reciter moved past unheard as "not heard clearly" instead of correct. `test/tilawa_replay_test.dart`
+replays captured engine traces (`test/fixtures/tilawa`) through it. The engine misses an omission at the very end
+of an ayah, and a repeated ending (like "الناس" in An-Nas) can be matched to the wrong place.
 Only hifz slips are detected, not tajweed, and the screen says so. Never use the 0.x models (NPL-1.2,
 non-commercial). Web / desktop have no WebView here, so the page shows "unavailable" there.
 

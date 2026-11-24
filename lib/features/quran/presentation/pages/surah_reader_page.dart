@@ -965,8 +965,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
     final useEnglish = showEnglish && _english.isNotEmpty;
     final scriptFamily =
         useEnglish ? AppTheme.fontFamily : settings.font.family;
-    final scriptDirection =
-        useEnglish ? TextDirection.ltr : TextDirection.rtl;
+    final scriptDirection = useEnglish ? TextDirection.ltr : TextDirection.rtl;
 
     void flush() {
       if (spans.isEmpty) {
@@ -1105,8 +1104,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       bookmarkedVerses,
       audio,
       showEnglish:
-          !context.isAppRtl &&
-          settings.verseLanguage == VerseLanguage.english,
+          !context.isAppRtl && settings.verseLanguage == VerseLanguage.english,
     );
 
     return NotificationListener<ScrollNotification>(
@@ -1157,8 +1155,7 @@ class _SurahReaderPageState extends ConsumerState<SurahReaderPage>
       controller: _pageController,
       // RTL: swiping from the left edge moves forward, like turning a Mushaf.
       reverse:
-          context.isAppRtl ||
-          settings.verseLanguage != VerseLanguage.english,
+          context.isAppRtl || settings.verseLanguage != VerseLanguage.english,
       itemCount: _pages.length,
       onPageChanged: _onPageChanged,
       itemBuilder: (context, index) {

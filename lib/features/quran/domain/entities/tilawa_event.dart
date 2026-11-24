@@ -91,7 +91,10 @@ sealed class TilawaEvent {
             observed is List && observed.isNotEmpty && observed.first is Map
                 ? observed.first as Map
                 : null;
+        final span = top?['span'];
         return TilawaPosition(
+          spanStart: span is Map ? WordPosition.fromJson(span['start']) : null,
+          spanEnd: span is Map ? WordPosition.fromJson(span['end']) : null,
           state: switch (json['state']) {
             'locked' => TrackState.locked,
             'ambiguous' => TrackState.ambiguous,
@@ -118,6 +121,7 @@ sealed class TilawaEvent {
           },
           kind: kind,
           location: location,
+          confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
         );
       case 'done':
         final list = json['mistakes'];
@@ -180,9 +184,16 @@ class TilawaPosition extends TilawaEvent {
     required this.expected,
     required this.observed,
     required this.confidence,
+    this.spanStart,
+    this.spanEnd,
   });
 
   final TrackState state;
+
+  /// The words the engine currently believes were recited, first to last. It
+  /// is cumulative, and it jumps forward when something was skipped.
+  final WordPosition? spanStart;
+  final WordPosition? spanEnd;
 
   /// Where a memorisation session expects the reciter to be.
   final WordPosition? expected;
@@ -198,12 +209,14 @@ class TilawaChecker extends TilawaEvent {
     required this.state,
     required this.kind,
     required this.location,
+    this.confidence = 0,
   });
 
   final String id;
   final CheckerState state;
   final MistakeKind kind;
   final WordPosition location;
+  final double confidence;
 }
 
 class TilawaMistake {

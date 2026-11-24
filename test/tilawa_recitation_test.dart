@@ -4,25 +4,46 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:islamic_app/features/quran/domain/entities/passage_progress.dart';
 import 'package:islamic_app/features/quran/domain/entities/tilawa_event.dart';
 
-String _position(int ayah, int word, {String state = 'locked'}) => jsonEncode({
+Map<String, int> _w(String at) {
+  final p = at.split(':').map(int.parse).toList();
+  return {'s': 1, 'a': p[0], 'w': p[1]};
+}
+
+String _position(
+  int ayah,
+  int word, {
+  String state = 'locked',
+  double conf = 0.9,
+  String spanStart = '1:1',
+}) => jsonEncode({
   't': 'position',
   'state': state,
   'expected': null,
   'observed': [
     {
       'word': {'s': 1, 'a': ayah, 'w': word},
-      'confidence': 0.9,
+      'span': {
+        'start': _w(spanStart),
+        'end': {'s': 1, 'a': ayah, 'w': word},
+      },
+      'confidence': conf,
     },
   ],
 });
 
-String _checker(String id, String state, int ayah, int word) => jsonEncode({
+String _checker(
+  String id,
+  String state,
+  int ayah,
+  int word, {
+  double conf = 0.8,
+}) => jsonEncode({
   't': 'checker',
   'id': id,
   'state': state,
   'errorClass': 'wrong_word',
   'location': {'s': 1, 'a': ayah, 'w': word},
-  'confidence': 0.8,
+  'confidence': conf,
 });
 
 PassageProgress _passage() => PassageProgress(
@@ -110,21 +131,52 @@ void main() {
       ]);
     });
 
-    test('lights up every word up to the one heard', () {
+    test(
+      'a word is tentative first, and settles once the engine is past it',
+      () {
+        final progress = _passage();
+        progress.apply(TilawaEvent.parse(_position(1, 2))!);
+        expect(progress.statusAt(0), WordStatus.tentative);
+        expect(progress.statusAt(1), WordStatus.tentative);
+        expect(progress.statusAt(2), WordStatus.pending);
+
+        progress.apply(TilawaEvent.parse(_position(1, 4))!);
+        expect(progress.statusAt(0), WordStatus.recited);
+        expect(progress.statusAt(1), WordStatus.recited);
+        expect(progress.statusAt(2), WordStatus.tentative);
+        expect(progress.statusAt(3), WordStatus.tentative);
+        expect(progress.heardCount, 4);
+      },
+    );
+
+    test('ignores positions that are not locked or not confident', () {
       final progress = _passage();
-      progress.apply(TilawaEvent.parse(_position(1, 3))!);
-      expect(progress.reached, 3);
-      expect(progress.statusAt(0), WordStatus.recited);
-      expect(progress.statusAt(2), WordStatus.recited);
-      expect(progress.statusAt(3), WordStatus.pending);
+      expect(
+        progress.apply(TilawaEvent.parse(_position(1, 3, state: 'acquiring'))!),
+        isFalse,
+      );
+      expect(
+        progress.apply(TilawaEvent.parse(_position(1, 3, conf: 0.6))!),
+        isFalse,
+      );
+      expect(progress.heardCount, 0);
     });
 
-    test('never moves backwards on a late or repeated position', () {
+    test('a hesitant guess is taken back when the span moves on', () {
       final progress = _passage();
-      progress.apply(TilawaEvent.parse(_position(2, 2))!);
-      final changed = progress.apply(TilawaEvent.parse(_position(1, 1))!);
-      expect(changed, isFalse);
-      expect(progress.reached, 6);
+      progress.apply(TilawaEvent.parse(_position(1, 3, conf: 0.76))!);
+      expect(progress.statusAt(2), WordStatus.tentative);
+      // The engine now says the third word was never recited.
+      progress.apply(TilawaEvent.parse(_position(2, 2, spanStart: '1:4'))!);
+      expect(progress.statusAt(2), WordStatus.unverified);
+    });
+
+    test('a word the reciter moved past unheard is not called correct', () {
+      final progress = _passage();
+      progress.apply(TilawaEvent.parse(_position(2, 4, spanStart: '1:4'))!);
+      expect(progress.statusAt(0), WordStatus.unverified);
+      expect(progress.statusAt(2), WordStatus.unverified);
+      expect(progress.statusAt(3), WordStatus.recited);
     });
 
     test('marks a confirmed slip, and clears it when the reciter corrects', () {
@@ -139,10 +191,13 @@ void main() {
       expect(progress.wrongCount, 0);
     });
 
-    test('ignores a suspected slip until it is confirmed', () {
+    test('ignores a suspected slip and a low-confidence confirmation', () {
       final progress = _passage();
       progress.apply(TilawaEvent.parse(_position(1, 3))!);
       progress.apply(TilawaEvent.parse(_checker('m1', 'suspected', 1, 2))!);
+      progress.apply(
+        TilawaEvent.parse(_checker('m2', 'confirmed', 1, 2, conf: 0.6))!,
+      );
       expect(progress.wrongCount, 0);
     });
 
@@ -161,7 +216,7 @@ void main() {
       expect(progress.apply(TilawaEvent.parse(other)!), isFalse);
 
       progress.apply(TilawaEvent.parse(_position(1, 9))!);
-      expect(progress.reached, 4);
+      expect(progress.statusAt(3), WordStatus.tentative);
     });
   });
 }

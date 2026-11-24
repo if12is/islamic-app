@@ -639,7 +639,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
 
   Widget _scoreBar(BuildContext context, ColorScheme colorScheme) {
     final total = _progress.length;
-    final reached = _progress.reached;
+    final reached = _progress.heardCount;
     final value = total == 0 ? 0.0 : reached / total;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -681,10 +681,11 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
               style: AppTextStyles.quran(
                 context,
                 fontSize: 22,
-                color:
-                    _progress.statusAt(i) == WordStatus.pending
-                        ? colorScheme.onSurfaceVariant
-                        : colorScheme.onSurface,
+                color: switch (_progress.statusAt(i)) {
+                  WordStatus.pending ||
+                  WordStatus.tentative => colorScheme.onSurfaceVariant,
+                  _ => colorScheme.onSurface,
+                },
               ),
             ),
           ),
@@ -695,7 +696,10 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   Color _colourFor(WordStatus status, ColorScheme colorScheme) =>
       switch (status) {
         WordStatus.pending => Colors.transparent,
+        // Heard, but the engine has not moved on enough to be sure.
+        WordStatus.tentative => colorScheme.primary.withValues(alpha: 0.08),
         WordStatus.recited => colorScheme.primary.withValues(alpha: 0.22),
+        WordStatus.unverified => colorScheme.secondary.withValues(alpha: 0.22),
         WordStatus.wrong => colorScheme.error.withValues(alpha: 0.24),
       };
 
@@ -722,6 +726,10 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
       alignment: WrapAlignment.center,
       children: [
         item(colorScheme.primary.withValues(alpha: 0.4), 'recite_legend_ok'),
+        item(
+          colorScheme.secondary.withValues(alpha: 0.45),
+          'recite_legend_unverified',
+        ),
         item(colorScheme.error.withValues(alpha: 0.45), 'recite_legend_wrong'),
       ],
     );
