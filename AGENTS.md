@@ -216,15 +216,27 @@ known place) fall back to the geocoder, then to the stored label.
 
 ### Recitation check (experimental)
 
-`RecitationService` wraps `speech_to_text` and uses the device's own recognizer: nothing is recorded,
-nothing is uploaded, no model is downloaded by us. Which voice pack listens is the user's choice —
-`RecitationLocaleSheet` lists what is installed, remembers the pick (`recitation_locale_id`), lets
-several packs be switched between, and opens the system screen for adding more via the
-`openSpeechSettings` method channel. A missing Arabic pack must never block anything else: the
-feature is one screen behind a mic button, and the message says so. That recognizer is not built for classical recitation, so
-`RecitationMatcher` (pure Dart, unit-tested) aligns what it heard against the text on the alef-stripped
-skeleton, tolerating a dropped or inserted word, and grades each word correct / near / wrong. Treat its
-output as a reading aid, never as a ruling — the screen says as much, and so should any feature built on it.
+Listening is done by [Tilawa](https://github.com/yazinsai/tilawa) (`@tilawa/core` 1.x, MIT code, CC BY 4.0
+model weights), an on-device streaming engine that follows the reciter word by word and flags memorisation
+slips (wrong / missed / extra word, skipped passage). It is JavaScript, so `TilawaEngine`
+(`data/services/tilawa_engine.dart`) runs it in a hidden `WebView` that `RecitationPage` keeps in its tree;
+the page is loaded with base URL `https://tilawa.dev/` so it is a secure context (the microphone needs one)
+and same-origin with the model files. The bundle is `assets/tilawa/host.js`, **generated** from
+`tool/tilawa` (`cd tool/tilawa && npm install && npm run build`); do not hand-edit it. Bump
+`@tilawa/core` and `onnxruntime-web` together there (ORT's version picks the wasm path on tilawa.dev).
+Messages cross the `TilawaChannel` JavaScript channel as JSON and are parsed by `TilawaEvent.parse`
+(`domain/entities/tilawa_event.dart`); `PassageProgress` (pure Dart, unit-tested) turns them into per-word
+status. Audio is captured and recognised in the WebView and never uploaded. Nothing downloads quietly: on
+first use the page asks Full or Lite, then `TilawaStore` fetches that tier's files once (shared ORT `jsep`
+wasm + mjs + reference ≈ 33 MB, plus the model: lite ≈ 25 MB, full ≈ 68 MB) from tilawa.dev into the app support folder, sha256-checked, under the same layout
+as `https://tilawa.dev/v1/`. `TilawaServer` then serves that folder and the page from `http://127.0.0.1:<port>`
+(a secure context, so the microphone works; Android cleartext is allowed for loopback only, iOS via
+`NSAllowsLocalNetworking`), and the listener runs with `assetBase` pointing at it, so it works fully offline.
+File names and sizes in `TilawaStore.files` must match the published ones; update them when bumping
+`@tilawa/core`/`onnxruntime-web` (the `ortVersion` constant too).
+Android still needs the OS `RECORD_AUDIO` grant, which `TilawaEngine.start` obtains through `record`.
+Only hifz slips are detected, not tajweed, and the screen says so. Never use the 0.x models (NPL-1.2,
+non-commercial). Web / desktop have no WebView here, so the page shows "unavailable" there.
 
 ### Quran data
 

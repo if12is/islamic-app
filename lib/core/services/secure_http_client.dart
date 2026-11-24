@@ -41,6 +41,11 @@ class SecureHttpClient {
     // `www` matters: the bare domain answers 301, which this client does not
     // follow. Nothing about the user is sent, only a GET for a public page.
     'www.al-madina.com',
+    // The on-device recitation listener: its models, the Quran reference and
+    // the inference runtime, all immutable files the app downloads once and
+    // then serves to itself. Only a GET for a public file; nothing about the
+    // user is sent.
+    'tilawa.dev',
   };
 
   /// Hosts allowed by their ending, where the exact name cannot be known.

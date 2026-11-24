@@ -107,8 +107,6 @@ class BackupService {
     // Every earlier place read from, and the pinned wird among them.
     'reading_history_v1',
     'location_is_manual',
-    'recitation_locale_id',
-    'stt_selected_model',
   ];
 
   /// Whether a key belongs in the backup.

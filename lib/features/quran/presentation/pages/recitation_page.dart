@@ -1,25 +1,41 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/widgets/app_scaffold.dart';
-import '../../data/services/quran_local_service.dart';
-import '../../data/services/recitation_service.dart';
-import '../../data/services/stt_model_catalogue.dart';
-import '../../domain/entities/recitation_match.dart';
-import 'surah_reader_page.dart';
-import '../../domain/entities/verse_match.dart';
-import '../../../../core/widgets/app_section.dart';
-import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../widgets/recitation_locale_sheet.dart';
+import '../../../../core/widgets/app_cards.dart';
+import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/widgets/app_section.dart';
+import '../../data/services/quran_local_service.dart';
+import '../../data/services/audio_download_service.dart';
+import '../../data/services/tilawa_engine.dart';
+import '../../data/services/tilawa_store.dart';
+import '../../domain/entities/passage_progress.dart';
+import '../../domain/entities/tilawa_event.dart';
+import 'surah_reader_page.dart';
 
-/// Recite out loud and see, word by word, what came out.
+enum _Phase {
+  checking,
+  needsDownload,
+  downloading,
+  loading,
+  ready,
+  listening,
+  failed,
+}
+
+/// Recite out loud and watch the Mushaf follow you, word by word.
 ///
-/// Green means it matched, amber means it was close enough to be the
-/// recogniser's spelling rather than a mistake, red means it was skipped or
-/// something else was said. It is a mirror, not a judge — the screen says so.
+/// Listening is done by [TilawaEngine]: entirely on the phone, no audio leaves
+/// it. Two ways in:
+///
+///  * a known passage — each word lights up as it is recited and slips
+///    (a wrong, missed or extra word, a skipped verse) are marked live;
+///  * free recitation (the search field's door) — recite anything and the page
+///    names the verse you are at.
 class RecitationPage extends ConsumerStatefulWidget {
   const RecitationPage({
     super.key,
@@ -29,10 +45,6 @@ class RecitationPage extends ConsumerStatefulWidget {
   }) : startInIdentifyMode = false;
 
   /// Open straight into "which verse is this?", with no passage in mind.
-  ///
-  /// This is the door from the search field: someone who half-remembers a
-  /// verse has nothing to check themselves against, so asking them to pick a
-  /// surah first would defeat the point.
   const RecitationPage.identify({super.key})
     : surahNumber = 1,
       fromAyah = 1,
@@ -49,123 +61,190 @@ class RecitationPage extends ConsumerStatefulWidget {
 }
 
 class _RecitationPageState extends ConsumerState<RecitationPage> {
-  final RecitationService _service = RecitationService();
+  TilawaEngine? _engine;
+  StreamSubscription<TilawaEvent>? _sub;
 
-  RecitationResult _result = RecitationResult.empty;
-  String _heard = '';
-  bool _listening = false;
+  _Phase _phase = _Phase.checking;
+  double _loadFraction = 0;
+  double _downloadFraction = 0;
+  StreamSubscription<TilawaDownloadProgress>? _download;
   String? _errorKey;
+  double _levelDb = -90;
 
-  /// Identify mode: recite anything and be told where it is in the Mushaf.
   bool _identify = false;
-  List<VerseMatch> _matches = const [];
+  late PassageProgress _progress;
 
-  /// The downloaded model that will listen, if the user chose one.
-  SttModel? _offlineModel;
-
-  List<QuranVerse> get _verses => [
-    for (var ayah = widget.fromAyah; ayah <= widget.toAyah; ayah++)
-      QuranLocalService.verse(widget.surahNumber, ayah),
-  ];
-
-  String get _expected => _verses.map((verse) => verse.text).join(' ');
+  /// Free recitation: the verses heard, newest last.
+  final List<(int, int)> _trail = [];
+  List<TilawaMistake>? _finalMistakes;
 
   @override
   void initState() {
     super.initState();
     _identify = widget.startInIdentifyMode;
-    _result = RecitationMatcher.compare(expected: _expected, heard: '');
-    _loadEngine();
+    _progress = _buildProgress();
+    if (!TilawaEngine.isSupported) {
+      _phase = _Phase.failed;
+      _errorKey = 'recite_unavailable';
+      return;
+    }
+    final engine = TilawaEngine();
+    _engine = engine;
+    _sub = engine.events.listen(_onEvent);
+    unawaited(_prepare());
+  }
+
+  /// Load the listener if everything is already on the phone; otherwise ask
+  /// before downloading it.
+  Future<void> _prepare() async {
+    final tier = await TilawaStore.installedTier();
+    if (!mounted) {
+      return;
+    }
+    if (tier != null) {
+      setState(() => _phase = _Phase.loading);
+      await _engine?.load(tier);
+    } else {
+      setState(() => _phase = _Phase.needsDownload);
+    }
+  }
+
+  /// Fetch every file the listener needs, once.
+  void _startDownload(TilawaTier tier) {
+    setState(() {
+      _phase = _Phase.downloading;
+      _downloadFraction = 0;
+      _errorKey = null;
+    });
+    _download = TilawaStore.download(tier).listen((progress) {
+      if (!mounted) {
+        return;
+      }
+      switch (progress.state) {
+        case TilawaDownloadState.downloading:
+          setState(() => _downloadFraction = progress.ratio);
+        case TilawaDownloadState.installed:
+          unawaited(_prepare());
+        case TilawaDownloadState.failed:
+          setState(() {
+            _phase = _Phase.needsDownload;
+            _errorKey = 'recite_download_failed';
+          });
+        case TilawaDownloadState.cancelled:
+          setState(() => _phase = _Phase.needsDownload);
+      }
+    });
   }
 
   @override
   void dispose() {
-    _service.cancel();
-    _service.dispose();
+    if (_phase == _Phase.downloading) {
+      TilawaStore.cancel();
+    }
+    unawaited(_download?.cancel());
+    unawaited(_sub?.cancel());
+    unawaited(_engine?.dispose());
     super.dispose();
   }
 
-  /// Find out which engine will listen, so the screen can say so up front
-  /// instead of leaving the user to guess after a download.
-  Future<void> _loadEngine() async {
-    final model = await RecitationService.preferredOfflineModel();
-    if (mounted) {
-      setState(() => _offlineModel = model);
-    }
-  }
+  PassageProgress _buildProgress() => PassageProgress(
+    surah: widget.surahNumber,
+    words: {
+      for (var ayah = widget.fromAyah; ayah <= widget.toAyah; ayah++)
+        ayah: PassageProgress.splitWords(
+          QuranLocalService.verse(widget.surahNumber, ayah).text,
+        ),
+    },
+  );
 
-  Future<void> _toggleListening() async {
-    if (_listening) {
-      await _service.stop();
-      setState(() => _listening = false);
+  void _onEvent(TilawaEvent event) {
+    if (!mounted) {
       return;
     }
-
     setState(() {
-      _errorKey = null;
-      _heard = '';
-      _matches = const [];
-      _result = RecitationMatcher.compare(expected: _expected, heard: '');
-    });
-
-    final failure = await _service.start(
-      onResult: (text, isFinal) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _heard = text;
+      switch (event) {
+        case TilawaProgress():
+          _loadFraction = event.fraction;
+        case TilawaReady():
+          _phase = _Phase.ready;
+        case TilawaListening():
+          _phase = _Phase.listening;
+        case TilawaLevel():
+          _levelDb = event.db;
+        case TilawaPosition():
           if (_identify) {
-            // Search on every partial: the answer usually arrives long before
-            // the reciter stops, and waiting to show it helps nobody.
-            _matches = VerseFinder.search(text);
+            final at = event.observed;
+            if (at != null &&
+                (_trail.isEmpty || _trail.last != (at.surah, at.ayah))) {
+              _trail.add((at.surah, at.ayah));
+            }
           } else {
-            _result = RecitationMatcher.compare(
-              expected: _expected,
-              heard: text,
-            );
+            _progress.apply(event);
           }
-          if (isFinal) {
-            _listening = false;
+        case TilawaChecker():
+          if (!_identify) {
+            _progress.apply(event);
           }
-        });
-      },
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    if (failure != null) {
-      setState(() {
-        _listening = false;
-        _errorKey = switch (failure) {
-          RecitationFailure.permissionDenied => 'recite_no_permission',
-          RecitationFailure.noArabicLocale => 'recite_no_arabic',
-          RecitationFailure.unavailable => 'recite_unavailable',
-          RecitationFailure.error => 'recite_failed',
-        };
-      });
-      return;
-    }
-
-    setState(() => _listening = true);
+        case TilawaDone():
+          _phase = _Phase.ready;
+          _finalMistakes = event.mistakes;
+        case TilawaFailure():
+          _fail(event);
+        case TilawaBooted():
+          break;
+      }
+    });
   }
 
-  /// Pick, switch, or download a voice pack.
-  Future<void> _openLocalePicker() async {
-    await _service.stop();
-    if (!mounted) {
+  void _fail(TilawaFailure failure) {
+    final denied =
+        failure.name == 'MicrophoneError' &&
+        failure.message.toLowerCase().contains('denied');
+    _errorKey = switch (failure.stage) {
+      'load' => 'recite_failed',
+      _ => denied ? 'recite_no_permission' : 'recite_failed',
+    };
+    // A failed load leaves nothing to listen with; anything else can be
+    // retried straight away.
+    _phase = failure.stage == 'load' ? _Phase.failed : _Phase.ready;
+  }
+
+  void _reset() {
+    _progress = _buildProgress();
+    _trail.clear();
+    _finalMistakes = null;
+    _errorKey = null;
+  }
+
+  Future<void> _retryLoad() async {
+    setState(() {
+      _phase = _Phase.checking;
+      _errorKey = null;
+      _loadFraction = 0;
+    });
+    await _prepare();
+  }
+
+  Future<void> _toggle() async {
+    final engine = _engine;
+    if (engine == null) {
       return;
     }
-    setState(() => _listening = false);
-
-    final changed = await RecitationLocaleSheet.show(context, _service);
-    if (changed == true && mounted) {
-      // The choice moved; the engine resolved last time no longer applies.
-      _service.invalidateLocale();
-      setState(() => _errorKey = null);
-      await _loadEngine();
+    if (_phase == _Phase.listening) {
+      await engine.stop();
+      return;
+    }
+    if (_phase != _Phase.ready) {
+      return;
+    }
+    setState(_reset);
+    final granted = await engine.start(
+      surah: _identify ? null : widget.surahNumber,
+      fromAyah: widget.fromAyah,
+      toAyah: widget.toAyah,
+    );
+    if (!granted && mounted) {
+      setState(() => _errorKey = 'recite_no_permission');
     }
   }
 
@@ -173,6 +252,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final surah = QuranLocalService.surahInfo(widget.surahNumber);
+    final listening = _phase == _Phase.listening;
 
     return AppScaffold(
       showBack: true,
@@ -180,116 +260,245 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
         context.tr('recite_title'),
         style: AppTextStyles.display(context, fontSize: 18),
       ),
-      actions: [
-        IconButton(
-          tooltip: context.tr('recite_voice_pack'),
-          icon: const Icon(Icons.record_voice_over_outlined, size: 20),
-          onPressed: _openLocalePicker,
-        ),
-      ],
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _toggleListening,
-        backgroundColor: _listening ? colorScheme.error : colorScheme.primary,
-        icon: Icon(_listening ? Icons.stop : Icons.mic),
-        label: Text(
-          _listening ? context.tr('recite_stop') : context.tr('recite_start'),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+      floatingActionButton:
+          _phase == _Phase.ready || listening
+              ? FloatingActionButton.extended(
+                onPressed: _toggle,
+                backgroundColor:
+                    listening ? colorScheme.error : colorScheme.primary,
+                icon: Icon(listening ? Icons.stop : Icons.mic),
+                label: Text(
+                  listening
+                      ? context.tr('recite_stop')
+                      : context.tr('recite_start'),
+                ),
+              )
+              : null,
+      body: Stack(
         children: [
-          if (!widget.startInIdentifyMode)
-            Text(
-              '${context.tr('surah_word')} ${surah.nameAr} · '
-              '${widget.fromAyah}-${widget.toAyah}',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.display(context, fontSize: 17),
+          // The engine's WebView has to be alive to listen; it draws nothing.
+          if (_engine != null)
+            Positioned(
+              left: 0,
+              top: 0,
+              width: 1,
+              height: 1,
+              child: IgnorePointer(child: _engine!.view),
             ),
-          const SizedBox(height: 6),
-          Text(
-            context.tr('recite_experimental'),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.caption(context),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Center(child: _engineChip(context)),
-          const SizedBox(height: 16),
-          if (!widget.startInIdentifyMode)
-            Center(
-              child: PillSelector<bool>(
-                compact: true,
-                scrollable: false,
-                value: _identify,
-                onChanged:
-                    (value) => setState(() {
-                      _identify = value;
-                      _matches = const [];
-                      _heard = '';
-                    }),
-                options: [
-                  PillOption(
-                    value: false,
-                    label: context.tr('recite_mode_check'),
+          ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+            children: [
+              if (!widget.startInIdentifyMode)
+                Text(
+                  '${context.tr('surah_word')} ${surah.nameAr} · '
+                  '${widget.fromAyah}-${widget.toAyah}',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.display(context, fontSize: 17),
+                ),
+              const SizedBox(height: 6),
+              Text(
+                context.tr('recite_experimental'),
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption(context),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                context.tr('recite_privacy'),
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption(context),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (!widget.startInIdentifyMode)
+                Center(
+                  child: PillSelector<bool>(
+                    compact: true,
+                    scrollable: false,
+                    value: _identify,
+                    onChanged:
+                        (value) => setState(() {
+                          if (_phase == _Phase.listening) {
+                            return;
+                          }
+                          _identify = value;
+                          _reset();
+                        }),
+                    options: [
+                      PillOption(
+                        value: false,
+                        label: context.tr('recite_mode_check'),
+                      ),
+                      PillOption(
+                        value: true,
+                        label: context.tr('recite_mode_identify'),
+                      ),
+                    ],
                   ),
-                  PillOption(
-                    value: true,
-                    label: context.tr('recite_mode_identify'),
+                ),
+              const SizedBox(height: 16),
+              if (_phase == _Phase.needsDownload ||
+                  _phase == _Phase.downloading)
+                _downloadCard(context),
+              if (_phase == _Phase.loading) _loading(context),
+              if (_errorKey != null) _error(context, colorScheme),
+              if (_phase == _Phase.ready || _phase == _Phase.listening) ...[
+                if (listening) _listeningBar(context),
+                if (_identify)
+                  _identifyResults(context)
+                else ...[
+                  _scoreBar(context, colorScheme),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: _colouredText(context, colorScheme),
                   ),
+                  const SizedBox(height: 16),
+                  _legend(context, colorScheme),
+                  if (_finalMistakes != null) _mistakeList(context),
                 ],
-              ),
-            ),
-          const SizedBox(height: 16),
-          if (_errorKey != null) _error(context, colorScheme),
-          if (_identify) ...[
-            _identifyResults(context),
-          ] else ...[
-            _scoreBar(context, colorScheme),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: colorScheme.outlineVariant),
-              ),
-              child: _colouredText(context, colorScheme),
-            ),
-            const SizedBox(height: 16),
-            _legend(context, colorScheme),
-          ],
-          if (_heard.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              context.tr('recite_heard'),
-              style: AppTextStyles.caption(context),
-            ),
-            const SizedBox(height: 6),
-            Text(_heard, style: AppTextStyles.body(context, fontSize: 14)),
-          ],
+              ],
+            ],
+          ),
         ],
       ),
     );
   }
 
-  /// What was recited, and where it sits in the Mushaf.
+  Widget _loading(BuildContext context) {
+    return AppCard(
+      child: Column(
+        children: [
+          Text(
+            context.tr('recite_loading'),
+            style: AppTextStyles.display(context, fontSize: 15),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          LinearProgressIndicator(
+            value: _loadFraction > 0 ? _loadFraction : null,
+            minHeight: 6,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The one-time download of everything the listener needs.
+  Widget _downloadCard(BuildContext context) {
+    String size(TilawaTier tier) =>
+        AudioDownloadService.formatBytes(TilawaStore.totalBytesFor(tier));
+    final downloading = _phase == _Phase.downloading;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.tr('recite_download_title'),
+              style: AppTextStyles.display(context, fontSize: 15),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              context.tr('recite_download_desc'),
+              style: AppTextStyles.caption(context),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (downloading) ...[
+              LinearProgressIndicator(
+                value: _downloadFraction > 0 ? _downloadFraction : null,
+                minHeight: 6,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${(_downloadFraction * 100).round()}%',
+                      style: AppTextStyles.caption(context),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: TilawaStore.cancel,
+                    child: Text(context.tr('recite_download_cancel')),
+                  ),
+                ],
+              ),
+            ] else ...[
+              FilledButton.icon(
+                onPressed: () => _startDownload(TilawaTier.full),
+                icon: const Icon(Icons.download_rounded),
+                label: Text(
+                  context
+                      .tr('recite_download_full')
+                      .replaceAll('{size}', size(TilawaTier.full)),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: () => _startDownload(TilawaTier.lite),
+                icon: const Icon(Icons.download_rounded),
+                label: Text(
+                  context
+                      .tr('recite_download_lite')
+                      .replaceAll('{size}', size(TilawaTier.lite)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _listeningBar(BuildContext context) {
+    final tokens = context.tokens;
+    // -60 dBFS is near silence, -10 is loud speech.
+    final level = ((_levelDb + 60) / 50).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        children: [
+          Icon(Icons.graphic_eq, size: 18, color: tokens.brand),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            context.tr('recite_listening'),
+            style: AppTextStyles.caption(context, color: tokens.brand),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(value: level, minHeight: 4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Which verse the reciter is at, and the ones before it.
   Widget _identifyResults(BuildContext context) {
     final tokens = context.tokens;
 
-    if (_matches.isEmpty) {
+    if (_trail.isEmpty) {
       return AppCard(
         child: Column(
           children: [
             Icon(
-              _listening ? Icons.graphic_eq : Icons.search,
+              _phase == _Phase.listening ? Icons.graphic_eq : Icons.search,
               size: 28,
               color: tokens.inkFaint,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              _heard.isEmpty
-                  ? context.tr('recite_identify_hint')
-                  : context.tr('recite_identify_none'),
+              _phase == _Phase.listening
+                  ? context.tr('recite_finding')
+                  : context.tr('recite_identify_hint'),
               textAlign: TextAlign.center,
               style: AppTextStyles.caption(context),
             ),
@@ -298,130 +507,77 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
       );
     }
 
+    final newestFirst = _trail.reversed.take(6).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final match in _matches)
+        for (var i = 0; i < newestFirst.length; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: AppCard(
-              // Tapping opens the reader exactly there.
-              onTap:
-                  () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder:
-                          (_) => SurahReaderPage(
-                            surahNumber: match.surahNumber,
-                            initialVerse: match.verseNumber,
-                          ),
-                    ),
-                  ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${QuranLocalService.surahInfo(match.surahNumber).nameAr}'
-                          ' · ${match.verseNumber}',
-                          style: AppTextStyles.display(context, fontSize: 15),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm + 2,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              match.isConfident
-                                  ? tokens.brand.withValues(alpha: 0.16)
-                                  : tokens.groundAlt,
-                          borderRadius: AppRadii.pillAll,
-                        ),
-                        child: Text(
-                          '${(match.score * 100).round()}%',
-                          style: AppTextStyles.caption(
-                            context,
-                            fontSize: 11,
-                            color:
-                                match.isConfident
-                                    ? tokens.brand
-                                    : tokens.inkFaint,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    match.text,
-                    textAlign: TextAlign.center,
-                    textDirection: TextDirection.rtl,
-                    style: AppTextStyles.quran(context, fontSize: 20),
-                  ),
-                ],
-              ),
+            child: _verseCard(
+              context,
+              surahNumber: newestFirst[i].$1,
+              ayah: newestFirst[i].$2,
+              current: i == 0,
             ),
           ),
       ],
     );
   }
 
-  /// Which engine is listening, stated before anyone presses the microphone.
-  ///
-  /// Someone who has just downloaded a model has no way to tell whether it is
-  /// being used. This is that way: tap it to change the choice.
-  Widget _engineChip(BuildContext context) {
+  Widget _verseCard(
+    BuildContext context, {
+    required int surahNumber,
+    required int ayah,
+    required bool current,
+  }) {
     final tokens = context.tokens;
-    final model = _offlineModel;
-    final offline = model != null;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _openLocalePicker,
-        borderRadius: AppRadii.pillAll,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs + 2,
+    final verse = QuranLocalService.verse(surahNumber, ayah);
+    return AppCard(
+      // Tapping opens the reader exactly there.
+      onTap:
+          () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder:
+                  (_) => SurahReaderPage(
+                    surahNumber: surahNumber,
+                    initialVerse: ayah,
+                  ),
+            ),
           ),
-          decoration: BoxDecoration(
-            color:
-                offline
-                    ? tokens.brand.withValues(alpha: 0.12)
-                    : tokens.groundAlt,
-            borderRadius: AppRadii.pillAll,
-            border: Border.all(color: tokens.line),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                offline ? Icons.offline_bolt_rounded : Icons.record_voice_over,
-                size: 15,
-                color: offline ? tokens.brand : tokens.inkMuted,
-              ),
-              const SizedBox(width: AppSpacing.xs + 2),
-              Flexible(
-                child: Text(
-                  offline
-                      ? '${context.tr('recite_engine_offline')} · '
-                          '${context.tr(model.nameKey)}'
-                      : context.tr('recite_engine_device'),
-                  style: AppTextStyles.caption(
-                    context,
-                    fontSize: 11,
-                    color: offline ? tokens.brand : tokens.inkMuted,
+      child: Opacity(
+        opacity: current ? 1 : 0.6,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${QuranLocalService.surahInfo(surahNumber).nameAr}'
+                    ' · $ayah',
+                    style: AppTextStyles.display(context, fontSize: 15),
                   ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Icon(Icons.tune_rounded, size: 13, color: tokens.inkFaint),
-            ],
-          ),
+                if (current)
+                  Text(
+                    context.tr('recite_position'),
+                    style: AppTextStyles.caption(
+                      context,
+                      fontSize: 11,
+                      color: tokens.brand,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              verse.text,
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
+              style: AppTextStyles.quran(context, fontSize: 20),
+            ),
+          ],
         ),
       ),
     );
@@ -448,11 +604,10 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
               ),
             ),
           ),
-          // Naming the problem is not enough when the fix is two taps away.
-          if (_errorKey == 'recite_no_arabic')
+          if (_phase == _Phase.failed && _engine != null)
             TextButton(
-              onPressed: _openLocalePicker,
-              child: Text(context.tr('recite_download_pack')),
+              onPressed: _retryLoad,
+              child: Text(context.tr('recite_retry')),
             ),
         ],
       ),
@@ -460,39 +615,21 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   }
 
   Widget _scoreBar(BuildContext context, ColorScheme colorScheme) {
-    final progress =
-        _result.words.isEmpty ? 0.0 : _result.reached / _result.words.length;
-
+    final total = _progress.length;
+    final reached = _progress.reached;
+    final value = total == 0 ? 0.0 : reached / total;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${context.tr('recite_progress')}: '
-                '${_result.reached}/${_result.words.length}',
-                style: AppTextStyles.caption(context),
-              ),
-            ),
-            Text(
-              '${(_result.accuracy * 100).round()}%',
-              style: AppTextStyles.display(
-                context,
-                fontSize: 18,
-                color:
-                    _result.accuracy > 0.8
-                        ? colorScheme.primary
-                        : colorScheme.onSurface,
-              ),
-            ),
-          ],
+        Text(
+          '${context.tr('recite_progress')}: $reached/$total',
+          style: AppTextStyles.caption(context),
         ),
         const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
-            value: progress,
+            value: value,
             minHeight: 8,
             backgroundColor: colorScheme.surfaceContainerHighest,
           ),
@@ -508,21 +645,21 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
       spacing: 8,
       runSpacing: 10,
       children: [
-        for (final word in _result.words)
+        for (var i = 0; i < _progress.length; i++)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: _colourFor(word.status, colorScheme),
+              color: _colourFor(_progress.statusAt(i), colorScheme),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              word.text,
+              _progress.textAt(i),
               textDirection: TextDirection.rtl,
               style: AppTextStyles.quran(
                 context,
                 fontSize: 22,
                 color:
-                    word.status == RecitationWordStatus.pending
+                    _progress.statusAt(i) == WordStatus.pending
                         ? colorScheme.onSurfaceVariant
                         : colorScheme.onSurface,
               ),
@@ -532,18 +669,12 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
     );
   }
 
-  Color _colourFor(RecitationWordStatus status, ColorScheme colorScheme) {
-    switch (status) {
-      case RecitationWordStatus.pending:
-        return Colors.transparent;
-      case RecitationWordStatus.correct:
-        return colorScheme.primary.withValues(alpha: 0.22);
-      case RecitationWordStatus.near:
-        return colorScheme.secondary.withValues(alpha: 0.28);
-      case RecitationWordStatus.wrong:
-        return colorScheme.error.withValues(alpha: 0.24);
-    }
-  }
+  Color _colourFor(WordStatus status, ColorScheme colorScheme) =>
+      switch (status) {
+        WordStatus.pending => Colors.transparent,
+        WordStatus.recited => colorScheme.primary.withValues(alpha: 0.22),
+        WordStatus.wrong => colorScheme.error.withValues(alpha: 0.24),
+      };
 
   Widget _legend(BuildContext context, ColorScheme colorScheme) {
     Widget item(Color color, String labelKey) => Row(
@@ -568,12 +699,42 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
       alignment: WrapAlignment.center,
       children: [
         item(colorScheme.primary.withValues(alpha: 0.4), 'recite_legend_ok'),
-        item(
-          colorScheme.secondary.withValues(alpha: 0.5),
-          'recite_legend_near',
-        ),
         item(colorScheme.error.withValues(alpha: 0.45), 'recite_legend_wrong'),
       ],
+    );
+  }
+
+  /// The slips the engine confirmed, once the session has ended.
+  Widget _mistakeList(BuildContext context) {
+    final mistakes = _finalMistakes!;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.lg),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              mistakes.isEmpty
+                  ? context.tr('recite_no_mistakes')
+                  : context.tr('recite_mistakes'),
+              style: AppTextStyles.display(context, fontSize: 15),
+            ),
+            for (final m in mistakes)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Text(
+                  '${context.tr(switch (m.kind) {
+                    MistakeKind.wrongWord => 'recite_err_wrong_word',
+                    MistakeKind.omittedWord => 'recite_err_omitted_word',
+                    MistakeKind.addedWord => 'recite_err_added_word',
+                    MistakeKind.skippedPassage => 'recite_err_skipped_passage',
+                  })} · ${m.location.ayah}:${m.location.word}',
+                  style: AppTextStyles.caption(context),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -17,7 +17,6 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
-import android.speech.RecognizerIntent
 import com.islamicapp.islamic_app.alarms.AlarmChannel
 import com.islamicapp.islamic_app.alarms.AlarmEngine
 import com.islamicapp.islamic_app.alarms.AlarmNotifier
@@ -118,7 +117,6 @@ class MainActivity : AudioServiceActivity() {
             )
             "pickSystemSound" -> startSystemPicker(result)
             "soundTitle" -> result.success(titleFor(call.argument<String>("uri")))
-            "openSpeechSettings" -> result.success(openSpeechSettings())
             "isIgnoringBatteryOptimizations" ->
                 result.success(isIgnoringBatteryOptimizations())
             "requestIgnoreBatteryOptimizations" ->
@@ -130,38 +128,6 @@ class MainActivity : AudioServiceActivity() {
             "deviceAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
             else -> result.notImplemented()
         }
-    }
-
-    /**
-     * Open wherever this device lets someone add an offline voice pack.
-     *
-     * There is no single Android screen for it: some builds expose voice input
-     * settings, some only the Google app's own speech settings, and some
-     * neither. So the candidates are tried in order of usefulness and the
-     * first one that resolves wins; the plain Settings app is the last resort,
-     * which is still better than a dead button.
-     */
-    private fun openSpeechSettings(): Boolean {
-        val candidates = listOf(
-            Intent("com.android.settings.TTS_SETTINGS"),
-            Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
-            Intent(RecognizerIntent.ACTION_VOICE_SEARCH_HANDS_FREE),
-            Intent(Settings.ACTION_INPUT_METHOD_SETTINGS),
-            Intent(Settings.ACTION_SETTINGS),
-        )
-
-        for (intent in candidates) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (intent.resolveActivity(packageManager) != null) {
-                return try {
-                    startActivity(intent)
-                    true
-                } catch (error: Exception) {
-                    continue
-                }
-            }
-        }
-        return false
     }
 
     /**

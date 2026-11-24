@@ -28,6 +28,15 @@
         </trust-anchors>
     </domain-config>
     <!--
+      The recitation listener runs in a WebView that loads its page and model
+      files from a server this app starts on the loopback address, so nothing
+      leaves the device. Loopback only; the traffic never touches a network.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+    <!--
       Radiojar hands out an https address that always redirects to a plain-http
       node: https://stream.radiojar.com/... answers 302 to http://n04.radiojar…
       There is no https node to point at, so the choice is this narrow

@@ -13,8 +13,7 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../../quran/data/services/audio_download_service.dart';
-import '../../../quran/data/services/stt_model_catalogue.dart';
-import '../../../quran/data/services/stt_model_store.dart';
+import '../../../quran/data/services/tilawa_store.dart';
 
 /// What the app is keeping, and what can go.
 ///
@@ -86,29 +85,16 @@ class _StoragePageState extends State<StoragePage> {
       ),
     );
 
-    // Offline speech models, which are large and easy to forget about.
-    var modelBytes = 0;
-    var modelCount = 0;
-    for (final model in SttModelCatalogue.models) {
-      final size = await SttModelStore.installedSize(model);
-      if (size > 0) {
-        modelBytes += size;
-        modelCount++;
-      }
-    }
+    // The recitation listener's models, which are large and easy to forget.
+    final listenerBytes = await TilawaStore.installedSize();
     items.add(
       _StorageItem(
         titleKey: 'storage_models',
         descriptionKey: 'storage_models_desc',
         icon: Icons.mic_none,
-        bytes: modelBytes,
-        countLabel: '$modelCount',
-        clear: () async {
-          for (final model in SttModelCatalogue.models) {
-            await SttModelStore.remove(model);
-          }
-          await SttModelStore.select(null);
-        },
+        bytes: listenerBytes,
+        countLabel: listenerBytes > 0 ? '1' : '0',
+        clear: TilawaStore.remove,
       ),
     );
 
