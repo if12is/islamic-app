@@ -20,6 +20,10 @@ class TilawaFile {
   final String? sha256;
 }
 
+/// Which model the listener runs on. Full is the more accurate one; lite is
+/// about a third of the size, for phones short on space or memory.
+enum TilawaTier { lite, full }
+
 enum TilawaDownloadState { downloading, installed, failed, cancelled }
 
 class TilawaDownloadProgress {
@@ -38,10 +42,11 @@ class TilawaDownloadProgress {
 
 /// Everything the on-device recitation listener needs, kept on disk.
 ///
-/// The user is asked once to download the lot — both models (about 25 MB and
-/// 68 MB), the inference runtime (about 28 MB) and the Quran reference (about
-/// 5 MB) — and after that listening needs no network. Nothing downloads on its
-/// own: about 125 MB on someone's data plan is not a decision to make quietly.
+/// The user is asked once to download what the chosen model needs — the model
+/// itself (about 25 MB lite or 68 MB full), the inference runtime (about 28 MB)
+/// and the Quran reference (about 5 MB) — and after that listening needs no
+/// network. Nothing downloads on its own: up to about 100 MB on someone's data
+/// plan is not a decision to make quietly.
 ///
 /// Files live under the app's support folder, mirroring the layout of
 /// `https://tilawa.dev/v1/`, so [TilawaServer] can hand them to the listener
@@ -57,21 +62,12 @@ class TilawaStore {
   /// Change it together with `tool/tilawa/package.json`.
   static const String ortVersion = '1.30.0';
 
-  static const List<TilawaFile> files = [
+  /// Needed whichever model is chosen.
+  static const List<TilawaFile> shared = [
     TilawaFile(
       'reference/ref-v2.json',
       4749281,
       'f236384ea91e81ad554ba2777bc4073c3ff41e34120343a8a474571c577b7727',
-    ),
-    TilawaFile(
-      'models/spliced-clean-lite/1-int8/model.onnx',
-      24650054,
-      '4974de78d3c35d2542e7a24d99b747e1160d6e31e366fb68492b74a789890f1b',
-    ),
-    TilawaFile(
-      'models/spliced-clean/1-int8/model.onnx',
-      67759744,
-      '714e98addee73b1b8781ad7d99b6d3c745acd9116638baf4e12891f53a15af1b',
     ),
     TilawaFile(
       'runtime/ort/$ortVersion/ort-wasm-simd-threaded.jsep.mjs',
@@ -83,7 +79,29 @@ class TilawaStore {
     ),
   ];
 
-  static int get totalBytes => files.fold(0, (sum, file) => sum + file.bytes);
+  static const TilawaFile liteModel = TilawaFile(
+    'models/spliced-clean-lite/1-int8/model.onnx',
+    24650054,
+    '4974de78d3c35d2542e7a24d99b747e1160d6e31e366fb68492b74a789890f1b',
+  );
+
+  static const TilawaFile fullModel = TilawaFile(
+    'models/spliced-clean/1-int8/model.onnx',
+    67759744,
+    '714e98addee73b1b8781ad7d99b6d3c745acd9116638baf4e12891f53a15af1b',
+  );
+
+  /// Every file the listener can ever hold.
+  static const List<TilawaFile> files = [...shared, liteModel, fullModel];
+
+  /// What one choice of model needs on disk.
+  static List<TilawaFile> filesFor(TilawaTier tier) => [
+    ...shared,
+    tier == TilawaTier.full ? fullModel : liteModel,
+  ];
+
+  static int totalBytesFor(TilawaTier tier) =>
+      filesFor(tier).fold(0, (sum, file) => sum + file.bytes);
 
   static CancelToken? _cancelToken;
 
@@ -107,11 +125,11 @@ class TilawaStore {
     return local.existsSync() && await local.length() == file.bytes;
   }
 
-  /// Installed only when every file is whole — a half-downloaded model would
-  /// fail at the worst moment otherwise.
-  static Future<bool> isInstalled() async {
+  /// Whether everything [tier] needs is on disk and whole — a half-downloaded
+  /// model would fail at the worst moment otherwise.
+  static Future<bool> isInstalled(TilawaTier tier) async {
     try {
-      for (final file in files) {
+      for (final file in filesFor(tier)) {
         if (!await _present(file)) {
           return false;
         }
@@ -121,6 +139,16 @@ class TilawaStore {
       AppLogger.error('Could not check the recitation listener', e, stack);
       return false;
     }
+  }
+
+  /// The model to listen with: full when it is there, else lite, else none.
+  static Future<TilawaTier?> installedTier() async {
+    for (final tier in [TilawaTier.full, TilawaTier.lite]) {
+      if (await isInstalled(tier)) {
+        return tier;
+      }
+    }
+    return null;
   }
 
   /// Bytes on disk, for the storage screen.
@@ -144,8 +172,9 @@ class TilawaStore {
   /// Ends with [TilawaDownloadState.installed], [failed] or [cancelled]. A
   /// partial file is never left looking finished: each one is written under a
   /// `.part` name, checked, then renamed.
-  static Stream<TilawaDownloadProgress> download() async* {
-    final total = totalBytes;
+  static Stream<TilawaDownloadProgress> download(TilawaTier tier) async* {
+    final wanted = filesFor(tier);
+    final total = totalBytesFor(tier);
     final token = CancelToken();
     _cancelToken = token;
     final dio = Dio();
@@ -156,7 +185,7 @@ class TilawaStore {
       total: total,
     );
 
-    for (final file in files) {
+    for (final file in wanted) {
       if (await _present(file)) {
         done += file.bytes;
         continue;

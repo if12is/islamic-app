@@ -6,19 +6,32 @@ import 'package:islamic_app/features/quran/data/services/tilawa_store.dart';
 
 void main() {
   group('TilawaStore', () {
-    test(
-      'lists every file the listener needs, with the sizes the site serves',
-      () {
-        final paths = TilawaStore.files.map((f) => f.path).toList();
+    test('each choice of model needs the shared files plus its own', () {
+      for (final tier in TilawaTier.values) {
+        final paths = TilawaStore.filesFor(tier).map((f) => f.path).toList();
         expect(paths, contains('reference/ref-v2.json'));
-        expect(paths, contains('models/spliced-clean-lite/1-int8/model.onnx'));
-        expect(paths, contains('models/spliced-clean/1-int8/model.onnx'));
         expect(paths.where((p) => p.endsWith('.wasm')), hasLength(1));
         expect(paths.where((p) => p.endsWith('.mjs')), hasLength(1));
-        // About 125 MB all told, which the download screen quotes.
-        expect(TilawaStore.totalBytes, inInclusiveRange(120e6, 130e6));
-      },
-    );
+        expect(paths.where((p) => p.endsWith('.onnx')), hasLength(1));
+      }
+      expect(
+        TilawaStore.filesFor(TilawaTier.lite).map((f) => f.path),
+        contains('models/spliced-clean-lite/1-int8/model.onnx'),
+      );
+      expect(
+        TilawaStore.filesFor(TilawaTier.full).map((f) => f.path),
+        contains('models/spliced-clean/1-int8/model.onnx'),
+      );
+      // About 58 MB lite and 101 MB full, which the download screen quotes.
+      expect(
+        TilawaStore.totalBytesFor(TilawaTier.lite),
+        inInclusiveRange(55e6, 60e6),
+      );
+      expect(
+        TilawaStore.totalBytesFor(TilawaTier.full),
+        inInclusiveRange(98e6, 104e6),
+      );
+    });
 
     test('checks every model against a known digest', () {
       for (final file in TilawaStore.files.where(

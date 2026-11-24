@@ -102,9 +102,9 @@ class TilawaEngine {
   }
 
   /// Boot the page and load the model; the files must already be installed
-  /// ([TilawaStore.isInstalled]). Emits [TilawaProgress], then
+  /// ([TilawaStore.isInstalled] for [tier]). Emits [TilawaProgress], then
   /// [TilawaReady] or [TilawaFailure].
-  Future<void> load() async {
+  Future<void> load(TilawaTier tier) async {
     try {
       await _ensureBooted();
     } catch (e, stack) {
@@ -121,7 +121,7 @@ class TilawaEngine {
       );
       return;
     }
-    await _call("window.host.load('auto', '${_server!.assetBase}')");
+    await _call("window.host.load('${tier.name}', '${_server!.assetBase}')");
   }
 
   /// Ask for the microphone at the OS level (the WebView cannot do it alone on

@@ -96,8 +96,9 @@ class AppLocalizations {
       'recite_privacy': 'Your voice stays on this phone. Nothing is uploaded.',
       'recite_download_title': 'Download the listener',
       'recite_download_desc':
-          'To recite with no internet, the app first downloads everything the listener needs, once: its two models (about 25 and 68 MB), the on-device engine files (about 28 MB) and the Quran reference (about 5 MB). {size} in total. Use Wi-Fi if you can.',
-      'recite_download_start': 'Download {size}',
+          'To recite with no internet, the app downloads what the listener needs once: the on-device engine files (about 28 MB), the Quran reference (about 5 MB) and a model. Full is the most accurate; Lite is smaller, for phones short on space. Use Wi-Fi if you can.',
+      'recite_download_full': 'Full — {size} (most accurate)',
+      'recite_download_lite': 'Lite — {size} (smaller)',
       'recite_download_cancel': 'Cancel',
       'recite_download_failed': 'The download did not finish. Nothing was kept; try again.',
       'storage_models': 'Recitation listener',
@@ -1475,8 +1476,9 @@ class AppLocalizations {
       'recite_privacy': 'صوتك يبقى على هذا الهاتف ولا يُرفع إلى أي مكان.',
       'recite_download_title': 'تنزيل المستمع',
       'recite_download_desc':
-          'ليعمل التسميع بلا إنترنت، ينزّل التطبيق أولاً كل ما يحتاجه المستمع مرة واحدة: نموذجَيه (نحو ٢٥ و٦٨ ميجابايت) وملفات المحرك على الجهاز (نحو ٢٨ ميجابايت) ومرجع المصحف (نحو ٥ ميجابايت). الإجمالي {size}. يفضّل استخدام الواي فاي.',
-      'recite_download_start': 'تنزيل {size}',
+          'ليعمل التسميع بلا إنترنت، ينزّل التطبيق ما يحتاجه المستمع مرة واحدة: ملفات المحرك (نحو ٢٨ ميجابايت) ومرجع المصحف (نحو ٥ ميجابايت) ونموذجاً. الكامل أدق، والخفيف أصغر لهاتف قليل المساحة. يفضّل الواي فاي.',
+      'recite_download_full': 'الكامل — {size} (الأدق)',
+      'recite_download_lite': 'الخفيف — {size} (أصغر)',
       'recite_download_cancel': 'إلغاء',
       'recite_download_failed': 'لم يكتمل التنزيل ولم يُحفظ شيء، حاول مرة أخرى.',
       'storage_models': 'مستمع التسميع',

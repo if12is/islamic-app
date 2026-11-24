@@ -97,26 +97,26 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   /// Load the listener if everything is already on the phone; otherwise ask
   /// before downloading it.
   Future<void> _prepare() async {
-    final installed = await TilawaStore.isInstalled();
+    final tier = await TilawaStore.installedTier();
     if (!mounted) {
       return;
     }
-    if (installed) {
+    if (tier != null) {
       setState(() => _phase = _Phase.loading);
-      await _engine?.load();
+      await _engine?.load(tier);
     } else {
       setState(() => _phase = _Phase.needsDownload);
     }
   }
 
   /// Fetch every file the listener needs, once.
-  void _startDownload() {
+  void _startDownload(TilawaTier tier) {
     setState(() {
       _phase = _Phase.downloading;
       _downloadFraction = 0;
       _errorKey = null;
     });
-    _download = TilawaStore.download().listen((progress) {
+    _download = TilawaStore.download(tier).listen((progress) {
       if (!mounted) {
         return;
       }
@@ -389,7 +389,8 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
 
   /// The one-time download of everything the listener needs.
   Widget _downloadCard(BuildContext context) {
-    final size = AudioDownloadService.formatBytes(TilawaStore.totalBytes);
+    String size(TilawaTier tier) =>
+        AudioDownloadService.formatBytes(TilawaStore.totalBytesFor(tier));
     final downloading = _phase == _Phase.downloading;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -403,7 +404,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              context.tr('recite_download_desc').replaceAll('{size}', size),
+              context.tr('recite_download_desc'),
               style: AppTextStyles.caption(context),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -427,16 +428,27 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
                   ),
                 ],
               ),
-            ] else
+            ] else ...[
               FilledButton.icon(
-                onPressed: _startDownload,
+                onPressed: () => _startDownload(TilawaTier.full),
                 icon: const Icon(Icons.download_rounded),
                 label: Text(
                   context
-                      .tr('recite_download_start')
-                      .replaceAll('{size}', size),
+                      .tr('recite_download_full')
+                      .replaceAll('{size}', size(TilawaTier.full)),
                 ),
               ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                onPressed: () => _startDownload(TilawaTier.lite),
+                icon: const Icon(Icons.download_rounded),
+                label: Text(
+                  context
+                      .tr('recite_download_lite')
+                      .replaceAll('{size}', size(TilawaTier.lite)),
+                ),
+              ),
+            ],
           ],
         ),
       ),
