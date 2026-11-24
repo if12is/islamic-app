@@ -93,3 +93,6 @@ coverage/
 # Symbols
 *.dSYM/
 
+
+# Recitation host build
+tool/tilawa/node_modules/

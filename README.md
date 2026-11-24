@@ -66,7 +66,7 @@ Installation steps for both platforms are on the [website](https://if12is.github
 - Tafsir on every verse, bookmarks with notes, sharing as an image, and export as video.
 - Verse-by-verse recitation with synchronised highlighting, background playback, range repetition and a sleep timer.
 - A khatmah plan that works out the daily portion, and spaced-repetition hifz with a finish-the-verse quiz.
-- **"Which ayah is this?"**: recite a verse and the app finds it, with speech recognition running on the device.
+- **"Which ayah is this?"**: recite a verse and the app finds it, with the Tilawa engine listening on the device.
 
 ### Azkar and the daily wird
 - The complete Hisn al-Muslim: 136 chapters with their virtues and references.
@@ -144,7 +144,7 @@ More detail: [ARCHITECTURE.md](ARCHITECTURE.md) · [DEVELOPMENT.md](DEVELOPMENT.
 
 Flutter (latest stable) · Riverpod · Material 3 · `adhan` · `hijri` · `quran` · Dio · Hive · SharedPreferences ·
 just_audio (+ background) · flutter_local_notifications with a native Kotlin alarm engine · home_widget ·
-geolocator · flutter_compass · sherpa_onnx (on-device speech) · ffmpeg_kit (verse video export) · ota_update.
+geolocator · flutter_compass · webview_flutter (on-device Tilawa recitation engine) · ffmpeg_kit (verse video export) · ota_update.
 
 Fonts: Cairo (interface), Reem Kufi (display), Amiri Quran and Scheherazade New (Quran text).
 
