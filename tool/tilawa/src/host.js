@@ -20,6 +20,15 @@ let session = null;
 let mic = null;
 let unsubscribe = null;
 
+// Models are already on disk behind the local mirror, so the Cache API would
+// only hold a second copy.
+const memoryStorage = () => ({
+  get: async () => null,
+  put: async () => {},
+  delete: async () => {},
+  keys: async () => [],
+});
+
 const slimWord = (w) => (w ? { s: w.surah, a: w.ayah, w: w.word } : null);
 
 const onEvent = (e) => {
@@ -46,11 +55,17 @@ const onEvent = (e) => {
 };
 
 window.host = {
-  /** Download (first run only) and warm the model. `tier` is "auto" | "full" | "lite". */
-  async load(tier) {
+  /**
+   * Warm the model. `assetBase` is the app's local mirror of
+   * https://tilawa.dev/v1/ (the Dart side downloaded it beforehand); when it
+   * is given nothing is cached a second time in the WebView.
+   * `tier` is "auto" | "full" | "lite".
+   */
+  async load(tier, assetBase) {
     try {
       tilawa = await createTilawa({
         tier: tier || "auto",
+        ...(assetBase ? { assetBase, storage: memoryStorage() } : {}),
         threads: 1,
         onProgress: (p) => post({ t: "progress", stage: p.stage, fraction: p.fraction, fromCache: p.fromCache }),
       });

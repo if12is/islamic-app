@@ -94,7 +94,8 @@ class PassageProgress {
         if (event.state == CheckerState.resolved) {
           final at = _openMistakes.remove(event.id);
           if (at != null) {
-            _status[at] = at < _reached ? WordStatus.recited : WordStatus.pending;
+            _status[at] =
+                at < _reached ? WordStatus.recited : WordStatus.pending;
             return true;
           }
         }

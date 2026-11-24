@@ -10,12 +10,22 @@ import '../../../../core/widgets/app_cards.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/app_section.dart';
 import '../../data/services/quran_local_service.dart';
+import '../../data/services/audio_download_service.dart';
 import '../../data/services/tilawa_engine.dart';
+import '../../data/services/tilawa_store.dart';
 import '../../domain/entities/passage_progress.dart';
 import '../../domain/entities/tilawa_event.dart';
 import 'surah_reader_page.dart';
 
-enum _Phase { loading, ready, listening, failed }
+enum _Phase {
+  checking,
+  needsDownload,
+  downloading,
+  loading,
+  ready,
+  listening,
+  failed,
+}
 
 /// Recite out loud and watch the Mushaf follow you, word by word.
 ///
@@ -54,9 +64,10 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   TilawaEngine? _engine;
   StreamSubscription<TilawaEvent>? _sub;
 
-  _Phase _phase = _Phase.loading;
+  _Phase _phase = _Phase.checking;
   double _loadFraction = 0;
-  bool _downloading = false;
+  double _downloadFraction = 0;
+  StreamSubscription<TilawaDownloadProgress>? _download;
   String? _errorKey;
   double _levelDb = -90;
 
@@ -80,11 +91,57 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
     final engine = TilawaEngine();
     _engine = engine;
     _sub = engine.events.listen(_onEvent);
-    unawaited(engine.load());
+    unawaited(_prepare());
+  }
+
+  /// Load the listener if everything is already on the phone; otherwise ask
+  /// before downloading it.
+  Future<void> _prepare() async {
+    final installed = await TilawaStore.isInstalled();
+    if (!mounted) {
+      return;
+    }
+    if (installed) {
+      setState(() => _phase = _Phase.loading);
+      await _engine?.load();
+    } else {
+      setState(() => _phase = _Phase.needsDownload);
+    }
+  }
+
+  /// Fetch every file the listener needs, once.
+  void _startDownload() {
+    setState(() {
+      _phase = _Phase.downloading;
+      _downloadFraction = 0;
+      _errorKey = null;
+    });
+    _download = TilawaStore.download().listen((progress) {
+      if (!mounted) {
+        return;
+      }
+      switch (progress.state) {
+        case TilawaDownloadState.downloading:
+          setState(() => _downloadFraction = progress.ratio);
+        case TilawaDownloadState.installed:
+          unawaited(_prepare());
+        case TilawaDownloadState.failed:
+          setState(() {
+            _phase = _Phase.needsDownload;
+            _errorKey = 'recite_download_failed';
+          });
+        case TilawaDownloadState.cancelled:
+          setState(() => _phase = _Phase.needsDownload);
+      }
+    });
   }
 
   @override
   void dispose() {
+    if (_phase == _Phase.downloading) {
+      TilawaStore.cancel();
+    }
+    unawaited(_download?.cancel());
     unawaited(_sub?.cancel());
     unawaited(_engine?.dispose());
     super.dispose();
@@ -108,7 +165,6 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
       switch (event) {
         case TilawaProgress():
           _loadFraction = event.fraction;
-          _downloading = !event.fromCache;
         case TilawaReady():
           _phase = _Phase.ready;
         case TilawaListening():
@@ -145,10 +201,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
         failure.name == 'MicrophoneError' &&
         failure.message.toLowerCase().contains('denied');
     _errorKey = switch (failure.stage) {
-      'load' =>
-        failure.name == 'TilawaLoadError' || failure.name == 'BootError'
-            ? 'recite_offline_first'
-            : 'recite_failed',
+      'load' => 'recite_failed',
       _ => denied ? 'recite_no_permission' : 'recite_failed',
     };
     // A failed load leaves nothing to listen with; anything else can be
@@ -165,11 +218,11 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
 
   Future<void> _retryLoad() async {
     setState(() {
-      _phase = _Phase.loading;
+      _phase = _Phase.checking;
       _errorKey = null;
       _loadFraction = 0;
     });
-    await _engine?.load();
+    await _prepare();
   }
 
   Future<void> _toggle() async {
@@ -283,9 +336,12 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
                   ),
                 ),
               const SizedBox(height: 16),
+              if (_phase == _Phase.needsDownload ||
+                  _phase == _Phase.downloading)
+                _downloadCard(context),
               if (_phase == _Phase.loading) _loading(context),
               if (_errorKey != null) _error(context, colorScheme),
-              if (_phase != _Phase.loading && _phase != _Phase.failed) ...[
+              if (_phase == _Phase.ready || _phase == _Phase.listening) ...[
                 if (listening) _listeningBar(context),
                 if (_identify)
                   _identifyResults(context)
@@ -326,15 +382,63 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
             value: _loadFraction > 0 ? _loadFraction : null,
             minHeight: 6,
           ),
-          if (_downloading) ...[
+        ],
+      ),
+    );
+  }
+
+  /// The one-time download of everything the listener needs.
+  Widget _downloadCard(BuildContext context) {
+    final size = AudioDownloadService.formatBytes(TilawaStore.totalBytes);
+    final downloading = _phase == _Phase.downloading;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              context.tr('recite_download_title'),
+              style: AppTextStyles.display(context, fontSize: 15),
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              context.tr('recite_first_download'),
-              textAlign: TextAlign.center,
+              context.tr('recite_download_desc').replaceAll('{size}', size),
               style: AppTextStyles.caption(context),
             ),
+            const SizedBox(height: AppSpacing.md),
+            if (downloading) ...[
+              LinearProgressIndicator(
+                value: _downloadFraction > 0 ? _downloadFraction : null,
+                minHeight: 6,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${(_downloadFraction * 100).round()}%',
+                      style: AppTextStyles.caption(context),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: TilawaStore.cancel,
+                    child: Text(context.tr('recite_download_cancel')),
+                  ),
+                ],
+              ),
+            ] else
+              FilledButton.icon(
+                onPressed: _startDownload,
+                icon: const Icon(Icons.download_rounded),
+                label: Text(
+                  context
+                      .tr('recite_download_start')
+                      .replaceAll('{size}', size),
+                ),
+              ),
           ],
-        ],
+        ),
       ),
     );
   }

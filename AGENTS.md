@@ -226,8 +226,14 @@ and same-origin with the model files. The bundle is `assets/tilawa/host.js`, **g
 `@tilawa/core` and `onnxruntime-web` together there (ORT's version picks the wasm path on tilawa.dev).
 Messages cross the `TilawaChannel` JavaScript channel as JSON and are parsed by `TilawaEvent.parse`
 (`domain/entities/tilawa_event.dart`); `PassageProgress` (pure Dart, unit-tested) turns them into per-word
-status. Audio is captured and recognised in the WebView and never uploaded. The first run downloads the model
-(25–70 MB) and ORT wasm from tilawa.dev, then the WebView caches them and listening works offline.
+status. Audio is captured and recognised in the WebView and never uploaded. Nothing downloads quietly: on
+first use the page asks, then `TilawaStore` fetches every file once (~125 MB: both models, the ORT `jsep`
+wasm + mjs, the reference) from tilawa.dev into the app support folder, sha256-checked, under the same layout
+as `https://tilawa.dev/v1/`. `TilawaServer` then serves that folder and the page from `http://127.0.0.1:<port>`
+(a secure context, so the microphone works; Android cleartext is allowed for loopback only, iOS via
+`NSAllowsLocalNetworking`), and the listener runs with `assetBase` pointing at it, so it works fully offline.
+File names and sizes in `TilawaStore.files` must match the published ones; update them when bumping
+`@tilawa/core`/`onnxruntime-web` (the `ortVersion` constant too).
 Android still needs the OS `RECORD_AUDIO` grant, which `TilawaEngine.start` obtains through `record`.
 Only hifz slips are detected, not tajweed, and the screen says so. Never use the 0.x models (NPL-1.2,
 non-commercial). Web / desktop have no WebView here, so the page shows "unavailable" there.

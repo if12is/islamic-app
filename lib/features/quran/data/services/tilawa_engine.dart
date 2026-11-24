@@ -9,22 +9,24 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 import '../../../../core/utils/app_logger.dart';
 import '../../domain/entities/tilawa_event.dart';
+import 'tilawa_server.dart';
+import 'tilawa_store.dart';
 
 /// The on-device recitation listener ([Tilawa](https://github.com/yazinsai/tilawa)).
 ///
 /// Tilawa is a JavaScript engine, so it runs inside a hidden WebView that the
 /// page keeps in its widget tree (see [view]). The bundle in
-/// `assets/tilawa/host.js` is built from `tool/tilawa`. Audio is captured and
-/// recognised inside the WebView; nothing is uploaded. The first run downloads
-/// the model (25–70 MB) once and the WebView caches it, after which listening
-/// needs no network.
+/// `assets/tilawa/host.js` is built from `tool/tilawa`. Its models, runtime
+/// and reference are downloaded once by [TilawaStore] and served to the
+/// WebView from a loopback [TilawaServer], so after that listening needs no
+/// network. Audio is captured and recognised inside the WebView; nothing is
+/// uploaded.
 class TilawaEngine {
   TilawaEngine() {
-    final controller = WebViewController(
-      onPermissionRequest: (request) => request.grant(),
-    )
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(_channelName, onMessageReceived: _onMessage);
+    final controller =
+        WebViewController(onPermissionRequest: (request) => request.grant())
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..addJavaScriptChannel(_channelName, onMessageReceived: _onMessage);
     final platform = controller.platform;
     if (platform is AndroidWebViewController) {
       unawaited(platform.setMediaPlaybackRequiresUserGesture(false));
@@ -33,11 +35,6 @@ class TilawaEngine {
   }
 
   static const String _channelName = 'TilawaChannel';
-
-  /// The page is served as if from tilawa.dev, which is both a secure context
-  /// (the microphone needs one) and the same origin as the model files, so the
-  /// WebView's cache of them survives restarts.
-  static const String _origin = 'https://tilawa.dev/';
 
   /// Whether a WebView is available on this platform at all.
   static bool get isSupported =>
@@ -49,6 +46,7 @@ class TilawaEngine {
   late final WebViewController _controller;
   final StreamController<TilawaEvent> _events = StreamController.broadcast();
   Completer<void>? _booted;
+  TilawaServer? _server;
   bool _disposed = false;
 
   Stream<TilawaEvent> get events => _events.stream;
@@ -80,13 +78,12 @@ class TilawaEngine {
     final booted = Completer<void>();
     _booted = booted;
     final script = await rootBundle.loadString('assets/tilawa/host.js');
-    // A literal "</script" inside the bundle would end the tag early.
-    final safe = script.replaceAll('</script', r'<\/script');
-    await _controller.loadHtmlString(
-      '<!doctype html><html><head><meta charset="utf-8"></head>'
-      '<body><script>$safe</script></body></html>',
-      baseUrl: _origin,
+    final server = await TilawaServer.start(
+      mirror: await TilawaStore.root(),
+      hostJs: script,
     );
+    _server = server;
+    await _controller.loadRequest(server.origin);
     return booted.future.timeout(const Duration(seconds: 20));
   }
 
@@ -104,13 +101,18 @@ class TilawaEngine {
     }
   }
 
-  /// Boot the page and load the model. Emits [TilawaProgress], then
+  /// Boot the page and load the model; the files must already be installed
+  /// ([TilawaStore.isInstalled]). Emits [TilawaProgress], then
   /// [TilawaReady] or [TilawaFailure].
   Future<void> load() async {
     try {
       await _ensureBooted();
     } catch (e, stack) {
       AppLogger.error('Tilawa page did not start', e, stack);
+      // Let a retry start from scratch instead of waiting on the dead boot.
+      _booted = null;
+      await _server?.close();
+      _server = null;
       if (_events.isClosed) {
         return;
       }
@@ -119,17 +121,13 @@ class TilawaEngine {
       );
       return;
     }
-    await _call("window.host.load('auto')");
+    await _call("window.host.load('auto', '${_server!.assetBase}')");
   }
 
   /// Ask for the microphone at the OS level (the WebView cannot do it alone on
   /// Android), then start a session. A null [passage] is free recitation.
   /// Returns false when the permission was refused.
-  Future<bool> start({
-    int? surah,
-    int? fromAyah,
-    int? toAyah,
-  }) async {
+  Future<bool> start({int? surah, int? fromAyah, int? toAyah}) async {
     final recorder = AudioRecorder();
     try {
       if (!await recorder.hasPermission()) {
@@ -158,5 +156,6 @@ class TilawaEngine {
     }
     _disposed = true;
     await _events.close();
+    await _server?.close();
   }
 }

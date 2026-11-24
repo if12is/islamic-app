@@ -127,8 +127,7 @@ sealed class TilawaEvent {
               if (item is Map)
                 if (mistakeKindFrom(item['errorClass'] as String?)
                     case final kind?)
-                  if (WordPosition.fromJson(item['location'])
-                      case final at?)
+                  if (WordPosition.fromJson(item['location']) case final at?)
                     TilawaMistake(kind, at),
         ]);
       case 'error':
