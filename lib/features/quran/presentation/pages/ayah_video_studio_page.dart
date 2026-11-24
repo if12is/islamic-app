@@ -451,9 +451,7 @@ class _AyahVideoStudioPageState extends ConsumerState<AyahVideoStudioPage> {
   }
 
   static const double _actionHeight = 42;
-  static const _actionPadding = EdgeInsets.symmetric(
-    horizontal: AppSpacing.lg,
-  );
+  static const _actionPadding = EdgeInsets.symmetric(horizontal: AppSpacing.lg);
   static const _actionText = TextStyle(
     fontFamily: AppTheme.fontFamily,
     fontWeight: FontWeight.w700,

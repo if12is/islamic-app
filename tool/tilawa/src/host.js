@@ -29,6 +29,12 @@ const memoryStorage = () => ({
   keys: async () => [],
 });
 
+// Measured on real recitations (three reciters, clean and noisy): confirming
+// after a short delay with a 0.75 floor gave no false "mistake" on correct
+// recitation even with heavy noise, while still catching a skipped or wrong
+// verse. Confirming on the next word, or a lower floor, did give false ones.
+const POLICY = { confirm: { after: "delay", ms: 2000 }, minConfidence: 0.75 };
+
 const slimWord = (w) => (w ? { s: w.surah, a: w.ayah, w: w.word } : null);
 
 const onEvent = (e) => {
@@ -39,6 +45,8 @@ const onEvent = (e) => {
       expected: slimWord(e.expected),
       observed: e.observed.slice(0, 1).map((o) => ({
         word: slimWord(o.word),
+        // The words the engine currently believes were recited, first to last.
+        span: { start: slimWord(o.span.start), end: slimWord(o.span.end) },
         confidence: o.confidence,
       })),
     });
@@ -83,8 +91,8 @@ window.host = {
     try {
       await this.stop(true);
       session = passage
-        ? tilawa.startMemorization(passage, { confirm: { after: "next-word" } })
-        : tilawa.startFreeRecitation();
+        ? tilawa.startMemorization(passage, POLICY)
+        : tilawa.startFreeRecitation(POLICY);
       unsubscribe = session.subscribe(onEvent);
       const options = { onLevel: (db) => post({ t: "level", db }) };
       mic = await tilawa.listen(session, options);
