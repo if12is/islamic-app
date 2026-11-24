@@ -69,6 +69,10 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   double _downloadFraction = 0;
   StreamSubscription<TilawaDownloadProgress>? _download;
   String? _errorKey;
+
+  /// The engine's own words for what went wrong, shown small under the
+  /// message so a failure on a phone can be reported precisely.
+  String? _errorDetail;
   double _levelDb = -90;
 
   bool _identify = false;
@@ -197,6 +201,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
   }
 
   void _fail(TilawaFailure failure) {
+    _errorDetail = '${failure.stage} · ${failure.name}: ${failure.message}';
     final denied =
         failure.name == 'MicrophoneError' &&
         failure.message.toLowerCase().contains('denied');
@@ -214,6 +219,7 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
     _trail.clear();
     _finalMistakes = null;
     _errorKey = null;
+    _errorDetail = null;
   }
 
   Future<void> _retryLoad() async {
@@ -596,12 +602,29 @@ class _RecitationPageState extends ConsumerState<RecitationPage> {
           Icon(Icons.mic_off, color: colorScheme.onErrorContainer, size: 18),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              context.tr(_errorKey!),
-              style: AppTextStyles.caption(
-                context,
-                color: colorScheme.onErrorContainer,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.tr(_errorKey!),
+                  style: AppTextStyles.caption(
+                    context,
+                    color: colorScheme.onErrorContainer,
+                  ),
+                ),
+                if (_errorDetail != null)
+                  SelectableText(
+                    _errorDetail!,
+                    textDirection: TextDirection.ltr,
+                    style: AppTextStyles.caption(
+                      context,
+                      fontSize: 10,
+                      color: colorScheme.onErrorContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           if (_phase == _Phase.failed && _engine != null)

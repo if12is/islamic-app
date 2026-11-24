@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Recitation check listens through the device's own recognizer. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Without this Android's WebView cannot open the microphone for the
+         on-device recitation listener (getUserMedia fails to start capture). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Asking to be left out of doze. Without it the system drops the alarm
          that plays the adhan while the phone is idle. -->
